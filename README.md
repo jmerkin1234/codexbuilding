@@ -43,6 +43,9 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - The Godot adapter now opens debug mode in a separate detachable `Window`, so the live engine-data view can be moved to a second monitor instead of covering the play table.
 - The detached debug window now groups the live engine readout into clearer sections, and the shot-setup HUD now shows the current shot power as a percentage of the active speed cap.
 - Godot ball textures now import lossless with mipmaps disabled, and the project now forces native 3D render scaling with TAA and screen-space AA disabled plus `MSAA 3D` enabled so the imported Blender balls stay sharper in the standalone desktop window.
+- The Godot adapter now supports fine aim nudging on the mouse wheel, and `Ctrl + mouse wheel` in debug mode adjusts hardcoded-overlay line thickness live.
+- FreePlay/training no longer draws the pulsing selection ring around the currently selected ball.
+- The Godot render setup now keeps the imported Blender light active and adds a sky plus dedicated fill/rim lighting, so metallic pockets and glossy balls have stronger reflections than the earlier flat generic-light setup.
 - A portable rules layer now resolves 8-ball turns from replay traces, including break legality, open-table group assignment, foul detection, ball-in-hand, legal 8-ball win/loss, and configurable 8-ball-on-break handling.
 - Training mode now exists as a separate portable rules path with free cue-ball repositioning and optional 8-ball respot flow for freeplay layouts.
 - The Godot adapter now records live shot traces, resolves them through the portable rules layer, supports `Tab` switching between 8-ball versus computer and freeplay, exposes cue-ball-in-hand placement with arrow keys, and shows mode/rules state directly in the HUD.
@@ -53,7 +56,6 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - The Godot adapter now starts in an orthographic top-down inspection view and still supports switching plus runtime zoom across broadcast, top-down, foot-rail, and side-rail camera presets without changing the core simulation.
 - The Godot HUD is now framed into dedicated status and debug panels with wrapped text, so the live engine readout is easier to inspect while playing.
 - The Godot HUD now also includes a dedicated last-shot summary panel that turns portable rule summaries into readable eight-ball and training/freeplay shot breakdowns.
-- Training/freeplay now gives the selected layout ball a pulsing ring marker in the 3D view so placement edits are easy to track without relying on HUD text.
 - In 8-ball mode, Player 2 is now driven by a simple computer opponent that plans legal shots from cloned portable simulations, while freeplay stays human-controlled.
 - The Godot adapter now raises a transient shot-feedback banner for shot starts, first contact, pocketed balls, scratches, fouls, wins, and other key rule outcomes.
 - The status panel now gives the current mode, turn, winner, and ball-in-hand state a dedicated color-accented header so match flow is readable at a glance.
@@ -64,6 +66,7 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - If the computer planner fails to produce a shot, the Godot adapter now fails the turn forward instead of soft-locking on Player 2 forever: the turn is forfeited and the opponent receives ball in hand.
 - The Godot HUD now has a dedicated shot-setup card with speed, tip-offset, and tuning readouts, plus a separate controls/help card toggled with `F6`, so the main status panel no longer has to carry the full control map as raw text.
 - The shot-setup card now also shows shot power as a percentage of the current speed cap, making soft-versus-hard shot selection easier to read at a glance.
+- Mouse wheel now nudges the aim in fine angular steps without replacing the existing `A/D` keyboard aim control.
 - `F7` now toggles the gameplay HUD cards and shot banner on or off without affecting the start/pause menu, so the table can be viewed cleanly during play.
 - The Godot adapter now opens its playable window at `1920x1080` by default, while headless validation remains unchanged.
 - The Godot adapter now opens on a proper start/menu overlay with button-based `EightBall` and `FreePlay` selection, and `Esc` reopens that menu later for resume/reset/return-to-start actions.

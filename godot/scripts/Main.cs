@@ -59,15 +59,11 @@ public partial class Main : Node3D
 	private const float ComputerTurnThinkDelaySeconds = 0.8f;
 	private const int ComputerMaxSimulationSteps = 900;
 	private const int ComputerMaxTargetBallsToConsider = 4;
-	private const float TrainingSelectionRingRadiusMeters = 0.044f;
-	private const float TrainingSelectionRingHeightMeters = 0.02f;
-	private const float TrainingSelectionRingBaseScale = 1.0f;
-	private const float TrainingSelectionRingPulseAmplitude = 0.09f;
-	private const float TrainingSelectionRingPulseSpeed = 4.6f;
 	private const float OverlayLineThicknessMeters = 0.01f;
 	private const float OverlayLineHeightMeters = 0.008f;
 	private const int OverlayPocketSegments = 20;
 	private const float AimTurnRadiansPerSecond = 1.8f;
+	private const float MouseWheelAimStepDegrees = 0.2f;
 	private const float StrikeSpeedAdjustPerSecond = 1.5f;
 	private const float TipAdjustPerSecond = 1.2f;
 	private const float CueBallPlacementMetersPerSecond = 0.9f;
@@ -189,9 +185,9 @@ public partial class Main : Node3D
 	private int _trainingSelectedBallNumber;
 	private int _cameraPresetIndex = 1;
 	private float _cameraZoomScale = 1.0f;
+	private float _overlayLineThicknessMeters = OverlayLineThicknessMeters;
 	private float _shotBannerSecondsRemaining;
 	private float _computerTurnThinkSeconds;
-	private float _trainingSelectionPulseSeconds;
 	private float _aimAngleRadians;
 	private float _cueStickBaseOffsetMeters = 0.8f;
 	private float _cueStickHeightMeters = 0.066f;
@@ -229,7 +225,6 @@ public partial class Main : Node3D
 	{
 		var deltaSeconds = (float)delta;
 		UpdateShotBanner(deltaSeconds);
-		_trainingSelectionPulseSeconds += deltaSeconds;
 
 		if (_menuVisible)
 		{
@@ -252,6 +247,12 @@ public partial class Main : Node3D
 
 	public override void _UnhandledInput(InputEvent @event)
 	{
+		if (@event is InputEventMouseButton mouseButtonEvent && mouseButtonEvent.Pressed)
+		{
+			HandleMouseButtonInput(mouseButtonEvent);
+			return;
+		}
+
 		if (@event is not InputEventKey keyEvent || !keyEvent.Pressed || keyEvent.Echo)
 		{
 			return;
@@ -391,10 +392,6 @@ public partial class Main : Node3D
 				importedCamera.Visible = false;
 			}
 
-			if (importedTableSource.GetNodeOrNull<Light3D>("Light") is { } importedLight)
-			{
-				importedLight.Visible = false;
-			}
 		}
 		else
 		{
@@ -465,13 +462,6 @@ public partial class Main : Node3D
 		_trainingSelectionRoot = EnsureNode<Node3D>(_guideRoot, "TrainingSelectionRoot");
 		ClearChildren(_trainingSelectionRoot);
 		_trainingSelectionRoot.Visible = false;
-		AddOverlayCircle(
-			_trainingSelectionRoot,
-			"TrainingSelectionRing",
-			NumericsVector2.Zero,
-			TrainingSelectionRingRadiusMeters,
-			new Color(0.46f, 0.9f, 0.98f),
-			TrainingSelectionRingHeightMeters);
 
 		var hud = EnsureNode<CanvasLayer>(this, "Hud");
 		_menuOverlay = EnsureNode<ColorRect>(hud, "MenuOverlay");
@@ -766,15 +756,39 @@ public partial class Main : Node3D
 		var sunLight = EnsureNode<DirectionalLight3D>(this, "SunLight");
 		sunLight.RotationDegrees = new Vector3(-58.0f, -32.0f, 0.0f);
 		sunLight.ShadowEnabled = true;
-		sunLight.LightEnergy = 2.2f;
+		sunLight.LightEnergy = 1.4f;
+
+		var tableFillLight = EnsureNode<OmniLight3D>(this, "TableFillLight");
+		tableFillLight.Position = new Vector3(0.0f, 1.35f, 0.0f);
+		tableFillLight.LightColor = new Color(1.0f, 0.98f, 0.95f);
+		tableFillLight.LightEnergy = 1.8f;
+		tableFillLight.OmniRange = 5.0f;
+		tableFillLight.ShadowEnabled = false;
+
+		var tableRimLight = EnsureNode<OmniLight3D>(this, "TableRimLight");
+		tableRimLight.Position = new Vector3(-1.0f, 1.05f, -0.82f);
+		tableRimLight.LightColor = new Color(0.86f, 0.92f, 1.0f);
+		tableRimLight.LightEnergy = 1.1f;
+		tableRimLight.OmniRange = 4.6f;
+		tableRimLight.ShadowEnabled = false;
 
 		var worldEnvironment = EnsureNode<WorldEnvironment>(this, "WorldEnvironment");
 		worldEnvironment.Environment ??= new GodotEnvironment();
-		worldEnvironment.Environment.BackgroundMode = GodotEnvironment.BGMode.Color;
-		worldEnvironment.Environment.BackgroundColor = new Color(0.04f, 0.05f, 0.07f);
-		worldEnvironment.Environment.AmbientLightSource = GodotEnvironment.AmbientSource.Color;
-		worldEnvironment.Environment.AmbientLightColor = new Color(0.4f, 0.43f, 0.47f);
-		worldEnvironment.Environment.AmbientLightEnergy = 0.8f;
+		var proceduralSky = new ProceduralSkyMaterial
+		{
+			SkyTopColor = new Color(0.3f, 0.42f, 0.58f),
+			SkyHorizonColor = new Color(0.82f, 0.86f, 0.91f),
+			GroundBottomColor = new Color(0.05f, 0.05f, 0.06f),
+			GroundHorizonColor = new Color(0.16f, 0.15f, 0.14f)
+		};
+		var sky = new Sky
+		{
+			SkyMaterial = proceduralSky
+		};
+		worldEnvironment.Environment.Sky = sky;
+		worldEnvironment.Environment.BackgroundMode = GodotEnvironment.BGMode.Sky;
+		worldEnvironment.Environment.AmbientLightSource = GodotEnvironment.AmbientSource.Sky;
+		worldEnvironment.Environment.AmbientLightEnergy = 0.75f;
 	}
 
 	private void BuildTableVisual()
@@ -1149,6 +1163,34 @@ public partial class Main : Node3D
 		UpdateStatusLabel(Array.Empty<ShotEvent>());
 	}
 
+	private void HandleMouseButtonInput(InputEventMouseButton mouseButtonEvent)
+	{
+		if (_menuVisible || _world.Phase == SimulationPhase.Running || IsComputerTurnPending())
+		{
+			return;
+		}
+
+		var direction = mouseButtonEvent.ButtonIndex switch
+		{
+			MouseButton.WheelUp => -1,
+			MouseButton.WheelDown => 1,
+			_ => 0
+		};
+
+		if (direction == 0)
+		{
+			return;
+		}
+
+		if (_debugModeEnabled && mouseButtonEvent.CtrlPressed)
+		{
+			AdjustOverlayThickness(direction, mouseButtonEvent.ShiftPressed);
+			return;
+		}
+
+		AdjustAimWithMouseWheel(direction, mouseButtonEvent.ShiftPressed);
+	}
+
 	private void SetDebugModeEnabled(bool enabled)
 	{
 		if (_debugModeEnabled == enabled)
@@ -1326,6 +1368,46 @@ public partial class Main : Node3D
 		RebuildWorldWithCurrentState();
 		_recentRuleNotes.Clear();
 		_recentRuleNotes.Add($"Tuned {GetTuningFieldLabel(_selectedTuningField)} -> {GetSelectedTuningValueText()}");
+		UpdateStatusLabel(Array.Empty<ShotEvent>());
+	}
+
+	private void AdjustOverlayThickness(int direction, bool coarse)
+	{
+		if (direction == 0)
+		{
+			return;
+		}
+
+		var step = coarse ? 0.0035f : 0.0012f;
+		var updatedThickness = AdjustFloat(
+			_overlayLineThicknessMeters,
+			step * direction,
+			0.0035f,
+			0.05f);
+
+		if (Mathf.IsEqualApprox(updatedThickness, _overlayLineThicknessMeters))
+		{
+			return;
+		}
+
+		_overlayLineThicknessMeters = updatedThickness;
+		BuildHardcodeOverlay();
+		_recentRuleNotes.Clear();
+		_recentRuleNotes.Add($"Overlay thickness: {_overlayLineThicknessMeters:0.0000} m");
+		UpdateStatusLabel(Array.Empty<ShotEvent>());
+	}
+
+	private void AdjustAimWithMouseWheel(int direction, bool fineStep)
+	{
+		if (direction == 0)
+		{
+			return;
+		}
+
+		var stepDegrees = fineStep ? MouseWheelAimStepDegrees * 0.5f : MouseWheelAimStepDegrees;
+		_aimAngleRadians += Mathf.DegToRad(stepDegrees * direction);
+		MarkAimPreviewDirty();
+		UpdateCueGuide();
 		UpdateStatusLabel(Array.Empty<ShotEvent>());
 	}
 
@@ -2569,11 +2651,11 @@ public partial class Main : Node3D
 	{
 		_helpHeaderLabel.Text = _ruleMode == RuleMode.Training ? "Controls | FreePlay" : "Controls | EightBall";
 		_helpLabel.Text =
-			"Shot: Space shoot  A/D aim  W/S speed  J/L side spin  I/K follow-draw  Backspace center tip\n" +
+			"Shot: Space shoot  A/D aim  Mouse wheel fine aim  W/S speed  J/L side spin  I/K follow-draw  Backspace center tip\n" +
 			"View: C camera preset  Q/E zoom  H hardcode overlay  1-5 overlay layers\n" +
 			"Modes: Esc menu  Tab quick-switch mode  R reset rack/layout  F1 debug window  F6 help  F7 HUD\n" +
 			"Placement: Arrow keys move selected ball when placement is active  Z/X cycle freeplay ball\n" +
-			"Debug tune: F2/F3 choose value  F4/F5 adjust  Shift+F4/F5 coarse";
+			"Debug tune: F2/F3 choose value  F4/F5 adjust  Shift+F4/F5 coarse  Ctrl+wheel overlay thickness";
 	}
 
 	private void ResetShotSummary()
@@ -2818,19 +2900,7 @@ public partial class Main : Node3D
 			return;
 		}
 
-		var canShowHighlight = _ruleMode == RuleMode.Training &&
-							   CanAdjustPlacement() &&
-							   selectedBall is { IsPocketed: false };
-		_trainingSelectionRoot.Visible = canShowHighlight;
-		if (!canShowHighlight || selectedBall == null)
-		{
-			return;
-		}
-
-		var pulse = TrainingSelectionRingBaseScale +
-					(Mathf.Sin(_trainingSelectionPulseSeconds * TrainingSelectionRingPulseSpeed) * TrainingSelectionRingPulseAmplitude);
-		_trainingSelectionRoot.Position = ToGodotPoint(selectedBall.Value.Position, ballRadiusMeters + 0.004f);
-		_trainingSelectionRoot.Scale = new Vector3(pulse, 1.0f, pulse);
+		_trainingSelectionRoot.Visible = false;
 	}
 
 	private string FormatOptionalBallLabel(int? ballNumber)
@@ -2933,12 +3003,13 @@ public partial class Main : Node3D
 		builder.AppendLine($"  Ball diameter: {_tableSpec.BallDiameterMeters:0.00000} m");
 		builder.AppendLine($"  Geometry counts: cushions={_tableSpec.Cushions.Count}, jaws={_tableSpec.JawSegments.Count}, pockets={_tableSpec.Pockets.Count}");
 		builder.AppendLine($"  Overlay layers: {BuildOverlaySummary()}");
+		builder.AppendLine($"  Overlay thickness: {_overlayLineThicknessMeters:0.0000} m");
 		builder.AppendLine();
 
 		builder.AppendLine("ACTIVE TUNING");
 		builder.AppendLine($"  Selected field: {GetTuningFieldLabel(_selectedTuningField)}");
 		builder.AppendLine($"  Selected value: {GetSelectedTuningValueText()}");
-		builder.AppendLine("  Controls: F2/F3 choose field | F4/F5 adjust | Shift = coarse step");
+		builder.AppendLine("  Controls: F2/F3 choose field | F4/F5 adjust | Shift = coarse step | Ctrl+wheel = overlay thickness");
 		builder.AppendLine($"  Fixed step: {_config.FixedStepSeconds:0.000000} s");
 		builder.AppendLine($"  Settle threshold: {_config.SettleSpeedThresholdMetersPerSecond:0.0000} m/s");
 		builder.AppendLine($"  Cloth friction: slide={_config.SlidingFrictionAccelerationMetersPerSecondSquared:0.000}, roll={_config.RollingFrictionAccelerationMetersPerSecondSquared:0.000}");
@@ -3630,7 +3701,7 @@ public partial class Main : Node3D
 
 		guideNode.Visible = true;
 		guideNode.Position = (startPoint + endPoint) * 0.5f;
-		((BoxMesh)guideNode.Mesh!).Size = new Vector3(OverlayLineThicknessMeters, OverlayLineHeightMeters, segmentLength);
+		((BoxMesh)guideNode.Mesh!).Size = new Vector3(_overlayLineThicknessMeters, OverlayLineHeightMeters, segmentLength);
 		guideNode.LookAt(guideNode.Position + segment, Vector3.Up);
 	}
 

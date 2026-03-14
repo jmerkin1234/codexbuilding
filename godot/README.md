@@ -21,6 +21,7 @@ Current behavior:
 - The authored Blender cue stick is now used during shot setup instead of hiding it behind the old placeholder cue mesh.
 - The Godot project copy of `customtable_9ft.blend` now has `Tableslate` custom normals cleared and `Tableslate`, `Tableframe`, `CueStick`, and `rail_upper_right` triangulated so Godot can generate tangents and preserve the imported shading more faithfully.
 - Godot now imports the ball textures lossless with mipmaps disabled, and the project render settings now keep 3D at native scale with TAA and screen-space AA disabled plus `MSAA 3D` enabled for a sharper standalone desktop result.
+- The render setup now preserves the imported Blender light and layers in a procedural sky plus fill/rim lighting, so chrome and glossy ball materials have stronger reflections than the earlier flat fallback lighting.
 - The portable core now includes modest cloth side-spin drift/scrub, tangential spin transfer in ball-ball contact, controlled follow/draw carry-through after object contact, angle-aware rail rebound tuning, and a separate rail-english transfer term for stronger cushion spin response; Godot only mirrors the resulting state.
 - The portable core now also uses a mouth/drop-based pocket model derived from hardcoded jaw geometry, with an added slow-speed lip-hang rule so edge-hangers can stay up while center-line rollers still fall.
 - The adapter captures live shot traces and resolves them through the portable `Rules` layer.
@@ -34,13 +35,14 @@ Current behavior:
 - The adapter now starts in an orthographic top-down main camera preset, and `C` still cycles between broadcast, top-down, foot-rail, and side-rail camera presets while `Q/E` zoom the active preset in and out.
 - The HUD now uses dedicated framed status and debug panels instead of raw overlay labels.
 - The shot-setup panel now shows shot power as a percentage of the active speed cap in addition to the raw strike speed.
+- Mouse wheel now provides fine aim nudging, and `Ctrl + mouse wheel` in debug mode adjusts the hardcoded overlay thickness live.
 - The HUD now also keeps a dedicated last-shot summary panel for completed eight-ball and training/freeplay shots.
 - The HUD now also has a dedicated shot-setup panel for aim/speed/tip information and a separate controls/help panel, so the main status card stays concise.
 - `F7` now toggles the gameplay HUD cards and shot banner without affecting the menu overlay, so the table can be viewed with the HUD fully cleared.
 - The playable Godot window now starts at `1920x1080` by default, while headless verification still runs at the CLI as before.
 - Shot speed now uses a split feel-tuned envelope in the adapter: regular play clamps to `0.3-5.0 m/s`, eight-ball break shots clamp to `0.3-8.0 m/s`, and the shot-setup/debug readouts show the currently active cap.
 - The adapter now opens on a proper menu/start overlay with button-based `EightBall` and `FreePlay` selection, and `Esc` reopens that menu later for resume/reset/return-to-start actions.
-- Training/freeplay now marks the selected layout ball with a pulsing in-world ring instead of only a subtle scale change.
+- Training/freeplay no longer draws the pulsing selection ring around the selected ball.
 - In 8-ball, Player 2 is now driven by a simple computer opponent that also uses a separate harder break-speed sample set; FreePlay remains human-controlled.
 - If the computer planner fails to produce a valid shot, the adapter now fails the turn forward by giving the opponent ball in hand instead of retrying the same broken turn forever.
 - A transient banner now surfaces shot starts, contact, pocketing, scratch, foul, win, and turn/result feedback in the running adapter.
