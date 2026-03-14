@@ -52,8 +52,8 @@ public static class CustomTable9FtSpec
             CreateCornerJaw("pocket_BL2_jaw_horizontal", new Vector2(1.2069001f, -0.59292495f), new Vector2(1.2508553f, -0.6167401f), tableCenter),
             CreateCornerJaw("Pocket_TR5_jaw_vertical", new Vector2(-1.2249266f, 0.57038474f), new Vector2(-1.2508456f, 0.61673915f), tableCenter),
             CreateCornerJaw("Pocket_TR5_jaw_horizontal", new Vector2(-1.2068906f, 0.5953581f), new Vector2(-1.2508456f, 0.61673915f), tableCenter),
-            CreateCornerJaw("pockett_TL1_jaw_vertical", new Vector2(1.2258036f, 0.5702276f), new Vector2(1.2640905f, 0.49089444f), tableCenter),
-            CreateCornerJaw("pockett_TL1_jaw_horizontal", new Vector2(1.2068999f, 0.5953247f), new Vector2(1.2640905f, 0.49089444f), tableCenter),
+            CreateCornerJaw("pocket_TL1_jaw_vertical", new Vector2(1.2258036f, 0.5702276f), new Vector2(1.249117f, 0.61784637f), tableCenter),
+            CreateCornerJaw("pocket_TL1_jaw_horizontal", new Vector2(1.2068999f, 0.5953247f), new Vector2(1.249117f, 0.61784637f), tableCenter),
             CreateSideJaw("pocket_BM3_jaw_left", new Vector2(-0.050392687f, -0.59292513f), new Vector2(0.0000029f, -0.66602194f), tableCenter),
             CreateSideJaw("pocket_BM3_jaw_right", new Vector2(0.050399005f, -0.59292495f), new Vector2(0.0000029f, -0.66602194f), tableCenter),
             CreateSideJaw("Pocket_TM6_jaw_left", new Vector2(-0.050392687f, 0.5953581f), new Vector2(0.0000029f, 0.66556805f), tableCenter),
@@ -63,12 +63,12 @@ public static class CustomTable9FtSpec
         var pockets = new[]
         {
             CreatePocketFromJawStarts(
-                "pockett_TL1",
+                "pocket_TL1",
                 PocketKind.Corner,
-                new Vector2(1.2640905f, 0.49089444f),
+                new Vector2(1.249117f, 0.61784637f),
                 0.0584f,
-                FindSegment("pockett_TL1_jaw_vertical", jaws),
-                FindSegment("pockett_TL1_jaw_horizontal", jaws),
+                FindSegment("pocket_TL1_jaw_vertical", jaws),
+                FindSegment("pocket_TL1_jaw_horizontal", jaws),
                 dropRadiusMeters: 0.0405f,
                 maxEntrySpeedMetersPerSecond: 1.15f),
             CreatePocketFromJawStarts(

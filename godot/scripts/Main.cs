@@ -1770,9 +1770,7 @@ public partial class Main : Node3D
             var plan = BuildComputerShotPlan();
             if (plan == null)
             {
-                _recentRuleNotes.Clear();
-                _recentRuleNotes.Add("Computer could not find a playable shot.");
-                UpdateStatusLabel(Array.Empty<ShotEvent>());
+                HandleComputerTurnFailure("Computer could not find a playable shot.");
                 return;
             }
 
@@ -1794,10 +1792,45 @@ public partial class Main : Node3D
         }
         catch (Exception exception)
         {
-            _recentRuleNotes.Clear();
-            _recentRuleNotes.Add($"Computer shot failed: {exception.Message}");
-            UpdateStatusLabel(Array.Empty<ShotEvent>());
+            HandleComputerTurnFailure($"Computer shot failed: {exception.Message}");
         }
+    }
+
+    private void HandleComputerTurnFailure(string message)
+    {
+        _recentRuleNotes.Clear();
+        _recentRuleNotes.Add(message);
+
+        if (_ruleMode != RuleMode.EightBall || _eightBallState.IsGameOver)
+        {
+            UpdateStatusLabel(Array.Empty<ShotEvent>());
+            return;
+        }
+
+        var opponent = _eightBallState.CurrentPlayer == PlayerSlot.PlayerOne
+            ? PlayerSlot.PlayerTwo
+            : PlayerSlot.PlayerOne;
+        _eightBallState = new EightBallMatchState(
+            currentPlayer: opponent,
+            breakingPlayer: _eightBallState.BreakingPlayer,
+            playerOneGroup: _eightBallState.PlayerOneGroup,
+            playerTwoGroup: _eightBallState.PlayerTwoGroup,
+            isBreakShot: false,
+            shotNumber: _eightBallState.ShotNumber + 1,
+            isGameOver: false,
+            winner: null,
+            ballInHandPlayer: opponent,
+            pocketedObjectBallNumbers: _eightBallState.PocketedObjectBallNumbers.ToArray());
+        _recentRuleNotes.Add($"Computer forfeited turn. Ball in hand: {GetPlayerLabel(opponent)}");
+        ShowShotBanner(
+            $"Computer turn failed. {GetPlayerLabel(opponent)} gets ball in hand.",
+            new ShotBannerStyle(
+                new Color(0.24f, 0.1f, 0.06f, 0.94f),
+                new Color(0.98f, 0.54f, 0.28f, 0.98f),
+                new Color(1.0f, 0.95f, 0.92f)),
+            2.8f);
+        ResetWorldForNextTurn(cueBallInHand: true, requiresEightBallRespot: false);
+        UpdateStatusLabel(Array.Empty<ShotEvent>());
     }
 
     private bool CanEditShot()

@@ -17,6 +17,7 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - `CodexBuilding.Billiards.Tests` created for standalone deterministic tests.
 - `godot/` created as the Godot 4.6 adapter/viewer project root.
 - Initial hardcoded table spec seeded from the live Blender scene at `/home/justin/Desktop/customtable_9ft.blend`.
+- The top-left pocket reference is now corrected from the Blender source as `pocket_TL1`, with the current hardcoded seed updated to `(1.2491170, 0.6178464)`.
 - `Godot.NET.Sdk 4.6.0` is now resolving and the Godot adapter builds on this machine.
 - The fixed-step shell is now implemented with an accumulator, explicit phase tracking, and settle detection.
 - Cue strike input now resolves normalized aim, clamped tip offsets, initial cue-ball velocity, and initial spin seeds.
@@ -26,6 +27,8 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - Pocket capture now uses a hardcoded pocket-mouth/drop model derived from jaw geometry, so pocket acceptance depends on entry lane and speed instead of a single radius check.
 - Pocket capture now also has a shelf-like slow-speed lip rule, so very slow edge-hangers can stay up while equally slow center-line rollers still fall.
 - Rail rebound tuning now distinguishes glancing versus head-on cushion impacts, preserves most tangential bank travel through a separate retention term, and no longer applies fake rail scrub when a ball is only being pushed out of overlap.
+- Boundary and ball overlap correction now separate cleanly from real contact events, so overlap cleanup no longer fakes rail hits or first-contact events in the rules layer.
+- Simultaneous cue-ball contact ties now resolve in a stable sorted order instead of depending on hash iteration order.
 - Rail english is now driven by a separate transfer term, so opposite side spin produces meaningfully different rail throw instead of only a small tangential nudge.
 - Ball-object collisions now convert a controlled amount of forward/back spin into immediate post-contact follow/draw carry-through, so the cue ball can continue or pull back after contact instead of losing that behavior once it nearly stops.
 - Shot event expansion now covers first cue-ball contact, cushion/jaw contact, pocketed balls, scratch, and settled-shot events.
@@ -51,9 +54,10 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - `F1` now enables a Godot debug panel that shows live portable-engine data, including table/config values, simulation counters, cue-ball state, selected-ball state, moving-ball counts, preview status, and live tuning state. Debug mode also forces the hardcoded-table overlay visible.
 - The Godot adapter now supports runtime debug tuning of core-physics constants such as cloth friction, spin decay, side-spin drift, ball/rail restitution, tangential transfer, ball follow/draw carry, glancing rail restitution, tangential rail retention, rail english transfer, and solver iteration counts, while preserving the current ball layout between changes.
 - The Godot adapter now uses a split shot-speed envelope tuned for feel: regular shots clamp to `0.3-5.0 m/s`, eight-ball break shots clamp to `0.3-8.0 m/s`, the default player speed remains `2.2 m/s`, and the computer opponent now samples a separate harder break-speed set instead of using regular-shot speeds for every turn.
+- If the computer planner fails to produce a shot, the Godot adapter now fails the turn forward instead of soft-locking on Player 2 forever: the turn is forfeited and the opponent receives ball in hand.
 - The Godot HUD now has a dedicated shot-setup card with speed, tip-offset, and tuning readouts, plus a separate controls/help card toggled with `F6`, so the main status panel no longer has to carry the full control map as raw text.
 - The Godot adapter now opens on a proper start/menu overlay with button-based `EightBall` and `FreePlay` selection, and `Esc` reopens that menu later for resume/reset/return-to-start actions.
-- Validation on `2026-03-14` covers `54` passing standalone tests via `dotnet test`, a successful Godot adapter compile via `dotnet build`, a successful Godot 4.6 Mono `--build-solutions` pass, a clean headless startup pass via `--quit-after 10`, and a verified direct import of `godot/art/customtable_9ft.blend` through Godot’s Blender pipeline.
+- Validation on `2026-03-14` covers `56` passing standalone tests via `dotnet test`, a successful Godot adapter compile via `dotnet build`, a successful Godot 4.6 Mono `--build-solutions` pass, a clean headless startup pass via `--quit-after 10`, and a verified direct import of `godot/art/customtable_9ft.blend` through Godot’s Blender pipeline.
 
 ## Repository Layout
 

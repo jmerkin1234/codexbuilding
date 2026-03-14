@@ -44,9 +44,9 @@ This file tracks the compile-time geometry and seed constants that the portable 
 
 ## Hardcoded Pocket Seeds
 
-- `pockett_TL1`
+- `pocket_TL1`
   kind: `Corner`
-  center: `(1.2640905, 0.49089444)`
+  center: `(1.249117, 0.61784637)`
   capture radius seed: `0.0584`
   mouth center: `(1.21635175, 0.58277615)`
   mouth half-width: `0.01570998`
@@ -109,8 +109,8 @@ Derived jaw names:
 - `pocket_BL2_jaw_horizontal`
 - `Pocket_TR5_jaw_vertical`
 - `Pocket_TR5_jaw_horizontal`
-- `pockett_TL1_jaw_vertical`
-- `pockett_TL1_jaw_horizontal`
+- `pocket_TL1_jaw_vertical`
+- `pocket_TL1_jaw_horizontal`
 - `pocket_BM3_jaw_left`
 - `pocket_BM3_jaw_right`
 - `Pocket_TM6_jaw_left`

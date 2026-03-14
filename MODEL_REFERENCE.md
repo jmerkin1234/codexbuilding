@@ -38,7 +38,7 @@ The current Blender scene contains six rail segments:
 
 ## Pocket Objects
 
-- `pockett_TL1`
+- `pocket_TL1`
 - `pocket_BL2`
 - `pocket_BM3`
 - `pocket_BR4`
@@ -110,7 +110,7 @@ The inner face of each rail bounding box is used as the initial hardcoded cushio
 
 Pocket centers are currently seeded from the Blender object origins.
 
-- `pockett_TL1`: `(1.2640905, 0.4908944)`
+- `pocket_TL1`: `(1.2491170, 0.6178464)`
 - `pocket_BL2`: `(1.2508553, -0.6167401)`
 - `pocket_BM3`: `(0.0000029, -0.6660219)`
 - `pocket_BR4`: `(-1.2508456, -0.6167401)`
@@ -135,6 +135,5 @@ Pocket acceptance is now also derived from the Blender-backed jaw and pocket see
 
 ## Notes
 
-- `pockett_TL1` contains a double `t` in the source name. That typo is preserved intentionally.
-- `pockett_TL1` is not currently symmetric with the other corner pocket origins. The portable engine should treat this as a model fact until we explicitly replace it with refined jaw extraction.
+- `pocket_TL1` was corrected in the Blender source on `2026-03-14`; the portable engine should continue to treat the Blender value as a source fact rather than inventing symmetry.
 - The engine must not read collision from the mesh at runtime. These measurements are compile-time reference values only.

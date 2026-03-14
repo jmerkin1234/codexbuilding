@@ -45,13 +45,16 @@ public static class BallCollisionResolver
                         continue;
                     }
 
-                    ResolvePair(ref firstBall, ref secondBall, ballDiameterMeters, config);
-
+                    var hadImpact = ResolvePair(ref firstBall, ref secondBall, ballDiameterMeters, config);
                     balls[firstIndex] = firstBall;
                     balls[secondIndex] = secondBall;
-                    onCollision?.Invoke(firstBall.BallNumber, secondBall.BallNumber);
                     resolvedAnyCollision = true;
-                    collisionCount++;
+
+                    if (hadImpact)
+                    {
+                        onCollision?.Invoke(firstBall.BallNumber, secondBall.BallNumber);
+                        collisionCount++;
+                    }
                 }
             }
 
@@ -64,7 +67,7 @@ public static class BallCollisionResolver
         return collisionCount;
     }
 
-    private static void ResolvePair(
+    private static bool ResolvePair(
         ref BallState firstBall,
         ref BallState secondBall,
         float ballDiameterMeters,
@@ -86,7 +89,7 @@ public static class BallCollisionResolver
         var approachSpeed = Vector2.Dot(relativeVelocity, normal);
         if (approachSpeed >= 0.0f)
         {
-            return;
+            return false;
         }
 
         var normalImpulseMagnitude = -0.5f * (1.0f + config.BallCollisionRestitution) * approachSpeed;
@@ -129,6 +132,8 @@ public static class BallCollisionResolver
                 ForwardSpinRps = secondBall.Spin.ForwardSpinRps - secondForwardCarryRps
             }
         };
+
+        return true;
     }
 
     private static Vector2 ResolveCollisionNormal(

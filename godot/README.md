@@ -35,6 +35,7 @@ Current behavior:
 - The adapter now opens on a proper menu/start overlay with button-based `EightBall` and `FreePlay` selection, and `Esc` reopens that menu later for resume/reset/return-to-start actions.
 - Training/freeplay now marks the selected layout ball with a pulsing in-world ring instead of only a subtle scale change.
 - In 8-ball, Player 2 is now driven by a simple computer opponent that also uses a separate harder break-speed sample set; FreePlay remains human-controlled.
+- If the computer planner fails to produce a valid shot, the adapter now fails the turn forward by giving the opponent ball in hand instead of retrying the same broken turn forever.
 - A transient banner now surfaces shot starts, contact, pocketing, scratch, foul, win, and turn/result feedback in the running adapter.
 - The status panel now has a color-accented header for current mode and turn state.
 - `F1` toggles a debug panel with live portable-engine data such as `SimulationConfig` values, world counters, cue-ball state, selected-ball state, moving-ball counts, and preview lengths. Debug mode also forces the hardcoded-table overlay visible.
@@ -43,7 +44,7 @@ Current behavior:
 Verification on `2026-03-14`:
 
 - `dotnet build CodexBuilding.Billiards.Godot46.csproj --no-restore`
-- `dotnet test ../tests/CodexBuilding.Billiards.Tests/CodexBuilding.Billiards.Tests.csproj --no-restore` with `54/54` passing
+- `dotnet test ../tests/CodexBuilding.Billiards.Tests/CodexBuilding.Billiards.Tests.csproj --no-restore` with `56/56` passing
 - Godot 4.6 Mono `--build-solutions --quit`
 - Godot 4.6 Mono headless startup `--quit-after 10`
 - Verified direct import of `godot/art/customtable_9ft.blend`
@@ -66,7 +67,6 @@ Keyboard controls:
 - `C`: cycle camera preset
 - `Q/E`: zoom camera in/out
 - `A/D`: aim left/right
-- `W/S`: raise/lower strike speed
 - `W/S`: raise/lower strike speed within the active cap (`5.0 m/s` regular, `8.0 m/s` on the eight-ball break)
 - `J/L`: apply left/right english
 - `I/K`: apply follow/draw

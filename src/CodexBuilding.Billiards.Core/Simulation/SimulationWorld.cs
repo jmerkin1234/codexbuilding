@@ -1,10 +1,14 @@
 using System.Numerics;
+using System.Linq;
 using CodexBuilding.Billiards.Core.Geometry;
 
 namespace CodexBuilding.Billiards.Core.Simulation;
 
 public sealed class SimulationWorld
 {
+    private readonly record struct BoundaryHit(int BallNumber, string SegmentName);
+    private readonly record struct BallContact(int LowBallNumber, int HighBallNumber);
+
     private readonly List<BallState> _balls;
     private readonly List<ShotEvent> _eventLog = new();
     private readonly List<ShotEvent> _pendingEvents = new();
@@ -167,9 +171,8 @@ public sealed class SimulationWorld
     private void ExecuteFixedStep(float fixedStepSeconds)
     {
         var ballRadiusMeters = TableSpec.BallDiameterMeters * 0.5f;
-        var boundaryHits = new HashSet<string>(StringComparer.Ordinal);
-        var ballContacts = new HashSet<string>(StringComparer.Ordinal);
-        var pocketedThisStep = new HashSet<int>();
+        var boundaryHits = new HashSet<BoundaryHit>();
+        var ballContacts = new HashSet<BallContact>();
 
         for (var index = 0; index < _balls.Count; index++)
         {
@@ -187,13 +190,13 @@ public sealed class SimulationWorld
             TableSpec.Cushions,
             ballRadiusMeters,
             Config,
-            onCollision: (ballNumber, segmentName) => boundaryHits.Add($"{ballNumber}:{segmentName}"));
+            onCollision: (ballNumber, segmentName) => boundaryHits.Add(new BoundaryHit(ballNumber, segmentName)));
         TableBoundaryResolver.Resolve(
             _balls,
             TableSpec.JawSegments,
             ballRadiusMeters,
             Config,
-            onCollision: (ballNumber, segmentName) => boundaryHits.Add($"{ballNumber}:{segmentName}"));
+            onCollision: (ballNumber, segmentName) => boundaryHits.Add(new BoundaryHit(ballNumber, segmentName)));
         BallCollisionResolver.Resolve(
             _balls,
             TableSpec.BallDiameterMeters,
@@ -202,27 +205,26 @@ public sealed class SimulationWorld
             {
                 var low = Math.Min(firstBallNumber, secondBallNumber);
                 var high = Math.Max(firstBallNumber, secondBallNumber);
-                ballContacts.Add($"{low}:{high}");
+                ballContacts.Add(new BallContact(low, high));
             });
         TableBoundaryResolver.Resolve(
             _balls,
             TableSpec.Cushions,
             ballRadiusMeters,
             Config,
-            onCollision: (ballNumber, segmentName) => boundaryHits.Add($"{ballNumber}:{segmentName}"));
+            onCollision: (ballNumber, segmentName) => boundaryHits.Add(new BoundaryHit(ballNumber, segmentName)));
         TableBoundaryResolver.Resolve(
             _balls,
             TableSpec.JawSegments,
             ballRadiusMeters,
             Config,
-            onCollision: (ballNumber, segmentName) => boundaryHits.Add($"{ballNumber}:{segmentName}"));
+            onCollision: (ballNumber, segmentName) => boundaryHits.Add(new BoundaryHit(ballNumber, segmentName)));
         PocketCaptureResolver.Resolve(
             _balls,
             TableSpec.Pockets,
             ballRadiusMeters,
             onPocketed: (ballNumber, pocketName) =>
             {
-                pocketedThisStep.Add(ballNumber);
                 PublishEvent(new ShotEvent(ShotEventType.Pocketed, ballNumber, pocketName));
                 if (ballNumber == 0)
                 {
@@ -236,44 +238,36 @@ public sealed class SimulationWorld
         SimulationTimeSeconds += fixedStepSeconds;
     }
 
-    private void PublishBoundaryContactEvents(IEnumerable<string> boundaryHits)
+    private void PublishBoundaryContactEvents(IEnumerable<BoundaryHit> boundaryHits)
     {
-        foreach (var hit in boundaryHits)
+        foreach (var hit in boundaryHits
+                     .OrderBy(hit => hit.BallNumber)
+                     .ThenBy(hit => hit.SegmentName, StringComparer.Ordinal))
         {
-            var separatorIndex = hit.IndexOf(':');
-            var ballNumber = int.Parse(hit.AsSpan(0, separatorIndex));
-            var segmentName = hit[(separatorIndex + 1)..];
-
             PublishEvent(new ShotEvent(
                 ShotEventType.CushionContact,
-                ballNumber,
-                segmentName));
+                hit.BallNumber,
+                hit.SegmentName));
         }
     }
 
-    private void PublishBallContactEvents(IEnumerable<string> ballContacts)
+    private void PublishBallContactEvents(IEnumerable<BallContact> ballContacts)
     {
         if (_firstContactRecorded)
         {
             return;
         }
 
-        foreach (var contact in ballContacts)
+        foreach (var contact in ballContacts
+                     .OrderBy(contact => contact.LowBallNumber)
+                     .ThenBy(contact => contact.HighBallNumber))
         {
-            var separatorIndex = contact.IndexOf(':');
-            var firstBallNumber = int.Parse(contact.AsSpan(0, separatorIndex));
-            var secondBallNumber = int.Parse(contact.AsSpan(separatorIndex + 1));
-
-            if (firstBallNumber == 0 && secondBallNumber != 0)
+            if (contact.LowBallNumber == 0 && contact.HighBallNumber != 0)
             {
-                PublishEvent(new ShotEvent(ShotEventType.FirstContact, secondBallNumber, $"cue->{secondBallNumber}"));
-                _firstContactRecorded = true;
-                return;
-            }
-
-            if (secondBallNumber == 0 && firstBallNumber != 0)
-            {
-                PublishEvent(new ShotEvent(ShotEventType.FirstContact, firstBallNumber, $"cue->{firstBallNumber}"));
+                PublishEvent(new ShotEvent(
+                    ShotEventType.FirstContact,
+                    contact.HighBallNumber,
+                    $"cue->{contact.HighBallNumber}"));
                 _firstContactRecorded = true;
                 return;
             }

@@ -28,15 +28,19 @@ public static class TableBoundaryResolver
 
                 foreach (var segment in segments)
                 {
-                    if (!TryResolveSegmentCollision(ref ball, segment, ballRadiusMeters, config))
+                    if (!TryResolveSegmentCollision(ref ball, segment, ballRadiusMeters, config, out var hadImpact))
                     {
                         continue;
                     }
 
                     balls[ballIndex] = ball;
-                    onCollision?.Invoke(ball.BallNumber, segment.SourceName);
                     resolvedAnyCollision = true;
-                    collisionCount++;
+
+                    if (hadImpact)
+                    {
+                        onCollision?.Invoke(ball.BallNumber, segment.SourceName);
+                        collisionCount++;
+                    }
                 }
             }
 
@@ -53,8 +57,10 @@ public static class TableBoundaryResolver
         ref BallState ball,
         CushionSegment segment,
         float ballRadiusMeters,
-        SimulationConfig config)
+        SimulationConfig config,
+        out bool hadImpact)
     {
+        hadImpact = false;
         var closestPoint = ClosestPointOnSegment(ball.Position, segment.Start, segment.End);
         var delta = ball.Position - closestPoint;
         var distance = delta.Length();
@@ -79,6 +85,7 @@ public static class TableBoundaryResolver
 
         if (inwardSpeed < 0.0f)
         {
+            hadImpact = true;
             var tangent = segment.Direction;
             var totalSpeed = MathF.Max(correctedVelocity.Length(), 0.0001f);
             var impactRatio = Math.Clamp(MathF.Abs(inwardSpeed) / totalSpeed, 0.0f, 1.0f);

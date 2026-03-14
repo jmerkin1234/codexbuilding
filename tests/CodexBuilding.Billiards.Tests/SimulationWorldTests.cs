@@ -352,6 +352,84 @@ public sealed class SimulationWorldTests
     }
 
     [Fact]
+    public void Advance_OverlapCorrectionDoesNotEmitFirstContactForSeparatingBalls()
+    {
+        var world = CreateCollisionWorld(
+            new BallState(
+                BallNumber: 0,
+                Kind: BallKind.Cue,
+                Position: new Vector2(-0.02f, 0.0f),
+                Velocity: new Vector2(-0.2f, 0.0f),
+                Spin: new SpinState(0.0f, 0.0f, 0.0f),
+                IsPocketed: false),
+            new BallState(
+                BallNumber: 1,
+                Kind: BallKind.Solid,
+                Position: new Vector2(0.02f, 0.0f),
+                Velocity: Vector2.Zero,
+                Spin: new SpinState(0.0f, 0.0f, 0.0f),
+                IsPocketed: false));
+
+        var result = world.Advance(0.01f);
+
+        Assert.True(Vector2.Distance(result.Balls[0].Position, result.Balls[1].Position) >= 0.05714f);
+        Assert.DoesNotContain(result.Events, evt => evt.EventType == ShotEventType.FirstContact);
+    }
+
+    [Fact]
+    public void Advance_SimultaneousCueContactsChooseLowestBallNumberDeterministically()
+    {
+        var table = CustomTable9FtSpec.Create();
+        var config = new SimulationConfig(
+            fixedStepSeconds: 0.01f,
+            settleSpeedThresholdMetersPerSecond: 0.0001f,
+            maxFixedStepsPerAdvance: 64,
+            maxSideSpinRps: 12.0f,
+            maxFollowSpinRps: 10.0f,
+            maxDrawSpinRps: 11.0f,
+            slidingFrictionAccelerationMetersPerSecondSquared: 0.0f,
+            rollingFrictionAccelerationMetersPerSecondSquared: 0.0f,
+            spinDecayRpsPerSecond: 0.0f,
+            rollingMatchToleranceMetersPerSecond: 0.01f,
+            spinSettleThresholdRps: 0.05f,
+            ballCollisionRestitution: 1.0f,
+            maxCollisionIterationsPerStep: 4,
+            boundaryRestitution: 1.0f,
+            maxBoundaryIterationsPerStep: 4);
+        var world = new SimulationWorld(
+            table,
+            config,
+            new[]
+            {
+                new BallState(
+                    BallNumber: 0,
+                    Kind: BallKind.Cue,
+                    Position: Vector2.Zero,
+                    Velocity: new Vector2(1.0f, 0.0f),
+                    Spin: new SpinState(0.0f, 0.0f, 0.0f),
+                    IsPocketed: false),
+                new BallState(
+                    BallNumber: 10,
+                    Kind: BallKind.Stripe,
+                    Position: new Vector2(0.04f, 0.006f),
+                    Velocity: Vector2.Zero,
+                    Spin: new SpinState(0.0f, 0.0f, 0.0f),
+                    IsPocketed: false),
+                new BallState(
+                    BallNumber: 2,
+                    Kind: BallKind.Solid,
+                    Position: new Vector2(0.04f, -0.006f),
+                    Velocity: Vector2.Zero,
+                    Spin: new SpinState(0.0f, 0.0f, 0.0f),
+                    IsPocketed: false)
+            });
+
+        var result = world.Advance(0.01f);
+
+        Assert.Contains(result.Events, evt => evt.EventType == ShotEventType.FirstContact && evt.BallNumber == 2);
+    }
+
+    [Fact]
     public void Advance_CushionCollisionReflectsBallBackIntoTable()
     {
         var table = CustomTable9FtSpec.Create();
@@ -523,6 +601,7 @@ public sealed class SimulationWorldTests
 
         Assert.Equal(0.4f, Vector2.Dot(correctedBall.Velocity, segment.InwardNormal), 3);
         Assert.Equal(0.9f, Vector2.Dot(correctedBall.Velocity, segment.Direction), 3);
+        Assert.DoesNotContain(result.Events, evt => evt.EventType == ShotEventType.CushionContact);
     }
 
     [Fact]
