@@ -34,6 +34,7 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - The Godot adapter now records live shot traces, resolves them through the portable rules layer, supports `Tab` switching between 8-ball and training, exposes cue-ball-in-hand placement with arrow keys, and shows mode/rules state directly in the HUD.
 - The Godot adapter now renders predictive aim guides from cloned portable simulations: a primary cue line, a post-bounce or post-collision cue continuation line, and an object-ball line after first contact.
 - Practice mode now supports free layout adjustment with `Z/X` ball selection and arrow-key movement for the selected ball.
+- The Godot adapter now includes a toggleable hardcoded-table overlay that draws the cloth bounds, cushion segments, jaw segments, pocket capture circles, and cue/rack reference spots directly from `TableSpec`.
 - Validation on `2026-03-14` covers `38` passing standalone tests via `dotnet test` plus a successful Godot adapter compile via `dotnet build`. Godot runtime launch was not executed in this environment because no Godot CLI/editor binary is available here.
 
 ## Repository Layout

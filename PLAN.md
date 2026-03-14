@@ -130,8 +130,12 @@ Scope:
 - Godot adapter compile verification after presentation changes
 
 14. Presentation/polish backlog
-Status: pending
+Status: in_progress
+Scope:
+- hardcoded-table debug overlay lines from `TableSpec`
+- continued scenario tooling
+- broader presentation polish
 
 ## Current Focus
 
-Right now the repo is moving from step 13 to step 14. The Godot adapter is rules-aware, training-aware, and has predictive guide visuals; the next increment is broader presentation polish and scenario tooling.
+Right now the repo is in step 14. The Godot adapter is rules-aware, training-aware, has predictive guide visuals, and now exposes the hardcoded table geometry as a toggleable overlay; the remaining backlog is broader presentation polish and scenario tooling.

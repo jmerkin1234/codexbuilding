@@ -28,6 +28,9 @@ public partial class Main : Node3D
     private const float CueGuideHeightMeters = 0.012f;
     private const float AimGuideThicknessMeters = 0.008f;
     private const float AimGuideHeightMeters = 0.01f;
+    private const float OverlayLineThicknessMeters = 0.01f;
+    private const float OverlayLineHeightMeters = 0.008f;
+    private const int OverlayPocketSegments = 20;
     private const float AimTurnRadiansPerSecond = 1.8f;
     private const float StrikeSpeedAdjustPerSecond = 1.5f;
     private const float TipAdjustPerSecond = 1.2f;
@@ -63,6 +66,7 @@ public partial class Main : Node3D
     private Node3D _ballsRoot = null!;
     private Node3D _cueRoot = null!;
     private Node3D _guideRoot = null!;
+    private Node3D _hardcodeOverlayRoot = null!;
     private Camera3D _camera = null!;
     private Label _statusLabel = null!;
     private MeshInstance3D _cueGuide = null!;
@@ -77,6 +81,7 @@ public partial class Main : Node3D
     private int _capturedShotFrameIndex;
     private bool _aimPreviewDirty = true;
     private AimPreviewResult? _cachedAimPreview;
+    private bool _hardcodeOverlayVisible = true;
     private int _trainingSelectedBallNumber;
     private float _aimAngleRadians;
     private float _strikeSpeedMetersPerSecond = 2.0f;
@@ -91,6 +96,7 @@ public partial class Main : Node3D
         ConfigureSceneGraph();
         ConfigureCameraAndLighting();
         BuildTableVisual();
+        BuildHardcodeOverlay();
         BuildBallVisuals();
         ResetSessionForCurrentMode();
     }
@@ -144,6 +150,9 @@ public partial class Main : Node3D
             case Key.X:
                 SelectTrainingBall(1);
                 break;
+            case Key.H:
+                ToggleHardcodeOverlay();
+                break;
         }
     }
 
@@ -154,6 +163,7 @@ public partial class Main : Node3D
         _ballsRoot = EnsureNode<Node3D>(_godotRoot, "BallsRoot");
         _cueRoot = EnsureNode<Node3D>(_godotRoot, "CueRoot");
         _guideRoot = EnsureNode<Node3D>(_godotRoot, "GuideRoot");
+        _hardcodeOverlayRoot = EnsureNode<Node3D>(_godotRoot, "HardcodeOverlayRoot");
 
         _cueGuide = EnsureNode<MeshInstance3D>(_cueRoot, "CueStick");
         _cueGuide.Mesh = new BoxMesh();
@@ -312,6 +322,58 @@ public partial class Main : Node3D
         }
     }
 
+    private void BuildHardcodeOverlay()
+    {
+        ClearChildren(_hardcodeOverlayRoot);
+
+        var clothMin = _tableSpec.ClothMin;
+        var clothMax = _tableSpec.ClothMax;
+        var topLeft = new NumericsVector2(clothMin.X, clothMin.Y);
+        var topRight = new NumericsVector2(clothMax.X, clothMin.Y);
+        var bottomLeft = new NumericsVector2(clothMin.X, clothMax.Y);
+        var bottomRight = new NumericsVector2(clothMax.X, clothMax.Y);
+
+        AddOverlaySegment("OverlayClothTop", topLeft, topRight, new Color(0.76f, 0.92f, 0.98f), 0.020f);
+        AddOverlaySegment("OverlayClothBottom", bottomLeft, bottomRight, new Color(0.76f, 0.92f, 0.98f), 0.020f);
+        AddOverlaySegment("OverlayClothLeft", topLeft, bottomLeft, new Color(0.76f, 0.92f, 0.98f), 0.020f);
+        AddOverlaySegment("OverlayClothRight", topRight, bottomRight, new Color(0.76f, 0.92f, 0.98f), 0.020f);
+
+        foreach (var cushion in _tableSpec.Cushions)
+        {
+            AddOverlaySegment(
+                $"Overlay_{cushion.SourceName}",
+                cushion.Start,
+                cushion.End,
+                new Color(0.98f, 0.59f, 0.2f),
+                0.024f);
+        }
+
+        foreach (var jaw in _tableSpec.JawSegments)
+        {
+            AddOverlaySegment(
+                $"Overlay_{jaw.SourceName}",
+                jaw.Start,
+                jaw.End,
+                new Color(0.95f, 0.31f, 0.35f),
+                0.028f);
+        }
+
+        foreach (var pocket in _tableSpec.Pockets)
+        {
+            AddOverlayCircle(
+                $"Overlay_{pocket.SourceName}",
+                pocket.Center,
+                pocket.CaptureRadiusMeters,
+                new Color(0.44f, 0.86f, 0.97f),
+                0.032f);
+        }
+
+        AddOverlayCross("OverlayCueBallSpawn", _tableSpec.CueBallSpawn, 0.032f, new Color(0.95f, 0.95f, 0.95f), 0.036f);
+        AddOverlayCross("OverlayRackApexSpot", _tableSpec.RackApexSpot, 0.032f, new Color(0.95f, 0.82f, 0.22f), 0.036f);
+
+        _hardcodeOverlayRoot.Visible = _hardcodeOverlayVisible;
+    }
+
     private void ResetSessionForCurrentMode()
     {
         _world.Reset(StandardEightBallRack.Create(_tableSpec));
@@ -344,6 +406,17 @@ public partial class Main : Node3D
     {
         _ruleMode = _ruleMode == RuleMode.EightBall ? RuleMode.Training : RuleMode.EightBall;
         ResetSessionForCurrentMode();
+    }
+
+    private void ToggleHardcodeOverlay()
+    {
+        _hardcodeOverlayVisible = !_hardcodeOverlayVisible;
+        _hardcodeOverlayRoot.Visible = _hardcodeOverlayVisible;
+        _recentRuleNotes.Clear();
+        _recentRuleNotes.Add(_hardcodeOverlayVisible
+            ? "Hardcoded-table overlay visible."
+            : "Hardcoded-table overlay hidden.");
+        UpdateStatusLabel(Array.Empty<ShotEvent>());
     }
 
     private void SelectTrainingBall(int direction)
@@ -924,8 +997,8 @@ public partial class Main : Node3D
             $"Portable core: {_tableSpec.Name}  Mode: {GetRuleModeLabel()}\n" +
             $"{BuildModeStatusLine()}\n" +
             $"Phase: {_world.Phase}  SimTime: {_world.SimulationTimeSeconds:0.000}s  FixedSteps: {_world.TotalFixedStepsExecuted}\n" +
-            $"CueBall: {cueBallStatus}  Aim: {Mathf.RadToDeg(_aimAngleRadians):0.0} deg  Speed: {_strikeSpeedMetersPerSecond:0.00} m/s  Tip: ({_tipOffsetNormalized.X:0.00}, {_tipOffsetNormalized.Y:0.00})\n" +
-            "Controls: Tab mode  A/D aim  W/S speed  J/L side spin  I/K follow-draw  Arrow keys move selected placement ball  Z/X cycle practice ball  Space shoot  Backspace center tip  R reset\n" +
+            $"CueBall: {cueBallStatus}  Aim: {Mathf.RadToDeg(_aimAngleRadians):0.0} deg  Speed: {_strikeSpeedMetersPerSecond:0.00} m/s  Tip: ({_tipOffsetNormalized.X:0.00}, {_tipOffsetNormalized.Y:0.00})  Overlay: {_hardcodeOverlayVisible}\n" +
+            "Controls: Tab mode  H hardcode overlay  A/D aim  W/S speed  J/L side spin  I/K follow-draw  Arrow keys move selected placement ball  Z/X cycle practice ball  Space shoot  Backspace center tip  R reset\n" +
             $"Recent shot events:\n{recentEventText}\n" +
             $"Rules/training:\n{recentRuleText}";
     }
@@ -955,6 +1028,64 @@ public partial class Main : Node3D
     private static string GetPlayerLabel(PlayerSlot player)
     {
         return player == PlayerSlot.PlayerOne ? "Player 1" : "Player 2";
+    }
+
+    private void AddOverlaySegment(
+        string name,
+        NumericsVector2 start,
+        NumericsVector2 end,
+        Color color,
+        float height)
+    {
+        var segmentNode = new MeshInstance3D
+        {
+            Name = name,
+            Mesh = new BoxMesh(),
+            MaterialOverride = CreateGuideMaterial(color),
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
+        };
+
+        _hardcodeOverlayRoot.AddChild(segmentNode);
+        SetOverlaySegment(segmentNode, start, end, height);
+    }
+
+    private void AddOverlayCircle(
+        string namePrefix,
+        NumericsVector2 center,
+        float radius,
+        Color color,
+        float height)
+    {
+        for (var segmentIndex = 0; segmentIndex < OverlayPocketSegments; segmentIndex++)
+        {
+            var startAngle = (Mathf.Tau / OverlayPocketSegments) * segmentIndex;
+            var endAngle = (Mathf.Tau / OverlayPocketSegments) * (segmentIndex + 1);
+            var start = center + new NumericsVector2(Mathf.Cos(startAngle), Mathf.Sin(startAngle)) * radius;
+            var end = center + new NumericsVector2(Mathf.Cos(endAngle), Mathf.Sin(endAngle)) * radius;
+
+            AddOverlaySegment($"{namePrefix}_{segmentIndex:00}", start, end, color, height);
+        }
+    }
+
+    private void AddOverlayCross(
+        string namePrefix,
+        NumericsVector2 center,
+        float armLength,
+        Color color,
+        float height)
+    {
+        AddOverlaySegment(
+            $"{namePrefix}_Horizontal",
+            center + new NumericsVector2(-armLength, 0.0f),
+            center + new NumericsVector2(armLength, 0.0f),
+            color,
+            height);
+        AddOverlaySegment(
+            $"{namePrefix}_Vertical",
+            center + new NumericsVector2(0.0f, -armLength),
+            center + new NumericsVector2(0.0f, armLength),
+            color,
+            height);
     }
 
     private void MarkAimPreviewDirty()
@@ -1161,6 +1292,29 @@ public partial class Main : Node3D
         guideNode.Visible = true;
         guideNode.Position = (startPoint + endPoint) * 0.5f;
         ((BoxMesh)guideNode.Mesh!).Size = new Vector3(AimGuideThicknessMeters, AimGuideHeightMeters, segmentLength);
+        guideNode.LookAt(guideNode.Position + segment, Vector3.Up);
+    }
+
+    private void SetOverlaySegment(
+        MeshInstance3D guideNode,
+        NumericsVector2 start,
+        NumericsVector2 end,
+        float height)
+    {
+        var startPoint = ToGodotPoint(start, height);
+        var endPoint = ToGodotPoint(end, height);
+        var segment = endPoint - startPoint;
+        var segmentLength = segment.Length();
+
+        if (segmentLength <= 0.0001f)
+        {
+            guideNode.Visible = false;
+            return;
+        }
+
+        guideNode.Visible = true;
+        guideNode.Position = (startPoint + endPoint) * 0.5f;
+        ((BoxMesh)guideNode.Mesh!).Size = new Vector3(OverlayLineThicknessMeters, OverlayLineHeightMeters, segmentLength);
         guideNode.LookAt(guideNode.Position + segment, Vector3.Up);
     }
 

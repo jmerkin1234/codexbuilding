@@ -22,10 +22,12 @@ Current behavior:
 - Cue-ball-in-hand and training placement are handled in the adapter with arrow-key repositioning, while the portable core remains the physics authority.
 - Predictive guide meshes are generated from cloned portable simulations, including the primary cue path, post-bounce/post-collision cue continuation, and first-contact object-ball path.
 - Practice mode supports freeplay layout editing by cycling the selected ball and moving it around the cloth.
+- `H` toggles a hardcoded-table overlay sourced from `TableSpec` that shows cloth bounds, cushion segments, jaw segments, pocket capture circles, and cue/rack reference spots.
 
 Keyboard controls:
 
 - `Tab`: toggle between 8-ball and training mode
+- `H`: show or hide the hardcoded-table overlay
 - `A/D`: aim left/right
 - `W/S`: raise/lower strike speed
 - `J/L`: apply left/right english
