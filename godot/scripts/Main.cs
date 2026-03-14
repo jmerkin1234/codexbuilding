@@ -10,7 +10,7 @@ namespace CodexBuilding.Billiards.Godot46;
 
 public partial class Main : Node3D
 {
-    private readonly record struct CameraPreset(string Name, Vector3 Offset);
+    private readonly record struct CameraPreset(string Name, Vector3 Offset, bool UseOrthographic, float ViewSize, float FieldOfView);
     private readonly record struct ShotBannerStyle(Color BackgroundColor, Color BorderColor, Color TextColor);
 
     private enum RuleMode
@@ -62,10 +62,10 @@ public partial class Main : Node3D
     private readonly Dictionary<int, MeshInstance3D> _ballVisuals = new();
     private readonly CameraPreset[] _cameraPresets =
     [
-        new("Broadcast", new Vector3(-0.55f, 2.6f, 1.95f)),
-        new("TopDown", new Vector3(0.0f, 3.45f, 0.12f)),
-        new("FootRail", new Vector3(-2.35f, 1.38f, 0.0f)),
-        new("SideRail", new Vector3(0.0f, 1.82f, 2.35f))
+        new("Broadcast", new Vector3(-0.55f, 2.6f, 1.95f), false, 0.0f, 46.0f),
+        new("TopDown", new Vector3(0.0f, 3.45f, 0.001f), true, 1.72f, 0.0f),
+        new("FootRail", new Vector3(-2.35f, 1.38f, 0.0f), false, 0.0f, 38.0f),
+        new("SideRail", new Vector3(0.0f, 1.82f, 2.35f), false, 0.0f, 40.0f)
     ];
 
     private TableSpec _tableSpec = null!;
@@ -111,7 +111,7 @@ public partial class Main : Node3D
     private bool _overlayPocketVisible = true;
     private bool _overlaySpotVisible = true;
     private int _trainingSelectedBallNumber;
-    private int _cameraPresetIndex;
+    private int _cameraPresetIndex = 1;
     private float _cameraZoomScale = 1.0f;
     private float _shotBannerSecondsRemaining;
     private float _aimAngleRadians;
@@ -644,8 +644,19 @@ public partial class Main : Node3D
 
         var preset = GetActiveCameraPreset();
         var center = GetTableCenter3D();
-        var offset = preset.Offset * _cameraZoomScale;
-        _camera.Position = center + offset;
+        if (preset.UseOrthographic)
+        {
+            _camera.Projection = Camera3D.ProjectionType.Orthogonal;
+            _camera.Size = preset.ViewSize * _cameraZoomScale;
+            _camera.Position = center + preset.Offset;
+        }
+        else
+        {
+            _camera.Projection = Camera3D.ProjectionType.Perspective;
+            _camera.Fov = preset.FieldOfView;
+            _camera.Position = center + (preset.Offset * _cameraZoomScale);
+        }
+
         _camera.LookAt(center, Vector3.Up);
     }
 

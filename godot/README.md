@@ -24,7 +24,7 @@ Current behavior:
 - Practice mode supports freeplay layout editing by cycling the selected ball and moving it around the cloth.
 - `H` toggles a hardcoded-table overlay sourced from `TableSpec` that shows cloth bounds, cushion segments, jaw segments, pocket capture circles, and cue/rack reference spots.
 - `1` through `5` now toggle the cloth, cushion, jaw, pocket, and spot overlay sublayers independently.
-- `C` now cycles between broadcast, top-down, foot-rail, and side-rail camera presets, while `Q/E` zoom the active preset in and out.
+- The adapter now starts in an orthographic top-down main camera preset, and `C` still cycles between broadcast, top-down, foot-rail, and side-rail camera presets while `Q/E` zoom the active preset in and out.
 - The HUD now uses dedicated framed status and debug panels instead of raw overlay labels.
 - A transient banner now surfaces shot starts, contact, pocketing, scratch, foul, win, and turn/result feedback in the running adapter.
 - The status panel now has a color-accented header for current mode and turn state.

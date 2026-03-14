@@ -36,7 +36,7 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - Practice mode now supports free layout adjustment with `Z/X` ball selection and arrow-key movement for the selected ball.
 - The Godot adapter now includes a toggleable hardcoded-table overlay that draws the cloth bounds, cushion segments, jaw segments, pocket capture circles, and cue/rack reference spots directly from `TableSpec`.
 - The hardcoded-table overlay now has per-layer toggles for cloth, cushions, jaws, pockets, and reference spots so geometry inspection is no longer all-or-nothing.
-- The Godot adapter now supports switchable camera presets plus runtime zoom so you can move between broadcast, top-down, foot-rail, and side-rail inspection views without changing the core simulation.
+- The Godot adapter now starts in an orthographic top-down inspection view and still supports switching plus runtime zoom across broadcast, top-down, foot-rail, and side-rail camera presets without changing the core simulation.
 - The Godot HUD is now framed into dedicated status and debug panels with wrapped text, so the live engine readout is easier to inspect while playing.
 - The Godot adapter now raises a transient shot-feedback banner for shot starts, first contact, pocketed balls, scratches, fouls, wins, and other key rule outcomes.
 - The status panel now gives the current mode, turn, winner, and ball-in-hand state a dedicated color-accented header so match flow is readable at a glance.
