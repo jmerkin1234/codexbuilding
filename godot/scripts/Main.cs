@@ -75,6 +75,7 @@ public partial class Main : Node3D
 	private const float MaximumBreakStrikeSpeedMetersPerSecond = 8.0f;
 	private const float DefaultStrikeSpeedMetersPerSecond = 2.2f;
 	private const float BallVisualTeleportResetMeters = 0.4f;
+	private const float CueStickTipGapMeters = 0.03f;
 	private const float CueStickPowerPullbackMeters = 0.18f;
 	private const int AimPreviewPostInteractionFrames = 18;
 	private const int AimPreviewMaxSteps = 240;
@@ -500,7 +501,13 @@ public partial class Main : Node3D
 
 				if (cueToBall.LengthSquared() > 0.000001f)
 				{
-					_cueStickBaseOffsetMeters = cueToBall.Length();
+					var desiredCueCenterOffset = cueToBall.Length();
+					if (TryResolveCueStickTipOffsetMeters(_importedCueStick, originalCueRotation, cueToBall.Normalized(), out var cueStickTipOffsetMeters))
+					{
+						desiredCueCenterOffset = cueStickTipOffsetMeters + (_tableSpec.BallDiameterMeters * 0.5f) + CueStickTipGapMeters;
+					}
+
+					_cueStickBaseOffsetMeters = desiredCueCenterOffset;
 					var lookProbe = new Node3D();
 					_cueRoot.AddChild(lookProbe);
 					lookProbe.Position = _importedCueStick.Position;
@@ -2817,6 +2824,98 @@ public partial class Main : Node3D
 		}
 
 		UpdateAimPreviewGuides();
+	}
+
+	private static bool TryResolveCueStickTipOffsetMeters(
+		Node3D cueStickRoot,
+		Quaternion originalCueRotation,
+		Vector3 cueToBallDirection,
+		out float tipOffsetMeters)
+	{
+		tipOffsetMeters = 0.0f;
+		if (cueToBallDirection.LengthSquared() <= 0.000001f)
+		{
+			return false;
+		}
+
+		var normalizedDirection = cueToBallDirection.Normalized();
+		var candidateAxes = new[]
+		{
+			Vector3.Right,
+			Vector3.Left,
+			Vector3.Up,
+			Vector3.Down,
+			Vector3.Forward,
+			Vector3.Back
+		};
+
+		var bestAxis = Vector3.Forward;
+		var bestDot = float.NegativeInfinity;
+		foreach (var axis in candidateAxes)
+		{
+			var rotatedAxis = originalCueRotation * axis;
+			var alignment = rotatedAxis.Normalized().Dot(normalizedDirection);
+			if (alignment > bestDot)
+			{
+				bestDot = alignment;
+				bestAxis = axis;
+			}
+		}
+
+		var foundGeometry = false;
+		var maxProjection = float.NegativeInfinity;
+		CollectCueTipProjection(cueStickRoot, Transform3D.Identity, bestAxis, ref foundGeometry, ref maxProjection);
+		if (!foundGeometry || maxProjection <= 0.0f)
+		{
+			return false;
+		}
+
+		tipOffsetMeters = maxProjection;
+		return true;
+	}
+
+	private static void CollectCueTipProjection(
+		Node node,
+		Transform3D toCueLocal,
+		Vector3 tipAxisLocal,
+		ref bool foundGeometry,
+		ref float maxProjection)
+	{
+		if (node is MeshInstance3D meshInstance && meshInstance.Mesh != null)
+		{
+			var aabb = meshInstance.GetAabb();
+			foreach (var corner in GetAabbCorners(aabb))
+			{
+				var cornerInCueSpace = toCueLocal * corner;
+				maxProjection = Mathf.Max(maxProjection, tipAxisLocal.Dot(cornerInCueSpace));
+				foundGeometry = true;
+			}
+		}
+
+		foreach (var child in node.GetChildren())
+		{
+			if (child is not Node3D childNode)
+			{
+				continue;
+			}
+
+			CollectCueTipProjection(childNode, toCueLocal * childNode.Transform, tipAxisLocal, ref foundGeometry, ref maxProjection);
+		}
+	}
+
+	private static IEnumerable<Vector3> GetAabbCorners(Aabb aabb)
+	{
+		var min = aabb.Position;
+		var max = aabb.Position + aabb.Size;
+
+		yield return new Vector3(min.X, min.Y, min.Z);
+		yield return new Vector3(max.X, min.Y, min.Z);
+		yield return new Vector3(min.X, max.Y, min.Z);
+		yield return new Vector3(max.X, max.Y, min.Z);
+		yield return new Vector3(min.X, min.Y, max.Z);
+		yield return new Vector3(max.X, min.Y, max.Z);
+		yield return new Vector3(min.X, max.Y, max.Z);
+		yield return new Vector3(max.X, max.Y, max.Z);
 	}
 
 	private void UpdateStatusLabel(IReadOnlyList<ShotEvent> events)

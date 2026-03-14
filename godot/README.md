@@ -19,6 +19,7 @@ Current behavior:
 - Ball motion is always driven by the portable core and mirrored into Godot transforms each frame.
 - Godot now also accumulates visible roll from mirrored ball travel plus side-spin yaw, so the authored Blender balls rotate instead of visually sliding.
 - The authored Blender cue stick is now used during shot setup instead of hiding it behind the old placeholder cue mesh.
+- The authored Blender cue stick now derives its tip offset from the imported mesh bounds and sits about `0.03 m` off the cue ball in shot setup instead of keeping the old wider gap from the authored scene origin.
 - The Godot project copy of `customtable_9ft.blend` now has `Tableslate` custom normals cleared and `Tableslate`, `Tableframe`, `CueStick`, and `rail_upper_right` triangulated so Godot can generate tangents and preserve the imported shading more faithfully.
 - Godot now imports the ball textures lossless with mipmaps disabled, and the project render settings now keep 3D at native scale with TAA and screen-space AA disabled plus `MSAA 3D` enabled for a sharper standalone desktop result.
 - The render setup now preserves the imported Blender light and layers in a procedural sky plus fill/rim lighting, so chrome and glossy ball materials have stronger reflections than the earlier flat fallback lighting.

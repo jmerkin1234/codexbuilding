@@ -38,6 +38,7 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - The checked-in Blender table now imports directly through Godot 4.6, which also extracted the referenced texture set into `godot/art/textures/` so the visual asset can load without a manual export step.
 - The Godot scene graph now preserves Blender-facing names where used: `GodotRoot`, `TableRoot`, `BallsRoot`, `CueRoot`, `CueStick`, `CueBall`, `Ball_01` through `Ball_15`, rail names, and pocket names.
 - The Godot adapter now binds directly to the imported Blender `BallsRoot` and `CueRoot`, so play mode uses the authored Blender balls and cue stick instead of procedural fallback ball meshes.
+- The imported Blender cue stick now resolves its real tip offset from the mesh geometry and targets roughly a `0.03 m` gap to the cue ball during shot setup instead of keeping the older wider scene-origin spacing.
 - Godot ball visuals now accumulate visible roll from mirrored core motion plus side-spin yaw, so the imported balls no longer read like sliding decals during play.
 - The Godot project copy of `customtable_9ft.blend` now has `Tableslate` custom normals cleared and `Tableslate`, `Tableframe`, `CueStick`, and `rail_upper_right` triangulated so Godot can import tangents cleanly and stay closer to the Blender shading.
 - The Godot adapter now opens debug mode in a separate detachable `Window`, so the live engine-data view can be moved to a second monitor instead of covering the play table.
