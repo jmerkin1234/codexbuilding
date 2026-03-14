@@ -22,13 +22,14 @@ Current behavior:
 - Cue-ball-in-hand and training placement are handled in the adapter with arrow-key repositioning, while the portable core remains the physics authority.
 - Predictive guide meshes are generated from cloned portable simulations, including the primary cue path, post-bounce/post-collision cue continuation, and first-contact object-ball path.
 - Practice mode supports freeplay layout editing by cycling the selected ball and moving it around the cloth.
+- Practice mode can also load six portable core presets with keys `1` through `6`, covering straight, follow, draw, cut, bank, and 8-ball finish drills.
 - `H` toggles a hardcoded-table overlay sourced from `TableSpec` that shows cloth bounds, cushion segments, jaw segments, pocket capture circles, and cue/rack reference spots.
 - `F1` toggles a debug panel with live portable-engine data such as `SimulationConfig` values, world counters, cue-ball state, selected-ball state, moving-ball counts, and preview lengths. Debug mode also forces the hardcoded-table overlay visible.
 
 Verification on `2026-03-14`:
 
 - `dotnet build CodexBuilding.Billiards.Godot46.csproj --no-restore`
-- `dotnet test ../tests/CodexBuilding.Billiards.Tests/CodexBuilding.Billiards.Tests.csproj --no-restore`
+- `dotnet test ../tests/CodexBuilding.Billiards.Tests/CodexBuilding.Billiards.Tests.csproj --no-restore` with `41/41` passing
 - Godot 4.6 Mono `--build-solutions --quit`
 - Godot 4.6 Mono headless startup `--quit-after 10`
 
@@ -37,6 +38,7 @@ Keyboard controls:
 - `Tab`: toggle between 8-ball and training mode
 - `F1`: toggle debug mode and engine-data panel
 - `H`: show or hide the hardcoded-table overlay
+- `1` through `6`: load portable training presets while in training mode
 - `A/D`: aim left/right
 - `W/S`: raise/lower strike speed
 - `J/L`: apply left/right english
