@@ -68,7 +68,9 @@ public partial class Main : Node3D
     private const float TipAdjustPerSecond = 1.2f;
     private const float CueBallPlacementMetersPerSecond = 0.9f;
     private const float MinimumStrikeSpeedMetersPerSecond = 0.3f;
-    private const float MaximumStrikeSpeedMetersPerSecond = 4.0f;
+    private const float MaximumRegularStrikeSpeedMetersPerSecond = 5.0f;
+    private const float MaximumBreakStrikeSpeedMetersPerSecond = 8.0f;
+    private const float DefaultStrikeSpeedMetersPerSecond = 2.2f;
     private const int AimPreviewPostInteractionFrames = 18;
     private const int AimPreviewMaxSteps = 240;
 
@@ -89,7 +91,8 @@ public partial class Main : Node3D
     private readonly List<string> _recentRuleNotes = new(capacity: 4);
     private readonly List<SimulationReplayFrame> _capturedShotFrames = new(capacity: 1024);
     private readonly Dictionary<int, MeshInstance3D> _ballVisuals = new();
-    private readonly float[] _computerStrikeSpeeds = [1.4f, 1.9f, 2.4f, 2.9f, 3.4f];
+    private readonly float[] _computerRegularStrikeSpeeds = [1.4f, 2.1f, 2.9f, 3.8f, 4.8f];
+    private readonly float[] _computerBreakStrikeSpeeds = [5.4f, 6.4f, 7.4f];
     private readonly CameraPreset[] _cameraPresets =
     [
         new("Broadcast", new Vector3(-0.55f, 2.6f, 1.95f), false, 0.0f, 46.0f),
@@ -178,7 +181,7 @@ public partial class Main : Node3D
     private float _computerTurnThinkSeconds;
     private float _trainingSelectionPulseSeconds;
     private float _aimAngleRadians;
-    private float _strikeSpeedMetersPerSecond = 2.0f;
+    private float _strikeSpeedMetersPerSecond = DefaultStrikeSpeedMetersPerSecond;
     private Vector2 _tipOffsetNormalized = Vector2.Zero;
 
     public override void _Ready()
@@ -880,7 +883,7 @@ public partial class Main : Node3D
         _recentRuleNotes.Clear();
         _recentRuleNotes.Add(_ruleMode == RuleMode.Training ? "FreePlay ready." : "Eight-ball vs computer ready.");
         _aimAngleRadians = GetDefaultAimAngle();
-        _strikeSpeedMetersPerSecond = 2.0f;
+        _strikeSpeedMetersPerSecond = DefaultStrikeSpeedMetersPerSecond;
         _tipOffsetNormalized = Vector2.Zero;
         ResetShotSummary();
         MarkAimPreviewDirty();
@@ -1360,7 +1363,7 @@ public partial class Main : Node3D
         _strikeSpeedMetersPerSecond = Mathf.Clamp(
             _strikeSpeedMetersPerSecond,
             MinimumStrikeSpeedMetersPerSecond,
-            MaximumStrikeSpeedMetersPerSecond);
+            GetCurrentMaximumStrikeSpeedMetersPerSecond());
         _tipOffsetNormalized = _tipOffsetNormalized.LimitLength(1.0f);
 
         if (changed)
@@ -1515,7 +1518,7 @@ public partial class Main : Node3D
         var fallbackAim = NumericsVector2.Normalize(fallbackTarget.Position - fallbackCueBall.Position);
         return new ComputerShotPlan(
             CueBallPlacement: null,
-            Shot: new ShotInput(fallbackAim, 2.2f, NumericsVector2.Zero),
+            Shot: new ShotInput(fallbackAim, GetComputerTargetStrikeSpeedMetersPerSecond(), NumericsVector2.Zero),
             Score: -1000.0f,
             Description: $"at {FormatBallLabel(fallbackTarget.BallNumber)}");
     }
@@ -1592,12 +1595,14 @@ public partial class Main : Node3D
         NumericsVector2 cueBallPosition,
         IReadOnlyList<BallState> targetBalls)
     {
+        var strikeSpeeds = GetComputerStrikeSpeeds();
+
         foreach (var targetBall in targetBalls)
         {
             var directAim = targetBall.Position - cueBallPosition;
             if (directAim.LengthSquared() > 0.000001f)
             {
-                foreach (var speed in _computerStrikeSpeeds)
+                foreach (var speed in strikeSpeeds)
                 {
                     yield return new ComputerShotCandidate(
                         targetBall.BallNumber,
@@ -1621,7 +1626,7 @@ public partial class Main : Node3D
                     continue;
                 }
 
-                foreach (var speed in _computerStrikeSpeeds)
+                foreach (var speed in strikeSpeeds)
                 {
                     yield return new ComputerShotCandidate(
                         targetBall.BallNumber,
@@ -1629,6 +1634,20 @@ public partial class Main : Node3D
                 }
             }
         }
+    }
+
+    private float[] GetComputerStrikeSpeeds()
+    {
+        return _ruleMode == RuleMode.EightBall && _eightBallState.IsBreakShot
+            ? _computerBreakStrikeSpeeds
+            : _computerRegularStrikeSpeeds;
+    }
+
+    private float GetComputerTargetStrikeSpeedMetersPerSecond()
+    {
+        return _ruleMode == RuleMode.EightBall && _eightBallState.IsBreakShot
+            ? 6.8f
+            : 2.3f;
     }
 
     private SimulationReplayTrace SimulateReplayTrace(ShotInput shot, IReadOnlyList<BallState> initialBalls)
@@ -1729,7 +1748,8 @@ public partial class Main : Node3D
             score -= 150.0f;
         }
 
-        score -= MathF.Abs(summary.ResolvedCueStrike.StrikeSpeedMetersPerSecond - 2.2f) * 8.0f;
+        score -= MathF.Abs(
+            summary.ResolvedCueStrike.StrikeSpeedMetersPerSecond - GetComputerTargetStrikeSpeedMetersPerSecond()) * 8.0f;
         return score;
     }
 
@@ -2226,7 +2246,11 @@ public partial class Main : Node3D
         var cueBall = _world.Balls.First(ball => ball.Kind == BallKind.Cue && !ball.IsPocketed);
         var start = ToGodotPoint(cueBall.Position, (_tableSpec.BallDiameterMeters * 0.5f) + 0.012f);
         var aimDirection = new Vector3(Mathf.Cos(_aimAngleRadians), 0.0f, Mathf.Sin(_aimAngleRadians));
-        var guideLength = 0.45f + ((_strikeSpeedMetersPerSecond - MinimumStrikeSpeedMetersPerSecond) * 0.18f);
+        var speedNormalized = Mathf.InverseLerp(
+            MinimumStrikeSpeedMetersPerSecond,
+            GetCurrentMaximumStrikeSpeedMetersPerSecond(),
+            _strikeSpeedMetersPerSecond);
+        var guideLength = 0.45f + (speedNormalized * 0.82f);
         var end = start + (aimDirection * guideLength);
         var midpoint = (start + end) * 0.5f;
 
@@ -2275,14 +2299,15 @@ public partial class Main : Node3D
 
     private void UpdateAimPanel(BallState cueBall)
     {
+        var activeMaximumStrikeSpeed = GetCurrentMaximumStrikeSpeedMetersPerSecond();
         var speedNormalized = Mathf.InverseLerp(
             MinimumStrikeSpeedMetersPerSecond,
-            MaximumStrikeSpeedMetersPerSecond,
+            activeMaximumStrikeSpeed,
             _strikeSpeedMetersPerSecond);
         _aimHeaderLabel.Text = IsComputerTurnPending() ? "Computer Shot Planning" : "Shot Setup";
         _aimMetricsLabel.Text =
             $"Aim angle: {Mathf.RadToDeg(_aimAngleRadians):0.0} deg\n" +
-            $"Strike speed: {_strikeSpeedMetersPerSecond:0.00} m/s\n" +
+            $"Strike speed: {_strikeSpeedMetersPerSecond:0.00} / {activeMaximumStrikeSpeed:0.00} m/s\n" +
             $"Tip offset: ({_tipOffsetNormalized.X:0.00}, {_tipOffsetNormalized.Y:0.00})\n" +
             $"Cue ball speed: {cueBall.Velocity.Length():0.000} m/s\n" +
             $"Selected tune: {GetTuningFieldLabel(_selectedTuningField)}\n" +
@@ -2644,12 +2669,19 @@ public partial class Main : Node3D
             $"Tuning: selected={GetTuningFieldLabel(_selectedTuningField)} value={GetSelectedTuningValueText()} controls=F2/F3 select, F4/F5 adjust, Shift=coarse\n" +
             $"World: phase={_world.Phase} sim_t={_world.SimulationTimeSeconds:0.000} acc={_world.AccumulatorSeconds:0.000000} steps={_world.TotalFixedStepsExecuted} capture={_shotCaptureActive} frames={_capturedShotFrames.Count}\n" +
             $"Camera: preset={GetActiveCameraPreset().Name} zoom={_cameraZoomScale:0.00} pos=({_camera.Position.X:0.000},{_camera.Position.Y:0.000},{_camera.Position.Z:0.000})\n" +
-            $"Rules: mode={GetRuleModeLabel()} debug_overlay_manual={_hardcodeOverlayVisible} debug_enabled={_debugModeEnabled}\n" +
+            $"Rules: mode={GetRuleModeLabel()} shot_speed={_strikeSpeedMetersPerSecond:0.00}/{GetCurrentMaximumStrikeSpeedMetersPerSecond():0.00} debug_overlay_manual={_hardcodeOverlayVisible} debug_enabled={_debugModeEnabled}\n" +
             $"Cue: pos={FormatVector(cueBall.Position)} vel={FormatVector(cueBall.Velocity)} spin={FormatSpin(cueBall.Spin)} pocketed={cueBall.IsPocketed}\n" +
             $"Selected: {GetTrainingSelectionLabel()} pos={FormatVector(selectedBall.Position)} vel={FormatVector(selectedBall.Velocity)} spin={FormatSpin(selectedBall.Spin)} pocketed={selectedBall.IsPocketed}\n" +
             $"Balls: moving={movingBalls.Length} pocketed={pocketedCount} moving_list={movingSummary}\n" +
             $"Preview: dirty={_aimPreviewDirty} primary={previewPrimary:0.000} secondary={previewSecondary:0.000} target={previewTarget:0.000}\n" +
             $"State: {BuildDebugStateLine()}";
+    }
+
+    private float GetCurrentMaximumStrikeSpeedMetersPerSecond()
+    {
+        return _ruleMode == RuleMode.EightBall && _eightBallState.IsBreakShot
+            ? MaximumBreakStrikeSpeedMetersPerSecond
+            : MaximumRegularStrikeSpeedMetersPerSecond;
     }
 
     private void RebuildWorldWithCurrentState()

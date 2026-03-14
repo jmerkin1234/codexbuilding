@@ -31,9 +31,10 @@ Current behavior:
 - The HUD now uses dedicated framed status and debug panels instead of raw overlay labels.
 - The HUD now also keeps a dedicated last-shot summary panel for completed eight-ball and training/freeplay shots.
 - The HUD now also has a dedicated shot-setup panel for aim/speed/tip information and a separate controls/help panel, so the main status card stays concise.
+- Shot speed now uses a split feel-tuned envelope in the adapter: regular play clamps to `0.3-5.0 m/s`, eight-ball break shots clamp to `0.3-8.0 m/s`, and the shot-setup/debug readouts show the currently active cap.
 - The adapter now opens on a proper menu/start overlay with button-based `EightBall` and `FreePlay` selection, and `Esc` reopens that menu later for resume/reset/return-to-start actions.
 - Training/freeplay now marks the selected layout ball with a pulsing in-world ring instead of only a subtle scale change.
-- In 8-ball, Player 2 is now driven by a simple computer opponent; FreePlay remains human-controlled.
+- In 8-ball, Player 2 is now driven by a simple computer opponent that also uses a separate harder break-speed sample set; FreePlay remains human-controlled.
 - A transient banner now surfaces shot starts, contact, pocketing, scratch, foul, win, and turn/result feedback in the running adapter.
 - The status panel now has a color-accented header for current mode and turn state.
 - `F1` toggles a debug panel with live portable-engine data such as `SimulationConfig` values, world counters, cue-ball state, selected-ball state, moving-ball counts, and preview lengths. Debug mode also forces the hardcoded-table overlay visible.
@@ -66,6 +67,7 @@ Keyboard controls:
 - `Q/E`: zoom camera in/out
 - `A/D`: aim left/right
 - `W/S`: raise/lower strike speed
+- `W/S`: raise/lower strike speed within the active cap (`5.0 m/s` regular, `8.0 m/s` on the eight-ball break)
 - `J/L`: apply left/right english
 - `I/K`: apply follow/draw
 - `Arrow keys`: move the cue ball when ball-in-hand or FreePlay placement is active

@@ -50,6 +50,7 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - The status panel now gives the current mode, turn, winner, and ball-in-hand state a dedicated color-accented header so match flow is readable at a glance.
 - `F1` now enables a Godot debug panel that shows live portable-engine data, including table/config values, simulation counters, cue-ball state, selected-ball state, moving-ball counts, preview status, and live tuning state. Debug mode also forces the hardcoded-table overlay visible.
 - The Godot adapter now supports runtime debug tuning of core-physics constants such as cloth friction, spin decay, side-spin drift, ball/rail restitution, tangential transfer, ball follow/draw carry, glancing rail restitution, tangential rail retention, rail english transfer, and solver iteration counts, while preserving the current ball layout between changes.
+- The Godot adapter now uses a split shot-speed envelope tuned for feel: regular shots clamp to `0.3-5.0 m/s`, eight-ball break shots clamp to `0.3-8.0 m/s`, the default player speed remains `2.2 m/s`, and the computer opponent now samples a separate harder break-speed set instead of using regular-shot speeds for every turn.
 - The Godot HUD now has a dedicated shot-setup card with speed, tip-offset, and tuning readouts, plus a separate controls/help card toggled with `F6`, so the main status panel no longer has to carry the full control map as raw text.
 - The Godot adapter now opens on a proper start/menu overlay with button-based `EightBall` and `FreePlay` selection, and `Esc` reopens that menu later for resume/reset/return-to-start actions.
 - Validation on `2026-03-14` covers `54` passing standalone tests via `dotnet test`, a successful Godot adapter compile via `dotnet build`, a successful Godot 4.6 Mono `--build-solutions` pass, a clean headless startup pass via `--quit-after 10`, and a verified direct import of `godot/art/customtable_9ft.blend` through Godot’s Blender pipeline.
@@ -97,4 +98,4 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 
 ## Next Step
 
-The next implementation step remains broader pocket-behavior and overall feel tuning, now that the first slow-speed lip-hang pass is in alongside pocket-mouth behavior, base rail rebound tuning, stronger rail english, and follow/draw carry-through.
+The next implementation step remains broader pocket-behavior and overall feel tuning, now that the first slow-speed lip-hang pass is in alongside pocket-mouth behavior, base rail rebound tuning, stronger rail english, follow/draw carry-through, and a more realistic split between regular-shot and break-shot power in the Godot adapter.
