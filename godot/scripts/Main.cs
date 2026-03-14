@@ -86,6 +86,8 @@ public partial class Main : Node3D
     private Panel _shotBannerPanel = null!;
     private Label _shotBannerLabel = null!;
     private Panel _statusPanel = null!;
+    private ColorRect _statusAccentBar = null!;
+    private Label _statusHeaderLabel = null!;
     private Panel _debugPanel = null!;
     private Label _statusLabel = null!;
     private Label _debugLabel = null!;
@@ -284,9 +286,22 @@ public partial class Main : Node3D
                 new Color(0.02f, 0.05f, 0.07f, 0.82f),
                 new Color(0.25f, 0.55f, 0.63f, 0.95f)));
 
+        _statusAccentBar = EnsureNode<ColorRect>(_statusPanel, "StatusAccentBar");
+        _statusAccentBar.Position = new Vector2(0.0f, 0.0f);
+        _statusAccentBar.Size = new Vector2(780.0f, 6.0f);
+        _statusAccentBar.Color = new Color(0.42f, 0.83f, 0.89f, 0.95f);
+
+        _statusHeaderLabel = EnsureNode<Label>(_statusPanel, "StatusHeaderLabel");
+        _statusHeaderLabel.Position = new Vector2(16.0f, 18.0f);
+        _statusHeaderLabel.Size = new Vector2(748.0f, 34.0f);
+        _statusHeaderLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _statusHeaderLabel.VerticalAlignment = VerticalAlignment.Center;
+        _statusHeaderLabel.AddThemeFontSizeOverride("font_size", 23);
+        _statusHeaderLabel.Modulate = new Color(0.9f, 0.98f, 1.0f);
+
         _statusLabel = EnsureNode<Label>(_statusPanel, "StatusLabel");
-        _statusLabel.Position = new Vector2(16.0f, 14.0f);
-        _statusLabel.Size = new Vector2(748.0f, 324.0f);
+        _statusLabel.Position = new Vector2(16.0f, 58.0f);
+        _statusLabel.Size = new Vector2(748.0f, 280.0f);
         _statusLabel.Modulate = Colors.White;
         _statusLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _statusLabel.VerticalAlignment = VerticalAlignment.Top;
@@ -1280,8 +1295,12 @@ public partial class Main : Node3D
             ? "none"
             : string.Join('\n', _recentRuleNotes);
 
+        _statusHeaderLabel.Text = BuildStatusHeaderText();
+        _statusHeaderLabel.Modulate = ResolveStatusAccentColor();
+        _statusAccentBar.Color = ResolveStatusAccentColor();
+
         _statusLabel.Text =
-            $"Portable core: {_tableSpec.Name}  Mode: {GetRuleModeLabel()}\n" +
+            $"Portable core: {_tableSpec.Name}\n" +
             $"{BuildModeStatusLine()}\n" +
             $"Phase: {_world.Phase}  SimTime: {_world.SimulationTimeSeconds:0.000}s  FixedSteps: {_world.TotalFixedStepsExecuted}\n" +
             $"CueBall: {cueBallStatus}  Aim: {Mathf.RadToDeg(_aimAngleRadians):0.0} deg  Speed: {_strikeSpeedMetersPerSecond:0.00} m/s  Tip: ({_tipOffsetNormalized.X:0.00}, {_tipOffsetNormalized.Y:0.00})  Overlay: {BuildOverlaySummary()}\n" +
@@ -1308,6 +1327,59 @@ public partial class Main : Node3D
         return
             $"Current player: {GetPlayerLabel(_eightBallState.CurrentPlayer)}  Break shot: {_eightBallState.IsBreakShot}  Open table: {_eightBallState.OpenTable}  " +
             $"Groups: P1={_eightBallState.PlayerOneGroup} P2={_eightBallState.PlayerTwoGroup}  Ball in hand: {ballInHandText}  Winner: {winnerText}";
+    }
+
+    private string BuildStatusHeaderText()
+    {
+        if (_ruleMode == RuleMode.Training)
+        {
+            return $"Training Freeplay | Selected {GetTrainingSelectionLabel()} | Cue Ball In Hand";
+        }
+
+        if (_eightBallState.Winner.HasValue)
+        {
+            return $"EightBall | Winner: {GetPlayerLabel(_eightBallState.Winner.Value)}";
+        }
+
+        var groupText = _eightBallState.OpenTable
+            ? "Open Table"
+            : $"P1 {_eightBallState.PlayerOneGroup} / P2 {_eightBallState.PlayerTwoGroup}";
+        var ballInHandText = _eightBallState.BallInHandPlayer == _eightBallState.CurrentPlayer
+            ? " | Ball In Hand"
+            : string.Empty;
+        return $"EightBall | {GetPlayerLabel(_eightBallState.CurrentPlayer)} To Shoot | {groupText}{ballInHandText}";
+    }
+
+    private Color ResolveStatusAccentColor()
+    {
+        if (_ruleMode == RuleMode.Training)
+        {
+            return new Color(0.47f, 0.86f, 0.88f, 0.98f);
+        }
+
+        if (_eightBallState.Winner.HasValue)
+        {
+            return new Color(0.99f, 0.85f, 0.31f, 0.98f);
+        }
+
+        if (HasRecentRulePrefix("Foul:"))
+        {
+            return new Color(0.97f, 0.42f, 0.38f, 0.98f);
+        }
+
+        if (_eightBallState.BallInHandPlayer == _eightBallState.CurrentPlayer)
+        {
+            return new Color(0.98f, 0.68f, 0.34f, 0.98f);
+        }
+
+        return _eightBallState.CurrentPlayer == PlayerSlot.PlayerOne
+            ? new Color(0.45f, 0.76f, 0.98f, 0.98f)
+            : new Color(0.98f, 0.62f, 0.36f, 0.98f);
+    }
+
+    private bool HasRecentRulePrefix(string prefix)
+    {
+        return _recentRuleNotes.Any(note => note.StartsWith(prefix, StringComparison.Ordinal));
     }
 
     private string GetRuleModeLabel()

@@ -27,6 +27,7 @@ Current behavior:
 - `C` now cycles between broadcast, top-down, foot-rail, and side-rail camera presets, while `Q/E` zoom the active preset in and out.
 - The HUD now uses dedicated framed status and debug panels instead of raw overlay labels.
 - A transient banner now surfaces shot starts, contact, pocketing, scratch, foul, win, and turn/result feedback in the running adapter.
+- The status panel now has a color-accented header for current mode and turn state.
 - `F1` toggles a debug panel with live portable-engine data such as `SimulationConfig` values, world counters, cue-ball state, selected-ball state, moving-ball counts, and preview lengths. Debug mode also forces the hardcoded-table overlay visible.
 
 Verification on `2026-03-14`:

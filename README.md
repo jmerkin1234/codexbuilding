@@ -39,6 +39,7 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - The Godot adapter now supports switchable camera presets plus runtime zoom so you can move between broadcast, top-down, foot-rail, and side-rail inspection views without changing the core simulation.
 - The Godot HUD is now framed into dedicated status and debug panels with wrapped text, so the live engine readout is easier to inspect while playing.
 - The Godot adapter now raises a transient shot-feedback banner for shot starts, first contact, pocketed balls, scratches, fouls, wins, and other key rule outcomes.
+- The status panel now gives the current mode, turn, winner, and ball-in-hand state a dedicated color-accented header so match flow is readable at a glance.
 - `F1` now enables a Godot debug panel that shows live portable-engine data, including table/config values, simulation counters, cue-ball state, selected-ball state, moving-ball counts, and preview status. Debug mode also forces the hardcoded-table overlay visible.
 - Validation on `2026-03-14` covers `38` passing standalone tests via `dotnet test`, a successful Godot adapter compile via `dotnet build`, a successful Godot 4.6 Mono `--build-solutions` pass, and a clean headless startup pass via `--quit-after 10`.
 
