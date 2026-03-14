@@ -16,6 +16,7 @@ Current behavior:
 - If `res://art/ImportedTable.tscn` exists, it is instantiated under `TableRoot`.
 - If that imported scene is absent, the adapter renders a procedural fallback using the hardcoded table spec and Blender-derived source names.
 - Ball motion is always driven by the portable core and mirrored into Godot transforms each frame.
+- The portable `Rules` layer and training-mode state now exist in the core, but they are not yet wired into the Godot HUD or turn-flow code.
 
 Keyboard controls:
 

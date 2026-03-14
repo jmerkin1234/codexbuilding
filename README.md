@@ -29,7 +29,9 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - Regression coverage now locks a canonical straight-shot SHA-256 fingerprint for deterministic replay validation.
 - The Godot 4.6 adapter now seeds a standard 8-ball rack from the portable core, mirrors core ball state into named visual nodes, exposes keyboard shot controls, and falls back to a procedural table when `res://art/ImportedTable.tscn` is not present.
 - The Godot scene graph now preserves Blender-facing names where used: `GodotRoot`, `TableRoot`, `BallsRoot`, `CueRoot`, `CueStick`, `CueBall`, `Ball_01` through `Ball_15`, rail names, and pocket names.
-- Validation on `2026-03-14` covers `30` passing standalone tests via `dotnet test` plus a successful Godot adapter compile via `dotnet build`. Godot runtime launch was not executed in this environment because no Godot CLI/editor binary is available here.
+- A portable rules layer now resolves 8-ball turns from replay traces, including break legality, open-table group assignment, foul detection, ball-in-hand, legal 8-ball win/loss, and configurable 8-ball-on-break handling.
+- Training mode now exists as a separate portable rules path with free cue-ball repositioning and optional 8-ball respot flow for practice layouts.
+- Validation on `2026-03-14` covers `38` passing standalone tests via `dotnet test` plus a successful Godot adapter compile via `dotnet build`. Godot runtime launch was not executed in this environment because no Godot CLI/editor binary is available here.
 
 ## Repository Layout
 
@@ -61,6 +63,7 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 9. Add deterministic standalone tests.
 10. Add the Godot 4.6 visual adapter and gameplay controls.
 11. Layer full 8-ball rules on top of physics.
+12. Wire rules and training-mode flow into the Godot adapter and HUD.
 
 ## First Hardcoded Facts
 
@@ -71,4 +74,4 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 
 ## Next Step
 
-The next implementation step is the full 8-ball rules layer on top of the portable physics and Godot adapter.
+The next implementation step is wiring the portable 8-ball rules layer and training-mode flow into the Godot adapter and HUD.

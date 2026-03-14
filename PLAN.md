@@ -99,8 +99,19 @@ Scope:
 - Godot adapter compile verification
 
 11. 8-ball rules layer
+Status: complete
+Scope:
+- replay-trace shot summary builder
+- 8-ball match state and turn resolution
+- break legality and foul detection
+- open-table group assignment and ball-in-hand
+- legal and illegal 8-ball endgame handling
+- separate portable training-mode state and shot resolution
+- standalone rules-engine tests
+
+12. Godot rules/training integration
 Status: pending
 
 ## Current Focus
 
-Right now the repo is moving from step 10 to step 11. The portable core and Godot adapter are both in place; the next increment is the 8-ball rules layer on top of the existing shot-result pipeline.
+Right now the repo is moving from step 11 to step 12. The portable rules layer and training mode exist in the core; the next increment is wiring them into the Godot adapter, HUD, and turn flow.
