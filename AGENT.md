@@ -13,7 +13,7 @@ Build a portable custom billiards physics engine in pure C# that can run standal
 - Godot 4.6 is an adapter and viewer, not the physics authority.
 - The Blender scene currently open through MCP is the source for hardcoded table geometry and source object names.
 - Keep object names used from Blender exactly documented in `MODEL_REFERENCE.md`.
-- Maintain `README.md`, `MODEL_REFERENCE.md`, `HARDCODE_REFERENCE.md`, and `AGENT.md` as the code evolves.
+- Maintain `README.md`, `MODEL_REFERENCE.md`, `HARDCODE_REFERENCE.md`, `PLAN.md`, and `AGENT.md` as the code evolves.
 - Push to GitHub incrementally as milestones land.
 - Do not jump ahead in implementation order.
 
@@ -40,4 +40,4 @@ Build a portable custom billiards physics engine in pure C# that can run standal
 
 ## Current Scope
 
-The repository now has a working portable core scaffold, a passing standalone test scaffold, and a Godot 4.6 adapter that restores and builds with `Godot.NET.Sdk 4.6.0`. It does not implement live physics yet.
+The repository now has a working portable core scaffold, a fixed-step simulation shell with explicit shot phases, a passing standalone test scaffold, and a Godot 4.6 adapter that restores and builds with `Godot.NET.Sdk 4.6.0`. The shell currently supports only constant-velocity integration; billiards-specific motion and collisions still need to be layered in next.

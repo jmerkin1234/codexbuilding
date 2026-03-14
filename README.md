@@ -8,7 +8,7 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - The open Blender scene is the source of truth for hardcoded table measurements and object names.
 - The imported table is render-only. Gameplay cushions, pockets, and ball motion come from code.
 - Jump shots are out of scope.
-- `README.md`, `MODEL_REFERENCE.md`, and `AGENT.md` are updated whenever architecture or table-reference facts change.
+- `README.md`, `MODEL_REFERENCE.md`, `HARDCODE_REFERENCE.md`, `PLAN.md`, and `AGENT.md` are updated whenever architecture or table-reference facts change.
 
 ## Current State
 
@@ -18,6 +18,9 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - `godot/` created as the Godot 4.6 adapter/viewer project root.
 - Initial hardcoded table spec seeded from the live Blender scene at `/home/justin/Desktop/customtable_9ft.blend`.
 - `Godot.NET.Sdk 4.6.0` is now resolving and the Godot adapter builds on this machine.
+- The fixed-step shell is now implemented with an accumulator, explicit phase tracking, and settle detection.
+- Current motion is intentionally minimal: constant-velocity integration only. Cloth friction, spin, collisions, and pockets are not implemented yet.
+- Standalone verification currently covers `7` passing tests.
 
 ## Repository Layout
 
@@ -31,6 +34,8 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
   Blender-driven names and measurements used to hardcode geometry.
 - `HARDCODE_REFERENCE.md`
   The exact compile-time values currently baked into the portable engine.
+- `PLAN.md`
+  The ordered implementation tracker used to prevent scope drift.
 - `AGENT.md`
   Project constraints and execution order.
 
@@ -57,4 +62,4 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 
 ## Next Step
 
-The next implementation step is the actual simulation loop inside `CodexBuilding.Billiards.Core`. The current commit is only the clean scaffold, reference docs, and the initial hardcoded geometry container.
+The next implementation step is cue strike and spin input feeding into the fixed-step shell inside `CodexBuilding.Billiards.Core`.
