@@ -116,9 +116,24 @@ public static class PocketCaptureResolver
         var edgeSpeedPenalty = 1.05f - (0.45f * lateralNormalized);
         var depthSpeedBonus = 0.55f + (depthNormalized * 0.55f);
         var speedAllowance = pocket.MaxEntrySpeedMetersPerSecond * depthSpeedBonus * edgeSpeedPenalty;
+        var lipDepthThreshold = pocket.Kind == PocketKind.Side ? 0.36f : 0.30f;
+        var lipLateralThreshold = pocket.Kind == PocketKind.Side ? 0.74f : 0.80f;
+        var hangingOnLip = speed <= 0.09f &&
+                           depthNormalized <= lipDepthThreshold &&
+                           lateralDistance >= pocket.MouthHalfWidthMeters * lipLateralThreshold &&
+                           distanceToCenter > pocket.DropRadiusMeters * 1.05f;
+        if (hangingOnLip)
+        {
+            captureScore = 0.0f;
+            return false;
+        }
 
         var deepInsideFunnel = depthNormalized >= 0.78f && speed <= pocket.MaxEntrySpeedMetersPerSecond * 1.15f;
-        var creepingInMouth = speed <= 0.08f && depth >= 0.0f;
+        var creepingDepthThreshold = pocket.Kind == PocketKind.Side ? 0.38f : 0.28f;
+        var creepingCenterThreshold = pocket.Kind == PocketKind.Side ? 0.50f : 0.58f;
+        var creepingInMouth = speed <= 0.08f &&
+                              depth >= 0.0f &&
+                              (depthNormalized >= creepingDepthThreshold || lateralNormalized <= creepingCenterThreshold);
         var enteringPocket = inwardSpeed > 0.015f && speed <= speedAllowance;
 
         if (!deepInsideFunnel && !creepingInMouth && !enteringPocket)

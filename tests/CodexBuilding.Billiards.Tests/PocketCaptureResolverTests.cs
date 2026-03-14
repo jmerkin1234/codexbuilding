@@ -92,6 +92,47 @@ public sealed class PocketCaptureResolverTests
         Assert.False(balls[0].IsPocketed);
     }
 
+    [Fact]
+    public void Resolve_DoesNotCaptureSlowBallHangingOnPocketLip()
+    {
+        var table = CustomTable9FtSpec.Create();
+        var pocket = table.Pockets.First(p => p.SourceName == "pocket_BM3");
+        var lateral = new Vector2(-pocket.EntryDirection.Y, pocket.EntryDirection.X);
+        var balls = new List<BallState>
+        {
+            CreateBall(
+                ballNumber: 11,
+                position: pocket.MouthCenter +
+                          (pocket.EntryDirection * (pocket.FunnelDepthMeters * 0.12f)) +
+                          (lateral * (pocket.MouthHalfWidthMeters * 0.82f)),
+                velocity: pocket.EntryDirection * 0.04f)
+        };
+
+        var captureCount = PocketCaptureResolver.Resolve(balls, table.Pockets, table.BallDiameterMeters * 0.5f);
+
+        Assert.Equal(0, captureCount);
+        Assert.False(balls[0].IsPocketed);
+    }
+
+    [Fact]
+    public void Resolve_CapturesSlowBallRollingDownPocketCenter()
+    {
+        var table = CustomTable9FtSpec.Create();
+        var pocket = table.Pockets.First(p => p.SourceName == "pocket_BM3");
+        var balls = new List<BallState>
+        {
+            CreateBall(
+                ballNumber: 12,
+                position: pocket.MouthCenter + (pocket.EntryDirection * (pocket.FunnelDepthMeters * 0.18f)),
+                velocity: pocket.EntryDirection * 0.04f)
+        };
+
+        var captureCount = PocketCaptureResolver.Resolve(balls, table.Pockets, table.BallDiameterMeters * 0.5f);
+
+        Assert.Equal(1, captureCount);
+        Assert.True(balls[0].IsPocketed);
+    }
+
     private static BallState CreateBall(int ballNumber, Vector2 position, Vector2 velocity)
     {
         return new BallState(

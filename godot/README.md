@@ -18,7 +18,7 @@ Current behavior:
 - The direct Blender import is now verified in this repo, and the imported asset material references were extracted under `godot/art/textures/` by Godot during the import process.
 - Ball motion is always driven by the portable core and mirrored into Godot transforms each frame.
 - The portable core now includes modest cloth side-spin drift/scrub, tangential spin transfer in ball-ball contact, controlled follow/draw carry-through after object contact, angle-aware rail rebound tuning, and a separate rail-english transfer term for stronger cushion spin response; Godot only mirrors the resulting state.
-- The portable core now also uses a mouth/drop-based pocket model derived from hardcoded jaw geometry, so pocketing depends on entry lane and speed instead of a single capture circle.
+- The portable core now also uses a mouth/drop-based pocket model derived from hardcoded jaw geometry, with an added slow-speed lip-hang rule so edge-hangers can stay up while center-line rollers still fall.
 - The adapter captures live shot traces and resolves them through the portable `Rules` layer.
 - `Tab` switches between `EightBall` versus computer and `FreePlay` inside the running adapter.
 - The HUD now shows mode, current player, group assignment, ball-in-hand, winner, and recent rules outcomes.
@@ -42,7 +42,7 @@ Current behavior:
 Verification on `2026-03-14`:
 
 - `dotnet build CodexBuilding.Billiards.Godot46.csproj --no-restore`
-- `dotnet test ../tests/CodexBuilding.Billiards.Tests/CodexBuilding.Billiards.Tests.csproj --no-restore` with `52/52` passing
+- `dotnet test ../tests/CodexBuilding.Billiards.Tests/CodexBuilding.Billiards.Tests.csproj --no-restore` with `54/54` passing
 - Godot 4.6 Mono `--build-solutions --quit`
 - Godot 4.6 Mono headless startup `--quit-after 10`
 - Verified direct import of `godot/art/customtable_9ft.blend`
