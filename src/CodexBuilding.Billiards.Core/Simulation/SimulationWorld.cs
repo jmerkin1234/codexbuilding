@@ -219,6 +219,7 @@ public sealed class SimulationWorld
         PocketCaptureResolver.Resolve(
             _balls,
             TableSpec.Pockets,
+            ballRadiusMeters,
             onPocketed: (ballNumber, pocketName) =>
             {
                 pocketedThisStep.Add(ballNumber);

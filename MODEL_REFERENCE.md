@@ -125,6 +125,14 @@ Jaw collision does not come from mesh data at runtime. It is derived from the Bl
 - Side jaws are built from the adjacent rail endpoint and a point `0.031m` inward from the pocket center toward the cloth center.
 - The current compile-time layout produces `12` jaw segments total.
 
+### Derived Pocket Mouth Layout
+
+Pocket acceptance is now also derived from the Blender-backed jaw and pocket seeds.
+
+- Mouth centers are compiled from the midpoint between the two relevant jaw-start rail endpoints for each pocket.
+- Mouth half-widths are compiled from half the distance between those jaw-start points.
+- The portable engine now uses those mouth values together with hardcoded drop radii and speed limits to decide accept vs reject near the jaws.
+
 ## Notes
 
 - `pockett_TL1` contains a double `t` in the source name. That typo is preserved intentionally.

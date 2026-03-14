@@ -8,6 +8,7 @@ public static class PocketCaptureResolver
     public static int Resolve(
         List<BallState> balls,
         IReadOnlyList<PocketSpec> pockets,
+        float ballRadiusMeters,
         Action<int, string>? onPocketed = null)
     {
         var captureCount = 0;
@@ -20,7 +21,7 @@ public static class PocketCaptureResolver
                 continue;
             }
 
-            var pocket = FindContainingPocket(ball.Position, pockets);
+            var pocket = FindCapturePocket(ball, pockets, ballRadiusMeters);
             if (pocket is null)
             {
                 continue;
@@ -41,24 +42,94 @@ public static class PocketCaptureResolver
         return captureCount;
     }
 
-    private static PocketSpec? FindContainingPocket(Vector2 position, IReadOnlyList<PocketSpec> pockets)
+    private static PocketSpec? FindCapturePocket(BallState ball, IReadOnlyList<PocketSpec> pockets, float ballRadiusMeters)
     {
         PocketSpec? bestPocket = null;
-        var bestDistanceSquared = float.MaxValue;
+        var bestScore = float.MinValue;
 
         foreach (var pocket in pockets)
         {
-            var distanceSquared = Vector2.DistanceSquared(position, pocket.Center);
-            var captureRadiusSquared = pocket.CaptureRadiusMeters * pocket.CaptureRadiusMeters;
-            if (distanceSquared > captureRadiusSquared || distanceSquared >= bestDistanceSquared)
+            if (!TryScorePocketCapture(ball, pocket, ballRadiusMeters, out var score) || score <= bestScore)
             {
                 continue;
             }
 
             bestPocket = pocket;
-            bestDistanceSquared = distanceSquared;
+            bestScore = score;
         }
 
         return bestPocket;
+    }
+
+    private static bool TryScorePocketCapture(
+        BallState ball,
+        PocketSpec pocket,
+        float ballRadiusMeters,
+        out float captureScore)
+    {
+        var toCenter = pocket.Center - ball.Position;
+        var distanceToCenter = toCenter.Length();
+        if (distanceToCenter <= pocket.DropRadiusMeters)
+        {
+            captureScore = 500.0f - distanceToCenter;
+            return true;
+        }
+
+        var entryDirection = pocket.EntryDirection;
+        var lateralDirection = new Vector2(-entryDirection.Y, entryDirection.X);
+        var fromMouth = ball.Position - pocket.MouthCenter;
+        var depth = Vector2.Dot(fromMouth, entryDirection);
+        if (depth < -(ballRadiusMeters * 0.2f))
+        {
+            captureScore = 0.0f;
+            return false;
+        }
+
+        var funnelDepthMeters = MathF.Max(pocket.FunnelDepthMeters, 0.001f);
+        if (depth > funnelDepthMeters + ballRadiusMeters)
+        {
+            captureScore = 0.0f;
+            return false;
+        }
+
+        var lateralDistance = MathF.Abs(Vector2.Dot(fromMouth, lateralDirection));
+        var lateralAllowance = pocket.MouthHalfWidthMeters +
+                               (ballRadiusMeters * 0.35f) +
+                               (MathF.Max(depth, 0.0f) * 0.12f);
+        if (lateralDistance > lateralAllowance)
+        {
+            captureScore = 0.0f;
+            return false;
+        }
+
+        var radialAllowance = pocket.CaptureRadiusMeters + (ballRadiusMeters * 0.55f);
+        if (distanceToCenter > radialAllowance)
+        {
+            captureScore = 0.0f;
+            return false;
+        }
+
+        var speed = ball.Velocity.Length();
+        var inwardSpeed = Vector2.Dot(ball.Velocity, entryDirection);
+        var depthNormalized = Math.Clamp(depth / funnelDepthMeters, 0.0f, 1.0f);
+        var lateralNormalized = Math.Clamp(lateralDistance / MathF.Max(lateralAllowance, 0.0001f), 0.0f, 1.0f);
+        var edgeSpeedPenalty = 1.05f - (0.45f * lateralNormalized);
+        var depthSpeedBonus = 0.55f + (depthNormalized * 0.55f);
+        var speedAllowance = pocket.MaxEntrySpeedMetersPerSecond * depthSpeedBonus * edgeSpeedPenalty;
+
+        var deepInsideFunnel = depthNormalized >= 0.78f && speed <= pocket.MaxEntrySpeedMetersPerSecond * 1.15f;
+        var creepingInMouth = speed <= 0.08f && depth >= 0.0f;
+        var enteringPocket = inwardSpeed > 0.015f && speed <= speedAllowance;
+
+        if (!deepInsideFunnel && !creepingInMouth && !enteringPocket)
+        {
+            captureScore = 0.0f;
+            return false;
+        }
+
+        captureScore = (depthNormalized * 12.0f) +
+                       ((1.0f - lateralNormalized) * 4.0f) +
+                       MathF.Max(0.0f, speedAllowance - speed);
+        return true;
     }
 }

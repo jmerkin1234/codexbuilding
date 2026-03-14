@@ -44,16 +44,6 @@ public static class CustomTable9FtSpec
                 tableCenter)
         };
 
-        var pockets = new[]
-        {
-            new PocketSpec("pockett_TL1", PocketKind.Corner, new Vector2(1.2640905f, 0.49089444f), 0.0584f),
-            new PocketSpec("pocket_BL2", PocketKind.Corner, new Vector2(1.2508553f, -0.6167401f), 0.0584f),
-            new PocketSpec("pocket_BM3", PocketKind.Side, new Vector2(0.0000029f, -0.66602194f), 0.0614f),
-            new PocketSpec("pocket_BR4", PocketKind.Corner, new Vector2(-1.2508456f, -0.6167401f), 0.0584f),
-            new PocketSpec("Pocket_TR5", PocketKind.Corner, new Vector2(-1.2508456f, 0.61673915f), 0.0584f),
-            new PocketSpec("Pocket_TM6", PocketKind.Side, new Vector2(0.0000029f, 0.66556805f), 0.0614f)
-        };
-
         var jaws = new[]
         {
             CreateCornerJaw("pocket_BR4_jaw_vertical", new Vector2(-1.2249266f, -0.56977034f), new Vector2(-1.2508456f, -0.6167401f), tableCenter),
@@ -68,6 +58,64 @@ public static class CustomTable9FtSpec
             CreateSideJaw("pocket_BM3_jaw_right", new Vector2(0.050399005f, -0.59292495f), new Vector2(0.0000029f, -0.66602194f), tableCenter),
             CreateSideJaw("Pocket_TM6_jaw_left", new Vector2(-0.050392687f, 0.5953581f), new Vector2(0.0000029f, 0.66556805f), tableCenter),
             CreateSideJaw("Pocket_TM6_jaw_right", new Vector2(0.050398767f, 0.5953247f), new Vector2(0.0000029f, 0.66556805f), tableCenter)
+        };
+
+        var pockets = new[]
+        {
+            CreatePocketFromJawStarts(
+                "pockett_TL1",
+                PocketKind.Corner,
+                new Vector2(1.2640905f, 0.49089444f),
+                0.0584f,
+                FindSegment("pockett_TL1_jaw_vertical", jaws),
+                FindSegment("pockett_TL1_jaw_horizontal", jaws),
+                dropRadiusMeters: 0.0405f,
+                maxEntrySpeedMetersPerSecond: 1.15f),
+            CreatePocketFromJawStarts(
+                "pocket_BL2",
+                PocketKind.Corner,
+                new Vector2(1.2508553f, -0.6167401f),
+                0.0584f,
+                FindSegment("pocket_BL2_jaw_vertical", jaws),
+                FindSegment("pocket_BL2_jaw_horizontal", jaws),
+                dropRadiusMeters: 0.0405f,
+                maxEntrySpeedMetersPerSecond: 1.15f),
+            CreatePocketFromJawStarts(
+                "pocket_BM3",
+                PocketKind.Side,
+                new Vector2(0.0000029f, -0.66602194f),
+                0.0614f,
+                FindSegment("pocket_BM3_jaw_left", jaws),
+                FindSegment("pocket_BM3_jaw_right", jaws),
+                dropRadiusMeters: 0.044f,
+                maxEntrySpeedMetersPerSecond: 1.0f),
+            CreatePocketFromJawStarts(
+                "pocket_BR4",
+                PocketKind.Corner,
+                new Vector2(-1.2508456f, -0.6167401f),
+                0.0584f,
+                FindSegment("pocket_BR4_jaw_vertical", jaws),
+                FindSegment("pocket_BR4_jaw_horizontal", jaws),
+                dropRadiusMeters: 0.0405f,
+                maxEntrySpeedMetersPerSecond: 1.15f),
+            CreatePocketFromJawStarts(
+                "Pocket_TR5",
+                PocketKind.Corner,
+                new Vector2(-1.2508456f, 0.61673915f),
+                0.0584f,
+                FindSegment("Pocket_TR5_jaw_vertical", jaws),
+                FindSegment("Pocket_TR5_jaw_horizontal", jaws),
+                dropRadiusMeters: 0.0405f,
+                maxEntrySpeedMetersPerSecond: 1.15f),
+            CreatePocketFromJawStarts(
+                "Pocket_TM6",
+                PocketKind.Side,
+                new Vector2(0.0000029f, 0.66556805f),
+                0.0614f,
+                FindSegment("Pocket_TM6_jaw_left", jaws),
+                FindSegment("Pocket_TM6_jaw_right", jaws),
+                dropRadiusMeters: 0.044f,
+                maxEntrySpeedMetersPerSecond: 1.0f)
         };
 
         return new TableSpec(
@@ -98,6 +146,43 @@ public static class CustomTable9FtSpec
     {
         var apex = BuildJawApex(pocketCenter, tableCenter, 0.031f);
         return CreateSegment(sourceName, railEndpoint, apex, tableCenter);
+    }
+
+    private static PocketSpec CreatePocketFromJawStarts(
+        string sourceName,
+        PocketKind kind,
+        Vector2 center,
+        float captureRadiusMeters,
+        CushionSegment firstJaw,
+        CushionSegment secondJaw,
+        float dropRadiusMeters,
+        float maxEntrySpeedMetersPerSecond)
+    {
+        var mouthCenter = (firstJaw.Start + secondJaw.Start) * 0.5f;
+        var mouthHalfWidthMeters = Vector2.Distance(firstJaw.Start, secondJaw.Start) * 0.5f;
+
+        return new PocketSpec(
+            sourceName,
+            kind,
+            center,
+            captureRadiusMeters,
+            mouthCenter,
+            mouthHalfWidthMeters,
+            dropRadiusMeters,
+            maxEntrySpeedMetersPerSecond);
+    }
+
+    private static CushionSegment FindSegment(string sourceName, IReadOnlyList<CushionSegment> segments)
+    {
+        foreach (var segment in segments)
+        {
+            if (segment.SourceName == sourceName)
+            {
+                return segment;
+            }
+        }
+
+        throw new InvalidOperationException($"Missing segment '{sourceName}' while building the hardcoded table spec.");
     }
 
     private static Vector2 BuildJawApex(Vector2 pocketCenter, Vector2 tableCenter, float offsetMeters)

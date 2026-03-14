@@ -48,26 +48,50 @@ This file tracks the compile-time geometry and seed constants that the portable 
   kind: `Corner`
   center: `(1.2640905, 0.49089444)`
   capture radius seed: `0.0584`
+  mouth center: `(1.21635175, 0.58277615)`
+  mouth half-width: `0.01570998`
+  drop radius: `0.0405`
+  max entry speed: `1.15`
 - `pocket_BL2`
   kind: `Corner`
   center: `(1.2508553, -0.6167401)`
   capture radius seed: `0.0584`
+  mouth center: `(1.21635185, -0.58053768)`
+  mouth half-width: `0.01558140`
+  drop radius: `0.0405`
+  max entry speed: `1.15`
 - `pocket_BM3`
   kind: `Side`
   center: `(0.0000029, -0.66602194)`
   capture radius seed: `0.0614`
+  mouth center: `(0.00000316, -0.59292504)`
+  mouth half-width: `0.05039585`
+  drop radius: `0.044`
+  max entry speed: `1.0`
 - `pocket_BR4`
   kind: `Corner`
   center: `(-1.2508456, -0.6167401)`
   capture radius seed: `0.0584`
+  mouth center: `(-1.2159086, -0.58134774)`
+  mouth half-width: `0.01467516`
+  drop radius: `0.0405`
+  max entry speed: `1.15`
 - `Pocket_TR5`
   kind: `Corner`
   center: `(-1.2508456, 0.61673915)`
   capture radius seed: `0.0584`
+  mouth center: `(-1.2159086, 0.58287142)`
+  mouth half-width: `0.01540265`
+  drop radius: `0.0405`
+  max entry speed: `1.15`
 - `Pocket_TM6`
   kind: `Side`
   center: `(0.0000029, 0.66556805)`
   capture radius seed: `0.0614`
+  mouth center: `(0.00000304, 0.5953414)`
+  mouth half-width: `0.05039573`
+  drop radius: `0.044`
+  max entry speed: `1.0`
 
 ## Hardcoded Jaw Derivation
 
@@ -99,6 +123,15 @@ Each jaw segment is derived from:
 - an inward offset from pocket center toward cloth center
 
 The resulting derived segments are compiled into `TableSpec.JawSegments`.
+
+## Hardcoded Pocket Mouth Model
+
+Pocket capture is no longer a single circle check.
+
+- Mouth centers are derived from the midpoint between the two relevant jaw rail endpoints.
+- Mouth half-widths are derived from half the distance between those two jaw start points.
+- Balls are always accepted inside the `drop radius`.
+- Balls inside the pocket funnel are only accepted when lane alignment and entry speed fit the hardcoded mouth model.
 
 ## Rules
 
