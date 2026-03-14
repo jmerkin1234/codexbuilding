@@ -27,23 +27,25 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - Shot event expansion now covers first cue-ball contact, cushion/jaw contact, pocketed balls, scratch, and settled-shot events.
 - Deterministic replay now records per-step frames, cue-strike seeds, and shot events into a portable trace object.
 - Regression coverage now locks a canonical straight-shot SHA-256 fingerprint for deterministic replay validation.
-- The Godot 4.6 adapter now seeds a standard 8-ball rack from the portable core, mirrors core ball state into named visual nodes, exposes keyboard shot controls, and falls back to a procedural table when `res://art/ImportedTable.tscn` is not present.
+- The Godot 4.6 adapter now seeds a standard 8-ball rack from the portable core, mirrors core ball state into named visual nodes, exposes keyboard shot controls, directly instantiates `res://art/customtable_9ft.blend` as the render-only table when present, and falls back to a procedural table if that Blender asset is not available.
+- The checked-in Blender table now imports directly through Godot 4.6, which also extracted the referenced texture set into `godot/art/textures/` so the visual asset can load without a manual export step.
 - The Godot scene graph now preserves Blender-facing names where used: `GodotRoot`, `TableRoot`, `BallsRoot`, `CueRoot`, `CueStick`, `CueBall`, `Ball_01` through `Ball_15`, rail names, and pocket names.
 - A portable rules layer now resolves 8-ball turns from replay traces, including break legality, open-table group assignment, foul detection, ball-in-hand, legal 8-ball win/loss, and configurable 8-ball-on-break handling.
-- Training mode now exists as a separate portable rules path with free cue-ball repositioning and optional 8-ball respot flow for practice layouts.
-- The Godot adapter now records live shot traces, resolves them through the portable rules layer, supports `Tab` switching between 8-ball and training, exposes cue-ball-in-hand placement with arrow keys, and shows mode/rules state directly in the HUD.
+- Training mode now exists as a separate portable rules path with free cue-ball repositioning and optional 8-ball respot flow for freeplay layouts.
+- The Godot adapter now records live shot traces, resolves them through the portable rules layer, supports `Tab` switching between 8-ball versus computer and freeplay, exposes cue-ball-in-hand placement with arrow keys, and shows mode/rules state directly in the HUD.
 - The Godot adapter now renders predictive aim guides from cloned portable simulations: a primary cue line, a post-bounce or post-collision cue continuation line, and an object-ball line after first contact.
-- Practice mode now supports free layout adjustment with `Z/X` ball selection and arrow-key movement for the selected ball.
+- Freeplay now supports free layout adjustment with `Z/X` ball selection and arrow-key movement for the selected ball.
 - The Godot adapter now includes a toggleable hardcoded-table overlay that draws the cloth bounds, cushion segments, jaw segments, pocket capture circles, and cue/rack reference spots directly from `TableSpec`.
 - The hardcoded-table overlay now has per-layer toggles for cloth, cushions, jaws, pockets, and reference spots so geometry inspection is no longer all-or-nothing.
 - The Godot adapter now starts in an orthographic top-down inspection view and still supports switching plus runtime zoom across broadcast, top-down, foot-rail, and side-rail camera presets without changing the core simulation.
 - The Godot HUD is now framed into dedicated status and debug panels with wrapped text, so the live engine readout is easier to inspect while playing.
 - The Godot HUD now also includes a dedicated last-shot summary panel that turns portable rule summaries into readable eight-ball and training/freeplay shot breakdowns.
 - Training/freeplay now gives the selected layout ball a pulsing ring marker in the 3D view so placement edits are easy to track without relying on HUD text.
+- In 8-ball mode, Player 2 is now driven by a simple computer opponent that plans legal shots from cloned portable simulations, while freeplay stays human-controlled.
 - The Godot adapter now raises a transient shot-feedback banner for shot starts, first contact, pocketed balls, scratches, fouls, wins, and other key rule outcomes.
 - The status panel now gives the current mode, turn, winner, and ball-in-hand state a dedicated color-accented header so match flow is readable at a glance.
 - `F1` now enables a Godot debug panel that shows live portable-engine data, including table/config values, simulation counters, cue-ball state, selected-ball state, moving-ball counts, and preview status. Debug mode also forces the hardcoded-table overlay visible.
-- Validation on `2026-03-14` covers `38` passing standalone tests via `dotnet test`, a successful Godot adapter compile via `dotnet build`, a successful Godot 4.6 Mono `--build-solutions` pass, and a clean headless startup pass via `--quit-after 10`.
+- Validation on `2026-03-14` covers `38` passing standalone tests via `dotnet test`, a successful Godot adapter compile via `dotnet build`, a successful Godot 4.6 Mono `--build-solutions` pass, a clean headless startup pass via `--quit-after 10`, and a verified direct import of `godot/art/customtable_9ft.blend` through Godot’s Blender pipeline.
 
 ## Repository Layout
 
