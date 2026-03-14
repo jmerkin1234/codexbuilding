@@ -44,7 +44,8 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - In 8-ball mode, Player 2 is now driven by a simple computer opponent that plans legal shots from cloned portable simulations, while freeplay stays human-controlled.
 - The Godot adapter now raises a transient shot-feedback banner for shot starts, first contact, pocketed balls, scratches, fouls, wins, and other key rule outcomes.
 - The status panel now gives the current mode, turn, winner, and ball-in-hand state a dedicated color-accented header so match flow is readable at a glance.
-- `F1` now enables a Godot debug panel that shows live portable-engine data, including table/config values, simulation counters, cue-ball state, selected-ball state, moving-ball counts, and preview status. Debug mode also forces the hardcoded-table overlay visible.
+- `F1` now enables a Godot debug panel that shows live portable-engine data, including table/config values, simulation counters, cue-ball state, selected-ball state, moving-ball counts, preview status, and live tuning state. Debug mode also forces the hardcoded-table overlay visible.
+- The Godot adapter now supports runtime debug tuning of core-physics constants such as cloth friction, spin decay, side-spin drift, ball/rail restitution, tangential transfer, and solver iteration counts, while preserving the current ball layout between changes.
 - Validation on `2026-03-14` covers `41` passing standalone tests via `dotnet test`, a successful Godot adapter compile via `dotnet build`, a successful Godot 4.6 Mono `--build-solutions` pass, a clean headless startup pass via `--quit-after 10`, and a verified direct import of `godot/art/customtable_9ft.blend` through Godot’s Blender pipeline.
 
 ## Repository Layout
@@ -79,7 +80,7 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 11. Layer full 8-ball rules on top of physics.
 12. Wire rules and training-mode flow into the Godot adapter and HUD.
 13. Expand training layout tools and richer in-game presentation.
-14. Continue presentation polish and tune previously simplified physics.
+14. Continue presentation polish, live tuning, and tune previously simplified physics.
 
 ## First Hardcoded Facts
 
@@ -90,4 +91,4 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 
 ## Next Step
 
-The next implementation step is continued live tuning, stronger spin refinement, and broader presentation polish on top of the working rules-aware adapter.
+The next implementation step is broader manual feel-tuning and stronger AI/presentation polish on top of the now live-tunable rules-aware adapter.

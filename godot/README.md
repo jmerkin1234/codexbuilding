@@ -34,6 +34,7 @@ Current behavior:
 - A transient banner now surfaces shot starts, contact, pocketing, scratch, foul, win, and turn/result feedback in the running adapter.
 - The status panel now has a color-accented header for current mode and turn state.
 - `F1` toggles a debug panel with live portable-engine data such as `SimulationConfig` values, world counters, cue-ball state, selected-ball state, moving-ball counts, and preview lengths. Debug mode also forces the hardcoded-table overlay visible.
+- Debug mode now supports live tuning of key portable-physics constants and immediately rebuilds `SimulationWorld` with the current ball layout after each change.
 
 Verification on `2026-03-14`:
 
@@ -47,6 +48,9 @@ Keyboard controls:
 
 - `Tab`: toggle between 8-ball vs computer and FreePlay
 - `F1`: toggle debug mode and engine-data panel
+- `F2/F3`: select the active debug tuning parameter
+- `F4/F5`: decrease or increase the selected tuning value
+- `Shift` + `F4/F5`: coarse debug tuning adjustments
 - `H`: show or hide the hardcoded-table overlay
 - `1`: toggle cloth overlay lines
 - `2`: toggle cushion overlay lines

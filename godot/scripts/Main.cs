@@ -12,6 +12,23 @@ public partial class Main : Node3D
 {
     private readonly record struct CameraPreset(string Name, Vector3 Offset, bool UseOrthographic, float ViewSize, float FieldOfView);
     private readonly record struct ShotBannerStyle(Color BackgroundColor, Color BorderColor, Color TextColor);
+    private enum DebugTuningField
+    {
+        SlidingFriction,
+        RollingFriction,
+        SpinDecay,
+        SideSpinCurve,
+        MovingSideSpinDecay,
+        BallRestitution,
+        BallTangentialTransfer,
+        BallSpinTransfer,
+        RailRestitution,
+        RailTangentialFriction,
+        RailSpinTransfer,
+        SettleThreshold,
+        CollisionIterations,
+        BoundaryIterations
+    }
 
     private enum RuleMode
     {
@@ -124,6 +141,7 @@ public partial class Main : Node3D
     private bool _overlayJawVisible = true;
     private bool _overlayPocketVisible = true;
     private bool _overlaySpotVisible = true;
+    private DebugTuningField _selectedTuningField = DebugTuningField.SlidingFriction;
     private int _trainingSelectedBallNumber;
     private int _cameraPresetIndex = 1;
     private float _cameraZoomScale = 1.0f;
@@ -184,6 +202,30 @@ public partial class Main : Node3D
                 return;
             case Key.C:
                 CycleCameraPreset();
+                return;
+            case Key.F2:
+                if (_debugModeEnabled)
+                {
+                    CycleTuningField(-1);
+                }
+                return;
+            case Key.F3:
+                if (_debugModeEnabled)
+                {
+                    CycleTuningField(1);
+                }
+                return;
+            case Key.F4:
+                if (_debugModeEnabled)
+                {
+                    AdjustSelectedTuning(-1, keyEvent.ShiftPressed);
+                }
+                return;
+            case Key.F5:
+                if (_debugModeEnabled)
+                {
+                    AdjustSelectedTuning(1, keyEvent.ShiftPressed);
+                }
                 return;
             case Key.Q:
                 AdjustCameraZoom(-0.1f);
@@ -687,6 +729,139 @@ public partial class Main : Node3D
         _recentRuleNotes.Add(_debugModeEnabled
             ? "Debug mode enabled."
             : "Debug mode disabled.");
+        UpdateStatusLabel(Array.Empty<ShotEvent>());
+    }
+
+    private void CycleTuningField(int direction)
+    {
+        var tuningFields = Enum.GetValues<DebugTuningField>();
+        var currentIndex = Array.IndexOf(tuningFields, _selectedTuningField);
+        if (currentIndex < 0)
+        {
+            currentIndex = 0;
+        }
+
+        var nextIndex = (currentIndex + direction + tuningFields.Length) % tuningFields.Length;
+        _selectedTuningField = tuningFields[nextIndex];
+        _recentRuleNotes.Clear();
+        _recentRuleNotes.Add($"Debug tuning: {GetTuningFieldLabel(_selectedTuningField)}");
+        UpdateStatusLabel(Array.Empty<ShotEvent>());
+    }
+
+    private void AdjustSelectedTuning(int direction, bool coarse)
+    {
+        if (direction == 0)
+        {
+            return;
+        }
+
+        if (_world.Phase == SimulationPhase.Running || _shotCaptureActive)
+        {
+            _recentRuleNotes.Clear();
+            _recentRuleNotes.Add("Stop balls before adjusting debug tuning.");
+            UpdateStatusLabel(Array.Empty<ShotEvent>());
+            return;
+        }
+
+        var stepScale = coarse ? 5.0f : 1.0f;
+        var updatedConfig = _selectedTuningField switch
+        {
+            DebugTuningField.SlidingFriction => CreateAdjustedConfig(
+                slidingFrictionAccelerationMetersPerSecondSquared: AdjustFloat(
+                    _config.SlidingFrictionAccelerationMetersPerSecondSquared,
+                    0.08f * stepScale * direction,
+                    0.0f,
+                    5.0f)),
+            DebugTuningField.RollingFriction => CreateAdjustedConfig(
+                rollingFrictionAccelerationMetersPerSecondSquared: AdjustFloat(
+                    _config.RollingFrictionAccelerationMetersPerSecondSquared,
+                    0.02f * stepScale * direction,
+                    0.0f,
+                    1.0f)),
+            DebugTuningField.SpinDecay => CreateAdjustedConfig(
+                spinDecayRpsPerSecond: AdjustFloat(
+                    _config.SpinDecayRpsPerSecond,
+                    0.05f * stepScale * direction,
+                    0.0f,
+                    5.0f)),
+            DebugTuningField.SideSpinCurve => CreateAdjustedConfig(
+                sideSpinCurveAccelerationMetersPerSecondSquaredPerRps: AdjustFloat(
+                    _config.SideSpinCurveAccelerationMetersPerSecondSquaredPerRps,
+                    0.002f * stepScale * direction,
+                    0.0f,
+                    0.2f)),
+            DebugTuningField.MovingSideSpinDecay => CreateAdjustedConfig(
+                movingSideSpinDecayRpsPerSecondPerMetersPerSecond: AdjustFloat(
+                    _config.MovingSideSpinDecayRpsPerSecondPerMetersPerSecond,
+                    0.05f * stepScale * direction,
+                    0.0f,
+                    5.0f)),
+            DebugTuningField.BallRestitution => CreateAdjustedConfig(
+                ballCollisionRestitution: AdjustFloat(
+                    _config.BallCollisionRestitution,
+                    0.01f * stepScale * direction,
+                    0.0f,
+                    1.0f)),
+            DebugTuningField.BallTangentialTransfer => CreateAdjustedConfig(
+                ballCollisionTangentialTransferFactor: AdjustFloat(
+                    _config.BallCollisionTangentialTransferFactor,
+                    0.02f * stepScale * direction,
+                    0.0f,
+                    1.0f)),
+            DebugTuningField.BallSpinTransfer => CreateAdjustedConfig(
+                ballCollisionSpinTransferFactor: AdjustFloat(
+                    _config.BallCollisionSpinTransferFactor,
+                    0.02f * stepScale * direction,
+                    0.0f,
+                    1.0f)),
+            DebugTuningField.RailRestitution => CreateAdjustedConfig(
+                boundaryRestitution: AdjustFloat(
+                    _config.BoundaryRestitution,
+                    0.01f * stepScale * direction,
+                    0.0f,
+                    1.0f)),
+            DebugTuningField.RailTangentialFriction => CreateAdjustedConfig(
+                boundaryTangentialFrictionFactor: AdjustFloat(
+                    _config.BoundaryTangentialFrictionFactor,
+                    0.02f * stepScale * direction,
+                    0.0f,
+                    1.0f)),
+            DebugTuningField.RailSpinTransfer => CreateAdjustedConfig(
+                boundarySpinTransferFactor: AdjustFloat(
+                    _config.BoundarySpinTransferFactor,
+                    0.02f * stepScale * direction,
+                    0.0f,
+                    1.0f)),
+            DebugTuningField.SettleThreshold => CreateAdjustedConfig(
+                settleSpeedThresholdMetersPerSecond: AdjustFloat(
+                    _config.SettleSpeedThresholdMetersPerSecond,
+                    0.001f * stepScale * direction,
+                    0.0f,
+                    0.2f)),
+            DebugTuningField.CollisionIterations => CreateAdjustedConfig(
+                maxCollisionIterationsPerStep: AdjustInt(
+                    _config.MaxCollisionIterationsPerStep,
+                    coarse ? direction * 2 : direction,
+                    1,
+                    16)),
+            DebugTuningField.BoundaryIterations => CreateAdjustedConfig(
+                maxBoundaryIterationsPerStep: AdjustInt(
+                    _config.MaxBoundaryIterationsPerStep,
+                    coarse ? direction * 2 : direction,
+                    1,
+                    16)),
+            _ => _config
+        };
+
+        if (ConfigsEquivalent(updatedConfig, _config))
+        {
+            return;
+        }
+
+        _config = updatedConfig;
+        RebuildWorldWithCurrentState();
+        _recentRuleNotes.Clear();
+        _recentRuleNotes.Add($"Tuned {GetTuningFieldLabel(_selectedTuningField)} -> {GetSelectedTuningValueText()}");
         UpdateStatusLabel(Array.Empty<ShotEvent>());
     }
 
@@ -1771,7 +1946,8 @@ public partial class Main : Node3D
             $"Phase: {_world.Phase}  SimTime: {_world.SimulationTimeSeconds:0.000}s  FixedSteps: {_world.TotalFixedStepsExecuted}\n" +
             $"CueBall: {cueBallStatus}  Aim: {Mathf.RadToDeg(_aimAngleRadians):0.0} deg  Speed: {_strikeSpeedMetersPerSecond:0.00} m/s  Tip: ({_tipOffsetNormalized.X:0.00}, {_tipOffsetNormalized.Y:0.00})  Overlay: {BuildOverlaySummary()}\n" +
             $"Camera: {GetActiveCameraPreset().Name}  Zoom: {_cameraZoomScale:0.00}x\n" +
-            "Controls: F1 debug  Tab mode  H hardcode overlay  1 cloth  2 cushions  3 jaws  4 pockets  5 spots  C camera preset  Q/E zoom  A/D aim  W/S speed  J/L side spin  I/K follow-draw  Arrow keys move selected placement ball  Z/X cycle practice ball  Space shoot  Backspace center tip  R reset\n" +
+            $"Debug tuning: {GetTuningFieldLabel(_selectedTuningField)} = {GetSelectedTuningValueText()}\n" +
+            "Controls: F1 debug  F2/F3 tune select  F4/F5 tune -/+ (Shift coarse)  Tab mode  H hardcode overlay  1 cloth  2 cushions  3 jaws  4 pockets  5 spots  C camera preset  Q/E zoom  A/D aim  W/S speed  J/L side spin  I/K follow-draw  Arrow keys move selected placement ball  Z/X cycle practice ball  Space shoot  Backspace center tip  R reset\n" +
             $"Recent shot events:\n{recentEventText}\n" +
             $"Rules/training:\n{recentRuleText}";
 
@@ -2082,7 +2258,10 @@ public partial class Main : Node3D
             $"Cloth: min={FormatVector(_tableSpec.ClothMin)} max={FormatVector(_tableSpec.ClothMax)}  BallD={_tableSpec.BallDiameterMeters:0.00000}\n" +
             $"Geometry: cushions={_tableSpec.Cushions.Count} jaws={_tableSpec.JawSegments.Count} pockets={_tableSpec.Pockets.Count} overlay={BuildOverlaySummary()}\n" +
             $"Config: dt={_config.FixedStepSeconds:0.000000} settle={_config.SettleSpeedThresholdMetersPerSecond:0.0000} slide={_config.SlidingFrictionAccelerationMetersPerSecondSquared:0.000} roll={_config.RollingFrictionAccelerationMetersPerSecondSquared:0.000}\n" +
-            $"Config: spin_decay={_config.SpinDecayRpsPerSecond:0.000} ball_rest={_config.BallCollisionRestitution:0.00} rail_rest={_config.BoundaryRestitution:0.00} pair_iter={_config.MaxCollisionIterationsPerStep} rail_iter={_config.MaxBoundaryIterationsPerStep}\n" +
+            $"Config: spin_decay={_config.SpinDecayRpsPerSecond:0.000} side_curve={_config.SideSpinCurveAccelerationMetersPerSecondSquaredPerRps:0.0000} move_side_decay={_config.MovingSideSpinDecayRpsPerSecondPerMetersPerSecond:0.000}\n" +
+            $"Config: ball_rest={_config.BallCollisionRestitution:0.00} ball_tangent={_config.BallCollisionTangentialTransferFactor:0.00} ball_spin={_config.BallCollisionSpinTransferFactor:0.00}\n" +
+            $"Config: rail_rest={_config.BoundaryRestitution:0.00} rail_friction={_config.BoundaryTangentialFrictionFactor:0.00} rail_spin={_config.BoundarySpinTransferFactor:0.00} pair_iter={_config.MaxCollisionIterationsPerStep} rail_iter={_config.MaxBoundaryIterationsPerStep}\n" +
+            $"Tuning: selected={GetTuningFieldLabel(_selectedTuningField)} value={GetSelectedTuningValueText()} controls=F2/F3 select, F4/F5 adjust, Shift=coarse\n" +
             $"World: phase={_world.Phase} sim_t={_world.SimulationTimeSeconds:0.000} acc={_world.AccumulatorSeconds:0.000000} steps={_world.TotalFixedStepsExecuted} capture={_shotCaptureActive} frames={_capturedShotFrames.Count}\n" +
             $"Camera: preset={GetActiveCameraPreset().Name} zoom={_cameraZoomScale:0.00} pos=({_camera.Position.X:0.000},{_camera.Position.Y:0.000},{_camera.Position.Z:0.000})\n" +
             $"Rules: mode={GetRuleModeLabel()} debug_overlay_manual={_hardcodeOverlayVisible} debug_enabled={_debugModeEnabled}\n" +
@@ -2091,6 +2270,134 @@ public partial class Main : Node3D
             $"Balls: moving={movingBalls.Length} pocketed={pocketedCount} moving_list={movingSummary}\n" +
             $"Preview: dirty={_aimPreviewDirty} primary={previewPrimary:0.000} secondary={previewSecondary:0.000} target={previewTarget:0.000}\n" +
             $"State: {BuildDebugStateLine()}";
+    }
+
+    private void RebuildWorldWithCurrentState()
+    {
+        var preservedBalls = _world.Balls.ToArray();
+        _world = new SimulationWorld(_tableSpec, _config, preservedBalls);
+        MarkAimPreviewDirty();
+        SyncBallVisuals(_world.Balls);
+        UpdateCueGuide();
+    }
+
+    private SimulationConfig CreateAdjustedConfig(
+        float? settleSpeedThresholdMetersPerSecond = null,
+        float? slidingFrictionAccelerationMetersPerSecondSquared = null,
+        float? rollingFrictionAccelerationMetersPerSecondSquared = null,
+        float? spinDecayRpsPerSecond = null,
+        float? sideSpinCurveAccelerationMetersPerSecondSquaredPerRps = null,
+        float? movingSideSpinDecayRpsPerSecondPerMetersPerSecond = null,
+        float? ballCollisionRestitution = null,
+        float? ballCollisionTangentialTransferFactor = null,
+        float? ballCollisionSpinTransferFactor = null,
+        int? maxCollisionIterationsPerStep = null,
+        float? boundaryRestitution = null,
+        float? boundaryTangentialFrictionFactor = null,
+        float? boundarySpinTransferFactor = null,
+        int? maxBoundaryIterationsPerStep = null)
+    {
+        return new SimulationConfig(
+            fixedStepSeconds: _config.FixedStepSeconds,
+            settleSpeedThresholdMetersPerSecond: settleSpeedThresholdMetersPerSecond ?? _config.SettleSpeedThresholdMetersPerSecond,
+            maxFixedStepsPerAdvance: _config.MaxFixedStepsPerAdvance,
+            maxSideSpinRps: _config.MaxSideSpinRps,
+            maxFollowSpinRps: _config.MaxFollowSpinRps,
+            maxDrawSpinRps: _config.MaxDrawSpinRps,
+            slidingFrictionAccelerationMetersPerSecondSquared: slidingFrictionAccelerationMetersPerSecondSquared ?? _config.SlidingFrictionAccelerationMetersPerSecondSquared,
+            rollingFrictionAccelerationMetersPerSecondSquared: rollingFrictionAccelerationMetersPerSecondSquared ?? _config.RollingFrictionAccelerationMetersPerSecondSquared,
+            spinDecayRpsPerSecond: spinDecayRpsPerSecond ?? _config.SpinDecayRpsPerSecond,
+            sideSpinCurveAccelerationMetersPerSecondSquaredPerRps: sideSpinCurveAccelerationMetersPerSecondSquaredPerRps ?? _config.SideSpinCurveAccelerationMetersPerSecondSquaredPerRps,
+            movingSideSpinDecayRpsPerSecondPerMetersPerSecond: movingSideSpinDecayRpsPerSecondPerMetersPerSecond ?? _config.MovingSideSpinDecayRpsPerSecondPerMetersPerSecond,
+            rollingMatchToleranceMetersPerSecond: _config.RollingMatchToleranceMetersPerSecond,
+            spinSettleThresholdRps: _config.SpinSettleThresholdRps,
+            ballCollisionRestitution: ballCollisionRestitution ?? _config.BallCollisionRestitution,
+            ballCollisionTangentialTransferFactor: ballCollisionTangentialTransferFactor ?? _config.BallCollisionTangentialTransferFactor,
+            ballCollisionSpinTransferFactor: ballCollisionSpinTransferFactor ?? _config.BallCollisionSpinTransferFactor,
+            maxCollisionIterationsPerStep: maxCollisionIterationsPerStep ?? _config.MaxCollisionIterationsPerStep,
+            boundaryRestitution: boundaryRestitution ?? _config.BoundaryRestitution,
+            boundaryTangentialFrictionFactor: boundaryTangentialFrictionFactor ?? _config.BoundaryTangentialFrictionFactor,
+            boundarySpinTransferFactor: boundarySpinTransferFactor ?? _config.BoundarySpinTransferFactor,
+            maxBoundaryIterationsPerStep: maxBoundaryIterationsPerStep ?? _config.MaxBoundaryIterationsPerStep);
+    }
+
+    private string GetSelectedTuningValueText()
+    {
+        return _selectedTuningField switch
+        {
+            DebugTuningField.SlidingFriction => $"{_config.SlidingFrictionAccelerationMetersPerSecondSquared:0.000}",
+            DebugTuningField.RollingFriction => $"{_config.RollingFrictionAccelerationMetersPerSecondSquared:0.000}",
+            DebugTuningField.SpinDecay => $"{_config.SpinDecayRpsPerSecond:0.000}",
+            DebugTuningField.SideSpinCurve => $"{_config.SideSpinCurveAccelerationMetersPerSecondSquaredPerRps:0.0000}",
+            DebugTuningField.MovingSideSpinDecay => $"{_config.MovingSideSpinDecayRpsPerSecondPerMetersPerSecond:0.000}",
+            DebugTuningField.BallRestitution => $"{_config.BallCollisionRestitution:0.000}",
+            DebugTuningField.BallTangentialTransfer => $"{_config.BallCollisionTangentialTransferFactor:0.000}",
+            DebugTuningField.BallSpinTransfer => $"{_config.BallCollisionSpinTransferFactor:0.000}",
+            DebugTuningField.RailRestitution => $"{_config.BoundaryRestitution:0.000}",
+            DebugTuningField.RailTangentialFriction => $"{_config.BoundaryTangentialFrictionFactor:0.000}",
+            DebugTuningField.RailSpinTransfer => $"{_config.BoundarySpinTransferFactor:0.000}",
+            DebugTuningField.SettleThreshold => $"{_config.SettleSpeedThresholdMetersPerSecond:0.0000}",
+            DebugTuningField.CollisionIterations => _config.MaxCollisionIterationsPerStep.ToString(),
+            DebugTuningField.BoundaryIterations => _config.MaxBoundaryIterationsPerStep.ToString(),
+            _ => "n/a"
+        };
+    }
+
+    private static string GetTuningFieldLabel(DebugTuningField field)
+    {
+        return field switch
+        {
+            DebugTuningField.SlidingFriction => "Slide Friction",
+            DebugTuningField.RollingFriction => "Roll Friction",
+            DebugTuningField.SpinDecay => "Spin Decay",
+            DebugTuningField.SideSpinCurve => "Side-Spin Curve",
+            DebugTuningField.MovingSideSpinDecay => "Moving Side-Spin Decay",
+            DebugTuningField.BallRestitution => "Ball Restitution",
+            DebugTuningField.BallTangentialTransfer => "Ball Tangential Transfer",
+            DebugTuningField.BallSpinTransfer => "Ball Spin Transfer",
+            DebugTuningField.RailRestitution => "Rail Restitution",
+            DebugTuningField.RailTangentialFriction => "Rail Tangential Friction",
+            DebugTuningField.RailSpinTransfer => "Rail Spin Transfer",
+            DebugTuningField.SettleThreshold => "Settle Threshold",
+            DebugTuningField.CollisionIterations => "Pair Iterations",
+            DebugTuningField.BoundaryIterations => "Rail Iterations",
+            _ => field.ToString()
+        };
+    }
+
+    private static bool ConfigsEquivalent(SimulationConfig left, SimulationConfig right)
+    {
+        return left.FixedStepSeconds == right.FixedStepSeconds &&
+               left.SettleSpeedThresholdMetersPerSecond == right.SettleSpeedThresholdMetersPerSecond &&
+               left.MaxFixedStepsPerAdvance == right.MaxFixedStepsPerAdvance &&
+               left.MaxSideSpinRps == right.MaxSideSpinRps &&
+               left.MaxFollowSpinRps == right.MaxFollowSpinRps &&
+               left.MaxDrawSpinRps == right.MaxDrawSpinRps &&
+               left.SlidingFrictionAccelerationMetersPerSecondSquared == right.SlidingFrictionAccelerationMetersPerSecondSquared &&
+               left.RollingFrictionAccelerationMetersPerSecondSquared == right.RollingFrictionAccelerationMetersPerSecondSquared &&
+               left.SpinDecayRpsPerSecond == right.SpinDecayRpsPerSecond &&
+               left.SideSpinCurveAccelerationMetersPerSecondSquaredPerRps == right.SideSpinCurveAccelerationMetersPerSecondSquaredPerRps &&
+               left.MovingSideSpinDecayRpsPerSecondPerMetersPerSecond == right.MovingSideSpinDecayRpsPerSecondPerMetersPerSecond &&
+               left.RollingMatchToleranceMetersPerSecond == right.RollingMatchToleranceMetersPerSecond &&
+               left.SpinSettleThresholdRps == right.SpinSettleThresholdRps &&
+               left.BallCollisionRestitution == right.BallCollisionRestitution &&
+               left.BallCollisionTangentialTransferFactor == right.BallCollisionTangentialTransferFactor &&
+               left.BallCollisionSpinTransferFactor == right.BallCollisionSpinTransferFactor &&
+               left.MaxCollisionIterationsPerStep == right.MaxCollisionIterationsPerStep &&
+               left.BoundaryRestitution == right.BoundaryRestitution &&
+               left.BoundaryTangentialFrictionFactor == right.BoundaryTangentialFrictionFactor &&
+               left.BoundarySpinTransferFactor == right.BoundarySpinTransferFactor &&
+               left.MaxBoundaryIterationsPerStep == right.MaxBoundaryIterationsPerStep;
+    }
+
+    private static float AdjustFloat(float value, float delta, float min, float max)
+    {
+        return Mathf.Clamp(value + delta, min, max);
+    }
+
+    private static int AdjustInt(int value, int delta, int min, int max)
+    {
+        return Math.Clamp(value + delta, min, max);
     }
 
     private string BuildDebugStateLine()
