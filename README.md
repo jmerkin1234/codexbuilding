@@ -34,10 +34,9 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - The Godot adapter now records live shot traces, resolves them through the portable rules layer, supports `Tab` switching between 8-ball and training, exposes cue-ball-in-hand placement with arrow keys, and shows mode/rules state directly in the HUD.
 - The Godot adapter now renders predictive aim guides from cloned portable simulations: a primary cue line, a post-bounce or post-collision cue continuation line, and an object-ball line after first contact.
 - Practice mode now supports free layout adjustment with `Z/X` ball selection and arrow-key movement for the selected ball.
-- The portable core now includes six built-in practice scenarios, and the Godot adapter can load them in training mode with keys `1` through `6`, applying each preset's suggested aim, speed, and tip offset.
 - The Godot adapter now includes a toggleable hardcoded-table overlay that draws the cloth bounds, cushion segments, jaw segments, pocket capture circles, and cue/rack reference spots directly from `TableSpec`.
 - `F1` now enables a Godot debug panel that shows live portable-engine data, including table/config values, simulation counters, cue-ball state, selected-ball state, moving-ball counts, and preview status. Debug mode also forces the hardcoded-table overlay visible.
-- Validation on `2026-03-14` covers `41` passing standalone tests via `dotnet test`, a successful Godot adapter compile via `dotnet build`, a successful Godot 4.6 Mono `--build-solutions` pass, and a clean headless startup pass via `--quit-after 10`.
+- Validation on `2026-03-14` covers `38` passing standalone tests via `dotnet test`, a successful Godot adapter compile via `dotnet build`, a successful Godot 4.6 Mono `--build-solutions` pass, and a clean headless startup pass via `--quit-after 10`.
 
 ## Repository Layout
 
@@ -71,7 +70,7 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 11. Layer full 8-ball rules on top of physics.
 12. Wire rules and training-mode flow into the Godot adapter and HUD.
 13. Expand training layout tools and richer in-game presentation.
-14. Continue presentation polish and scenario tooling.
+14. Continue presentation polish.
 
 ## First Hardcoded Facts
 
@@ -82,4 +81,4 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 
 ## Next Step
 
-The next implementation step is continued presentation polish and scenario tooling on top of the working rules-aware adapter.
+The next implementation step is continued presentation polish on top of the working rules-aware adapter.

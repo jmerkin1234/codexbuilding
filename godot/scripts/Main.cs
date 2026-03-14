@@ -2,7 +2,6 @@ using System.Linq;
 using CodexBuilding.Billiards.Core.Geometry;
 using CodexBuilding.Billiards.Core.Rules;
 using CodexBuilding.Billiards.Core.Simulation;
-using CodexBuilding.Billiards.Core.Training;
 using Godot;
 using GodotEnvironment = Godot.Environment;
 using NumericsVector2 = System.Numerics.Vector2;
@@ -59,7 +58,6 @@ public partial class Main : Node3D
     private readonly List<SimulationReplayFrame> _capturedShotFrames = new(capacity: 1024);
     private readonly Dictionary<int, MeshInstance3D> _ballVisuals = new();
 
-    private IReadOnlyList<TrainingScenarioDefinition> _trainingScenarios = Array.Empty<TrainingScenarioDefinition>();
     private TableSpec _tableSpec = null!;
     private SimulationConfig _config = null!;
     private SimulationWorld _world = null!;
@@ -87,18 +85,14 @@ public partial class Main : Node3D
     private bool _debugModeEnabled;
     private bool _hardcodeOverlayVisible = true;
     private int _trainingSelectedBallNumber;
-    private int _activeTrainingScenarioIndex = -1;
     private float _aimAngleRadians;
     private float _strikeSpeedMetersPerSecond = 2.0f;
     private Vector2 _tipOffsetNormalized = Vector2.Zero;
-    private string _trainingScenarioName = "Open Rack";
-    private string _trainingScenarioDescription = "Freeplay rack layout using the standard 8-ball opening.";
 
     public override void _Ready()
     {
         _tableSpec = CustomTable9FtSpec.Create();
         _config = SimulationConfig.Default;
-        _trainingScenarios = TrainingScenarioLibrary.CreateDefaults(_tableSpec);
         _world = new SimulationWorld(_tableSpec, _config, StandardEightBallRack.Create(_tableSpec));
 
         ConfigureSceneGraph();
@@ -167,24 +161,6 @@ public partial class Main : Node3D
                 break;
             case Key.X:
                 SelectTrainingBall(1);
-                break;
-            case Key.Key1:
-                TryLoadTrainingScenario(0);
-                break;
-            case Key.Key2:
-                TryLoadTrainingScenario(1);
-                break;
-            case Key.Key3:
-                TryLoadTrainingScenario(2);
-                break;
-            case Key.Key4:
-                TryLoadTrainingScenario(3);
-                break;
-            case Key.Key5:
-                TryLoadTrainingScenario(4);
-                break;
-            case Key.Key6:
-                TryLoadTrainingScenario(5);
                 break;
         }
     }
@@ -419,9 +395,6 @@ public partial class Main : Node3D
         _eightBallState = EightBallMatchState.CreateNew();
         _trainingState = TrainingModeState.CreateNew();
         _trainingSelectedBallNumber = 0;
-        _activeTrainingScenarioIndex = -1;
-        _trainingScenarioName = "Open Rack";
-        _trainingScenarioDescription = "Freeplay rack layout using the standard 8-ball opening.";
         _capturedCueStrike = null;
         _capturedShotFrameIndex = 0;
         _shotCaptureActive = false;
@@ -439,41 +412,6 @@ public partial class Main : Node3D
             ResetWorldForNextTurn(cueBallInHand: true, requiresEightBallRespot: false);
         }
 
-        SyncBallVisuals(_world.Balls);
-        UpdateCueGuide();
-        UpdateStatusLabel(Array.Empty<ShotEvent>());
-    }
-
-    private void TryLoadTrainingScenario(int index)
-    {
-        if (_ruleMode != RuleMode.Training ||
-            index < 0 ||
-            index >= _trainingScenarios.Count)
-        {
-            return;
-        }
-
-        var scenario = _trainingScenarios[index];
-        _world.Reset(scenario.Balls);
-        _trainingState = TrainingModeState.CreateNew();
-        _trainingSelectedBallNumber = scenario.SelectedBallNumber;
-        _activeTrainingScenarioIndex = index;
-        _trainingScenarioName = scenario.DisplayName;
-        _trainingScenarioDescription = scenario.Description;
-        _capturedCueStrike = null;
-        _capturedShotFrameIndex = 0;
-        _shotCaptureActive = false;
-        _capturedShotFrames.Clear();
-        _recentFrameEvents.Clear();
-        _recentRuleNotes.Clear();
-        _recentRuleNotes.Add($"Practice preset {index + 1}/{_trainingScenarios.Count}: {scenario.DisplayName}");
-        _recentRuleNotes.Add(scenario.Description);
-        _aimAngleRadians = Mathf.Atan2(scenario.SuggestedShot.AimDirection.Y, scenario.SuggestedShot.AimDirection.X);
-        _strikeSpeedMetersPerSecond = scenario.SuggestedShot.StrikeSpeedMetersPerSecond;
-        _tipOffsetNormalized = new Vector2(
-            scenario.SuggestedShot.TipOffsetNormalized.X,
-            scenario.SuggestedShot.TipOffsetNormalized.Y);
-        MarkAimPreviewDirty();
         SyncBallVisuals(_world.Balls);
         UpdateCueGuide();
         UpdateStatusLabel(Array.Empty<ShotEvent>());
@@ -889,9 +827,6 @@ public partial class Main : Node3D
                 shotCount: _trainingState.ShotCount,
                 pocketedObjectBallNumbers: _trainingState.PocketedObjectBallNumbers.Where(number => number != ballNumber).ToArray(),
                 cueBallInHand: true);
-            _activeTrainingScenarioIndex = -1;
-            _trainingScenarioName = "Custom Layout";
-            _trainingScenarioDescription = "Freeplay layout edited manually inside training mode.";
             _recentRuleNotes.Clear();
             _recentRuleNotes.Add($"Practice layout: moved {GetTrainingSelectionLabel()}");
         }
@@ -1090,7 +1025,7 @@ public partial class Main : Node3D
             $"{BuildModeStatusLine()}\n" +
             $"Phase: {_world.Phase}  SimTime: {_world.SimulationTimeSeconds:0.000}s  FixedSteps: {_world.TotalFixedStepsExecuted}\n" +
             $"CueBall: {cueBallStatus}  Aim: {Mathf.RadToDeg(_aimAngleRadians):0.0} deg  Speed: {_strikeSpeedMetersPerSecond:0.00} m/s  Tip: ({_tipOffsetNormalized.X:0.00}, {_tipOffsetNormalized.Y:0.00})  Overlay: {_hardcodeOverlayVisible}\n" +
-            "Controls: F1 debug  Tab mode  H hardcode overlay  1-6 practice presets  A/D aim  W/S speed  J/L side spin  I/K follow-draw  Arrow keys move selected placement ball  Z/X cycle practice ball  Space shoot  Backspace center tip  R reset\n" +
+            "Controls: F1 debug  Tab mode  H hardcode overlay  A/D aim  W/S speed  J/L side spin  I/K follow-draw  Arrow keys move selected placement ball  Z/X cycle practice ball  Space shoot  Backspace center tip  R reset\n" +
             $"Recent shot events:\n{recentEventText}\n" +
             $"Rules/training:\n{recentRuleText}";
 
@@ -1104,9 +1039,7 @@ public partial class Main : Node3D
             var pocketed = _trainingState.PocketedObjectBallNumbers.Count == 0
                 ? "none"
                 : string.Join(", ", _trainingState.PocketedObjectBallNumbers);
-            return
-                $"Practice shots: {_trainingState.ShotCount}  Layout: {_trainingScenarioName}  Selected ball: {GetTrainingSelectionLabel()}  " +
-                $"Free placement: true  Pocketed objects: {pocketed}";
+            return $"Practice shots: {_trainingState.ShotCount}  Selected ball: {GetTrainingSelectionLabel()}  Free placement: true  Pocketed objects: {pocketed}";
         }
 
         var winnerText = _eightBallState.Winner.HasValue ? GetPlayerLabel(_eightBallState.Winner.Value) : "none";
@@ -1183,9 +1116,7 @@ public partial class Main : Node3D
     {
         if (_ruleMode == RuleMode.Training)
         {
-            return
-                $"practice_shots={_trainingState.ShotCount} cue_ball_in_hand={_trainingState.CueBallInHand} " +
-                $"selected={GetTrainingSelectionLabel()} layout={_trainingScenarioName} preset_index={_activeTrainingScenarioIndex} desc={_trainingScenarioDescription}";
+            return $"practice_shots={_trainingState.ShotCount} cue_ball_in_hand={_trainingState.CueBallInHand} selected={GetTrainingSelectionLabel()}";
         }
 
         return
