@@ -11,7 +11,8 @@ Rules:
 
 Current behavior:
 
-- `Main.cs` creates a live `SimulationWorld` from the portable core and seeds it with `StandardEightBallRack`.
+- `Main.cs` now stays as the shared-state and lifecycle entry point for the adapter, while the Godot-side behavior is split across focused partials for scene graph, visuals, HUD, tuning, shot flow, and input.
+- The adapter still creates a live `SimulationWorld` from the portable core and seeds it with `StandardEightBallRack`.
 - Runtime node names preserve the Blender-facing names where they are used: `GodotRoot`, `TableRoot`, `BallsRoot`, `CueRoot`, `CueStick`, `CueBall`, `Ball_01` through `Ball_15`, rail names, and pocket names.
 - `Main.tscn` now instances `res://art/customtable_9ft.blend` directly as `ImportedTableSource`, and the adapter binds to its imported `GodotRoot`, `TableRoot`, `BallsRoot`, and `CueRoot` nodes.
 - If that Blender asset is absent or cannot be loaded, the adapter can still render a procedural fallback table from the hardcoded spec, but gameplay now requires the authored Blender `CueBall` and `Ball_01` through `Ball_15` meshes instead of spawning fallback spheres.
@@ -52,8 +53,9 @@ Current behavior:
 - `F1` toggles a detached debug window with live portable-engine data such as `SimulationConfig` values, world counters, cue-ball state, selected-ball state, moving-ball counts, preview lengths, and active debug-tuning state. That separate play-mode window can be moved to another monitor, and debug mode still forces the hardcoded-table overlay visible.
 - The project now disables embedded subwindows so the debug view can become a native OS window; if you still use Godot editor embedded play, the editor itself can still keep the whole game trapped inside the editor pane.
 - Debug mode now supports live tuning of key portable-physics constants, including ball follow/draw carry, glancing rail restitution, tangential rail retention, and rail-english transfer, and immediately rebuilds `SimulationWorld` with the current ball layout after each change. Table-geometry calibration is handled separately in `Tuning` mode.
-- `Tuning` mode now uses a separate movable tuning window with direct selected-object mini-panels for literal X/Y/Angle-style edits, a flat scrollable row list with one slider row per tunable field, a dropdown that jumps to and highlights one object, an overlay-thickness slider, a `Hide Info` toggle for the explanatory text, and Save/Reload/Reset buttons.
-- That separate `Tuning` window now also keeps a fixed right-side legend with color swatches and short explanations for cloth bounds, cushions, jaws, pocket capture circles, cue/rack spots, aim guides, and the selected-target highlight color.
+- `Tuning` mode now uses a separate movable tuning window with direct selected-object mini-panels for literal X/Y/Angle-style edits, a flat scrollable row list with one slider row per tunable field, a dropdown that jumps to and highlights one object, a pixel-based overlay-thickness slider, a `Hide Info` toggle for the explanatory text, and Save/Reload/Reset buttons.
+- The tuning window now keeps explicit always-visible vertical scrollbars for both the row list and the right-side legend.
+- That separate `Tuning` window now also keeps a fixed right-side legend with color swatches and short explanations for the play area, cushions, jaws, pocket capture circles, cue/rack spots, aim guides, and the selected-target highlight color.
 - Cushion and jaw calibration rows now include both endpoint coordinates and direct segment-angle controls, so rails and jaws can be aligned either by moving endpoints or by rotating the segment around its current midpoint.
 
 Verification on `2026-03-14`:
