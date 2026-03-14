@@ -82,6 +82,8 @@ public partial class Main : Node3D
     private Node3D _overlayPocketRoot = null!;
     private Node3D _overlaySpotRoot = null!;
     private Camera3D _camera = null!;
+    private Panel _statusPanel = null!;
+    private Panel _debugPanel = null!;
     private Label _statusLabel = null!;
     private Label _debugLabel = null!;
     private MeshInstance3D _cueGuide = null!;
@@ -240,15 +242,42 @@ public partial class Main : Node3D
         _aimTargetGuide.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
 
         var hud = EnsureNode<CanvasLayer>(this, "Hud");
-        _statusLabel = EnsureNode<Label>(hud, "StatusLabel");
-        _statusLabel.Position = new Vector2(18.0f, 18.0f);
-        _statusLabel.Size = new Vector2(760.0f, 260.0f);
-        _statusLabel.Modulate = Colors.White;
+        _statusPanel = EnsureNode<Panel>(hud, "StatusPanel");
+        _statusPanel.Position = new Vector2(18.0f, 18.0f);
+        _statusPanel.Size = new Vector2(780.0f, 354.0f);
+        _statusPanel.MouseFilter = Control.MouseFilterEnum.Ignore;
+        _statusPanel.AddThemeStyleboxOverride(
+            "panel",
+            CreateHudPanelStyle(
+                new Color(0.02f, 0.05f, 0.07f, 0.82f),
+                new Color(0.25f, 0.55f, 0.63f, 0.95f)));
 
-        _debugLabel = EnsureNode<Label>(hud, "DebugLabel");
-        _debugLabel.Position = new Vector2(18.0f, 286.0f);
-        _debugLabel.Size = new Vector2(980.0f, 520.0f);
+        _statusLabel = EnsureNode<Label>(_statusPanel, "StatusLabel");
+        _statusLabel.Position = new Vector2(16.0f, 14.0f);
+        _statusLabel.Size = new Vector2(748.0f, 324.0f);
+        _statusLabel.Modulate = Colors.White;
+        _statusLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _statusLabel.VerticalAlignment = VerticalAlignment.Top;
+        _statusLabel.AddThemeFontSizeOverride("font_size", 15);
+
+        _debugPanel = EnsureNode<Panel>(hud, "DebugPanel");
+        _debugPanel.Position = new Vector2(816.0f, 18.0f);
+        _debugPanel.Size = new Vector2(520.0f, 760.0f);
+        _debugPanel.MouseFilter = Control.MouseFilterEnum.Ignore;
+        _debugPanel.AddThemeStyleboxOverride(
+            "panel",
+            CreateHudPanelStyle(
+                new Color(0.01f, 0.04f, 0.03f, 0.84f),
+                new Color(0.28f, 0.73f, 0.53f, 0.95f)));
+        _debugPanel.Visible = false;
+
+        _debugLabel = EnsureNode<Label>(_debugPanel, "DebugLabel");
+        _debugLabel.Position = new Vector2(16.0f, 14.0f);
+        _debugLabel.Size = new Vector2(488.0f, 730.0f);
         _debugLabel.Modulate = new Color(0.84f, 0.98f, 0.89f);
+        _debugLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _debugLabel.VerticalAlignment = VerticalAlignment.Top;
+        _debugLabel.AddThemeFontSizeOverride("font_size", 14);
         _debugLabel.Visible = false;
     }
 
@@ -524,6 +553,7 @@ public partial class Main : Node3D
     private void ToggleDebugMode()
     {
         _debugModeEnabled = !_debugModeEnabled;
+        _debugPanel.Visible = _debugModeEnabled;
         _debugLabel.Visible = _debugModeEnabled;
         UpdateOverlayVisibility();
         _recentRuleNotes.Clear();
@@ -1196,6 +1226,7 @@ public partial class Main : Node3D
 
     private void UpdateDebugPanel()
     {
+        _debugPanel.Visible = _debugModeEnabled;
         _debugLabel.Visible = _debugModeEnabled;
         if (!_debugModeEnabled)
         {
@@ -1628,6 +1659,29 @@ public partial class Main : Node3D
             Emission = color,
             EmissionEnergyMultiplier = 1.25f,
             Roughness = 0.15f
+        };
+    }
+
+    private static StyleBoxFlat CreateHudPanelStyle(Color backgroundColor, Color borderColor)
+    {
+        return new StyleBoxFlat
+        {
+            BgColor = backgroundColor,
+            BorderColor = borderColor,
+            BorderWidthBottom = 2,
+            BorderWidthLeft = 2,
+            BorderWidthRight = 2,
+            BorderWidthTop = 2,
+            CornerRadiusBottomLeft = 8,
+            CornerRadiusBottomRight = 8,
+            CornerRadiusTopLeft = 8,
+            CornerRadiusTopRight = 8,
+            ShadowColor = new Color(0.0f, 0.0f, 0.0f, 0.22f),
+            ShadowSize = 10,
+            ContentMarginBottom = 10.0f,
+            ContentMarginLeft = 10.0f,
+            ContentMarginRight = 10.0f,
+            ContentMarginTop = 10.0f
         };
     }
 
