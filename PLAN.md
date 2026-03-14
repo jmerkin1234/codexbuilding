@@ -89,11 +89,18 @@ Scope:
 - standalone replay repeatability tests
 
 10. Godot 4.6 visual/gameplay adapter
-Status: pending
+Status: complete
+Scope:
+- standard 8-ball rack seeding from the portable core
+- Godot scene graph with Blender-facing node names
+- ball-state transform sync from `SimulationWorld`
+- keyboard aim, speed, and spin controls
+- procedural fallback table visual when no imported table scene is present
+- Godot adapter compile verification
 
 11. 8-ball rules layer
 Status: pending
 
 ## Current Focus
 
-Right now the repo is moving from step 9 to step 10. Deterministic replay and regression locking are in; the next increment is the Godot 4.6 visual/gameplay adapter on top of the portable core.
+Right now the repo is moving from step 10 to step 11. The portable core and Godot adapter are both in place; the next increment is the 8-ball rules layer on top of the existing shot-result pipeline.

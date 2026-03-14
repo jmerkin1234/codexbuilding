@@ -9,4 +9,20 @@ Rules:
 - The portable core library remains authoritative for simulation.
 - The imported Blender table is render-only.
 
-The initial scaffold only boots a `Node3D` and confirms that the hardcoded table spec can be loaded from the core library.
+Current behavior:
+
+- `Main.cs` creates a live `SimulationWorld` from the portable core and seeds it with `StandardEightBallRack`.
+- Runtime node names preserve the Blender-facing names where they are used: `GodotRoot`, `TableRoot`, `BallsRoot`, `CueRoot`, `CueStick`, `CueBall`, `Ball_01` through `Ball_15`, rail names, and pocket names.
+- If `res://art/ImportedTable.tscn` exists, it is instantiated under `TableRoot`.
+- If that imported scene is absent, the adapter renders a procedural fallback using the hardcoded table spec and Blender-derived source names.
+- Ball motion is always driven by the portable core and mirrored into Godot transforms each frame.
+
+Keyboard controls:
+
+- `A/D`: aim left/right
+- `W/S`: raise/lower strike speed
+- `J/L`: apply left/right english
+- `I/K`: apply follow/draw
+- `Space`: shoot
+- `Backspace`: center the tip offset
+- `R`: reset the standard rack

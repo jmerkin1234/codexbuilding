@@ -27,7 +27,9 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - Shot event expansion now covers first cue-ball contact, cushion/jaw contact, pocketed balls, scratch, and settled-shot events.
 - Deterministic replay now records per-step frames, cue-strike seeds, and shot events into a portable trace object.
 - Regression coverage now locks a canonical straight-shot SHA-256 fingerprint for deterministic replay validation.
-- Standalone verification on `2026-03-14` covers `27` passing tests across the table spec, fixed-step shell, cue-strike seeding, cloth-motion behavior, ball-ball collision resolution, table-boundary interaction, pocket/event behavior, and replay regression coverage.
+- The Godot 4.6 adapter now seeds a standard 8-ball rack from the portable core, mirrors core ball state into named visual nodes, exposes keyboard shot controls, and falls back to a procedural table when `res://art/ImportedTable.tscn` is not present.
+- The Godot scene graph now preserves Blender-facing names where used: `GodotRoot`, `TableRoot`, `BallsRoot`, `CueRoot`, `CueStick`, `CueBall`, `Ball_01` through `Ball_15`, rail names, and pocket names.
+- Validation on `2026-03-14` covers `30` passing standalone tests via `dotnet test` plus a successful Godot adapter compile via `dotnet build`. Godot runtime launch was not executed in this environment because no Godot CLI/editor binary is available here.
 
 ## Repository Layout
 
@@ -69,4 +71,4 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 
 ## Next Step
 
-The next implementation step is the Godot 4.6 visual adapter and gameplay controls on top of the already-portable core.
+The next implementation step is the full 8-ball rules layer on top of the portable physics and Godot adapter.
