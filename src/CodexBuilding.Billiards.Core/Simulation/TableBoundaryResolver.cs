@@ -12,6 +12,17 @@ public static class TableBoundaryResolver
         float restitution,
         int maxIterations)
     {
+        return Resolve(balls, segments, ballRadiusMeters, restitution, maxIterations, onCollision: null);
+    }
+
+    public static int Resolve(
+        List<BallState> balls,
+        IReadOnlyList<CushionSegment> segments,
+        float ballRadiusMeters,
+        float restitution,
+        int maxIterations,
+        Action<int, string>? onCollision)
+    {
         var collisionCount = 0;
 
         for (var iteration = 0; iteration < maxIterations; iteration++)
@@ -34,6 +45,7 @@ public static class TableBoundaryResolver
                     }
 
                     balls[ballIndex] = ball;
+                    onCollision?.Invoke(ball.BallNumber, segment.SourceName);
                     resolvedAnyCollision = true;
                     collisionCount++;
                 }

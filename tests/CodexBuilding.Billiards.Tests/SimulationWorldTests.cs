@@ -206,6 +206,7 @@ public sealed class SimulationWorldTests
         Assert.Equal(Vector2.Zero, result.Balls[0].Velocity, new Vector2Comparer(0.0001f));
         Assert.Equal(new Vector2(1.0f, 0.0f), result.Balls[1].Velocity, new Vector2Comparer(0.0001f));
         Assert.True(Vector2.Distance(result.Balls[0].Position, result.Balls[1].Position) >= 0.05714f);
+        Assert.Contains(result.Events, evt => evt.EventType == ShotEventType.FirstContact && evt.BallNumber == 1);
     }
 
     [Fact]
@@ -273,6 +274,7 @@ public sealed class SimulationWorldTests
 
         Assert.True(Vector2.Dot(correctedBall.Velocity, segment.InwardNormal) > 0.0f);
         Assert.True(signedDistance >= 0.028575f - 0.0001f);
+        Assert.Contains(result.Events, evt => evt.EventType == ShotEventType.CushionContact && evt.Detail == segment.SourceName);
     }
 
     [Fact]
@@ -290,6 +292,7 @@ public sealed class SimulationWorldTests
 
         Assert.True(Vector2.Dot(correctedBall.Velocity, segment.InwardNormal) > 0.0f);
         Assert.True(signedDistance >= 0.028575f - 0.0001f);
+        Assert.Contains(result.Events, evt => evt.EventType == ShotEventType.CushionContact && evt.Detail == segment.SourceName);
     }
 
     [Fact]
@@ -301,6 +304,49 @@ public sealed class SimulationWorldTests
         {
             Assert.InRange(segment.InwardNormal.Length(), 0.999f, 1.001f);
         });
+    }
+
+    [Fact]
+    public void Advance_PocketsObjectBallAndEmitsPocketedEvent()
+    {
+        var table = CustomTable9FtSpec.Create();
+        var pocket = table.Pockets.First(p => p.SourceName == "pocket_BR4");
+        var world = CreatePocketWorld(
+            new BallState(
+                BallNumber: 3,
+                Kind: BallKind.Solid,
+                Position: pocket.Center + new Vector2(-0.01f, -0.01f),
+                Velocity: new Vector2(-0.1f, -0.1f),
+                Spin: new SpinState(0.0f, 0.0f, 0.0f),
+                IsPocketed: false));
+
+        var result = world.Advance(0.01f);
+
+        Assert.True(result.Balls[0].IsPocketed);
+        Assert.Equal(Vector2.Zero, result.Balls[0].Velocity, new Vector2Comparer(0.0001f));
+        Assert.Contains(result.Events, evt => evt.EventType == ShotEventType.Pocketed && evt.BallNumber == 3 && evt.Detail == pocket.SourceName);
+        Assert.DoesNotContain(result.Events, evt => evt.EventType == ShotEventType.Scratch);
+    }
+
+    [Fact]
+    public void Advance_PocketsCueBallAndEmitsScratchEvent()
+    {
+        var table = CustomTable9FtSpec.Create();
+        var pocket = table.Pockets.First(p => p.SourceName == "Pocket_TM6");
+        var world = CreatePocketWorld(
+            new BallState(
+                BallNumber: 0,
+                Kind: BallKind.Cue,
+                Position: pocket.Center + new Vector2(0.0f, 0.01f),
+                Velocity: new Vector2(0.0f, 0.1f),
+                Spin: new SpinState(0.0f, 0.0f, 0.0f),
+                IsPocketed: false));
+
+        var result = world.Advance(0.01f);
+
+        Assert.True(result.Balls[0].IsPocketed);
+        Assert.Contains(result.Events, evt => evt.EventType == ShotEventType.Pocketed && evt.BallNumber == 0 && evt.Detail == pocket.SourceName);
+        Assert.Contains(result.Events, evt => evt.EventType == ShotEventType.Scratch && evt.BallNumber == 0 && evt.Detail == pocket.SourceName);
     }
 
     private static SimulationWorld CreateShellWorld(Vector2 cueBallVelocity)
@@ -364,6 +410,29 @@ public sealed class SimulationWorldTests
     }
 
     private static SimulationWorld CreateBoundaryWorld(BallState ball)
+    {
+        var config = new SimulationConfig(
+            fixedStepSeconds: 0.01f,
+            settleSpeedThresholdMetersPerSecond: 0.0001f,
+            maxFixedStepsPerAdvance: 64,
+            maxSideSpinRps: 12.0f,
+            maxFollowSpinRps: 10.0f,
+            maxDrawSpinRps: 11.0f,
+            slidingFrictionAccelerationMetersPerSecondSquared: 0.0f,
+            rollingFrictionAccelerationMetersPerSecondSquared: 0.0f,
+            spinDecayRpsPerSecond: 0.0f,
+            rollingMatchToleranceMetersPerSecond: 0.01f,
+            spinSettleThresholdRps: 0.05f,
+            ballCollisionRestitution: 1.0f,
+            maxCollisionIterationsPerStep: 4,
+            boundaryRestitution: 1.0f,
+            maxBoundaryIterationsPerStep: 4);
+
+        var table = CustomTable9FtSpec.Create();
+        return new SimulationWorld(table, config, new[] { ball });
+    }
+
+    private static SimulationWorld CreatePocketWorld(BallState ball)
     {
         var config = new SimulationConfig(
             fixedStepSeconds: 0.01f,

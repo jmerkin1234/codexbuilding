@@ -6,6 +6,15 @@ public static class BallCollisionResolver
 {
     public static int Resolve(List<BallState> balls, float ballDiameterMeters, SimulationConfig config)
     {
+        return Resolve(balls, ballDiameterMeters, config, onCollision: null);
+    }
+
+    public static int Resolve(
+        List<BallState> balls,
+        float ballDiameterMeters,
+        SimulationConfig config,
+        Action<int, int>? onCollision)
+    {
         var collisionCount = 0;
         var ballDiameterSquared = ballDiameterMeters * ballDiameterMeters;
 
@@ -40,6 +49,7 @@ public static class BallCollisionResolver
 
                     balls[firstIndex] = firstBall;
                     balls[secondIndex] = secondBall;
+                    onCollision?.Invoke(firstBall.BallNumber, secondBall.BallNumber);
                     resolvedAnyCollision = true;
                     collisionCount++;
                 }

@@ -71,7 +71,13 @@ Scope:
 - overlap correction against table boundaries
 
 8. Pocket capture and shot event expansion
-Status: pending
+Status: complete
+Scope:
+- pocket capture from hardcoded pocket centers and radii
+- cue-ball scratch detection
+- first-contact event emission
+- cushion and jaw contact events
+- pocketed-ball events
 
 9. Deterministic replay and regression coverage
 Status: pending
@@ -84,4 +90,4 @@ Status: pending
 
 ## Current Focus
 
-Right now the repo is moving from step 7 to step 8. Table boundaries are in; the next increment is pocket capture and shot event expansion.
+Right now the repo is moving from step 8 to step 9. Pocket capture and shot events are in; the next increment is deterministic replay and regression coverage.

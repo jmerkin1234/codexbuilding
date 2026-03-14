@@ -8,12 +8,14 @@ public sealed class SimulationWorld
     private readonly List<BallState> _balls;
     private readonly List<ShotEvent> _eventLog = new();
     private readonly List<ShotEvent> _pendingEvents = new();
+    private bool _firstContactRecorded;
 
     public SimulationWorld(TableSpec tableSpec, SimulationConfig config, IEnumerable<BallState> initialBalls)
     {
         TableSpec = tableSpec;
         Config = config;
         _balls = new List<BallState>(initialBalls);
+        _firstContactRecorded = false;
         Phase = HasActiveMotion() ? SimulationPhase.Running : SimulationPhase.Idle;
     }
 
@@ -39,6 +41,7 @@ public sealed class SimulationWorld
         _balls.AddRange(balls);
         _eventLog.Clear();
         _pendingEvents.Clear();
+        _firstContactRecorded = false;
         Phase = HasActiveMotion() ? SimulationPhase.Running : SimulationPhase.Idle;
         SimulationTimeSeconds = 0.0f;
         AccumulatorSeconds = 0.0f;
@@ -67,6 +70,7 @@ public sealed class SimulationWorld
         };
 
         AccumulatorSeconds = 0.0f;
+        _firstContactRecorded = false;
         PublishEvent(new ShotEvent(
             ShotEventType.CueStrike,
             ballNumber: cueBall.BallNumber,
@@ -163,6 +167,9 @@ public sealed class SimulationWorld
     private void ExecuteFixedStep(float fixedStepSeconds)
     {
         var ballRadiusMeters = TableSpec.BallDiameterMeters * 0.5f;
+        var boundaryHits = new HashSet<string>(StringComparer.Ordinal);
+        var ballContacts = new HashSet<string>(StringComparer.Ordinal);
+        var pocketedThisStep = new HashSet<int>();
 
         for (var index = 0; index < _balls.Count; index++)
         {
@@ -180,28 +187,100 @@ public sealed class SimulationWorld
             TableSpec.Cushions,
             ballRadiusMeters,
             Config.BoundaryRestitution,
-            Config.MaxBoundaryIterationsPerStep);
+            Config.MaxBoundaryIterationsPerStep,
+            onCollision: (ballNumber, segmentName) => boundaryHits.Add($"{ballNumber}:{segmentName}"));
         TableBoundaryResolver.Resolve(
             _balls,
             TableSpec.JawSegments,
             ballRadiusMeters,
             Config.BoundaryRestitution,
-            Config.MaxBoundaryIterationsPerStep);
-        BallCollisionResolver.Resolve(_balls, TableSpec.BallDiameterMeters, Config);
+            Config.MaxBoundaryIterationsPerStep,
+            onCollision: (ballNumber, segmentName) => boundaryHits.Add($"{ballNumber}:{segmentName}"));
+        BallCollisionResolver.Resolve(
+            _balls,
+            TableSpec.BallDiameterMeters,
+            Config,
+            onCollision: (firstBallNumber, secondBallNumber) =>
+            {
+                var low = Math.Min(firstBallNumber, secondBallNumber);
+                var high = Math.Max(firstBallNumber, secondBallNumber);
+                ballContacts.Add($"{low}:{high}");
+            });
         TableBoundaryResolver.Resolve(
             _balls,
             TableSpec.Cushions,
             ballRadiusMeters,
             Config.BoundaryRestitution,
-            Config.MaxBoundaryIterationsPerStep);
+            Config.MaxBoundaryIterationsPerStep,
+            onCollision: (ballNumber, segmentName) => boundaryHits.Add($"{ballNumber}:{segmentName}"));
         TableBoundaryResolver.Resolve(
             _balls,
             TableSpec.JawSegments,
             ballRadiusMeters,
             Config.BoundaryRestitution,
-            Config.MaxBoundaryIterationsPerStep);
+            Config.MaxBoundaryIterationsPerStep,
+            onCollision: (ballNumber, segmentName) => boundaryHits.Add($"{ballNumber}:{segmentName}"));
+        PocketCaptureResolver.Resolve(
+            _balls,
+            TableSpec.Pockets,
+            onPocketed: (ballNumber, pocketName) =>
+            {
+                pocketedThisStep.Add(ballNumber);
+                PublishEvent(new ShotEvent(ShotEventType.Pocketed, ballNumber, pocketName));
+                if (ballNumber == 0)
+                {
+                    PublishEvent(new ShotEvent(ShotEventType.Scratch, ballNumber, pocketName));
+                }
+            });
+
+        PublishBoundaryContactEvents(boundaryHits);
+        PublishBallContactEvents(ballContacts);
 
         SimulationTimeSeconds += fixedStepSeconds;
+    }
+
+    private void PublishBoundaryContactEvents(IEnumerable<string> boundaryHits)
+    {
+        foreach (var hit in boundaryHits)
+        {
+            var separatorIndex = hit.IndexOf(':');
+            var ballNumber = int.Parse(hit.AsSpan(0, separatorIndex));
+            var segmentName = hit[(separatorIndex + 1)..];
+
+            PublishEvent(new ShotEvent(
+                ShotEventType.CushionContact,
+                ballNumber,
+                segmentName));
+        }
+    }
+
+    private void PublishBallContactEvents(IEnumerable<string> ballContacts)
+    {
+        if (_firstContactRecorded)
+        {
+            return;
+        }
+
+        foreach (var contact in ballContacts)
+        {
+            var separatorIndex = contact.IndexOf(':');
+            var firstBallNumber = int.Parse(contact.AsSpan(0, separatorIndex));
+            var secondBallNumber = int.Parse(contact.AsSpan(separatorIndex + 1));
+
+            if (firstBallNumber == 0 && secondBallNumber != 0)
+            {
+                PublishEvent(new ShotEvent(ShotEventType.FirstContact, secondBallNumber, $"cue->{secondBallNumber}"));
+                _firstContactRecorded = true;
+                return;
+            }
+
+            if (secondBallNumber == 0 && firstBallNumber != 0)
+            {
+                PublishEvent(new ShotEvent(ShotEventType.FirstContact, firstBallNumber, $"cue->{firstBallNumber}"));
+                _firstContactRecorded = true;
+                return;
+            }
+        }
     }
 
     private bool HasActiveMotion()
