@@ -20,6 +20,8 @@ Current behavior:
 - `Tab` switches between `EightBall` and `Training` mode inside the running adapter.
 - The HUD now shows mode, current player, group assignment, ball-in-hand, winner, and recent rules outcomes.
 - Cue-ball-in-hand and training placement are handled in the adapter with arrow-key repositioning, while the portable core remains the physics authority.
+- Predictive guide meshes are generated from cloned portable simulations, including the primary cue path, post-bounce/post-collision cue continuation, and first-contact object-ball path.
+- Practice mode supports freeplay layout editing by cycling the selected ball and moving it around the cloth.
 
 Keyboard controls:
 
@@ -29,6 +31,7 @@ Keyboard controls:
 - `J/L`: apply left/right english
 - `I/K`: apply follow/draw
 - `Arrow keys`: move the cue ball when ball-in-hand or training placement is active
+- `Z/X`: cycle the selected practice-layout ball in training mode
 - `Space`: shoot
 - `Backspace`: center the tip offset
 - `R`: reset the standard rack

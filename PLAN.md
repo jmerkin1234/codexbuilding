@@ -120,8 +120,18 @@ Scope:
 - Godot adapter compile verification after rules wiring
 
 13. Training/presentation expansion
+Status: complete
+Scope:
+- predictive cue aim line from cloned portable simulations
+- cue continuation line after first bounce or collision
+- contacted object-ball guide line after first hit
+- practice-mode ball selection and free layout movement
+- selected-ball visual emphasis in practice mode
+- Godot adapter compile verification after presentation changes
+
+14. Presentation/polish backlog
 Status: pending
 
 ## Current Focus
 
-Right now the repo is moving from step 12 to step 13. The Godot adapter is rules-aware and training-aware; the next increment is expanding training layout tools and richer in-game presentation.
+Right now the repo is moving from step 13 to step 14. The Godot adapter is rules-aware, training-aware, and has predictive guide visuals; the next increment is broader presentation polish and scenario tooling.
