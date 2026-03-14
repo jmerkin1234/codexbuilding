@@ -162,7 +162,7 @@ public sealed class SimulationWorld
 
     private void ExecuteFixedStep(float fixedStepSeconds)
     {
-        var settleThresholdSquared = Config.SettleSpeedThresholdMetersPerSecond * Config.SettleSpeedThresholdMetersPerSecond;
+        var ballRadiusMeters = TableSpec.BallDiameterMeters * 0.5f;
 
         for (var index = 0; index < _balls.Count; index++)
         {
@@ -172,18 +172,7 @@ public sealed class SimulationWorld
                 continue;
             }
 
-            var velocity = ball.Velocity;
-            if (velocity.LengthSquared() <= settleThresholdSquared)
-            {
-                velocity = Vector2.Zero;
-            }
-
-            var position = ball.Position + (velocity * fixedStepSeconds);
-            _balls[index] = ball with
-            {
-                Position = position,
-                Velocity = velocity
-            };
+            _balls[index] = ClothMotionIntegrator.Advance(ball, ballRadiusMeters, Config, fixedStepSeconds);
         }
 
         SimulationTimeSeconds += fixedStepSeconds;
@@ -192,6 +181,7 @@ public sealed class SimulationWorld
     private bool HasActiveMotion()
     {
         var settleThresholdSquared = Config.SettleSpeedThresholdMetersPerSecond * Config.SettleSpeedThresholdMetersPerSecond;
+        var spinSettleThreshold = Config.SpinSettleThresholdRps;
 
         foreach (var ball in _balls)
         {
@@ -201,6 +191,13 @@ public sealed class SimulationWorld
             }
 
             if (ball.Velocity.LengthSquared() > settleThresholdSquared)
+            {
+                return true;
+            }
+
+            if (MathF.Abs(ball.Spin.SideSpinRps) > spinSettleThreshold ||
+                MathF.Abs(ball.Spin.ForwardSpinRps) > spinSettleThreshold ||
+                MathF.Abs(ball.Spin.VerticalSpinRps) > spinSettleThreshold)
             {
                 return true;
             }

@@ -8,7 +8,12 @@ public sealed class SimulationConfig
         maxFixedStepsPerAdvance: 512,
         maxSideSpinRps: 12.0f,
         maxFollowSpinRps: 10.0f,
-        maxDrawSpinRps: 11.0f);
+        maxDrawSpinRps: 11.0f,
+        slidingFrictionAccelerationMetersPerSecondSquared: 1.8f,
+        rollingFrictionAccelerationMetersPerSecondSquared: 0.22f,
+        spinDecayRpsPerSecond: 1.2f,
+        rollingMatchToleranceMetersPerSecond: 0.01f,
+        spinSettleThresholdRps: 0.05f);
 
     public SimulationConfig(
         float fixedStepSeconds,
@@ -16,7 +21,12 @@ public sealed class SimulationConfig
         int maxFixedStepsPerAdvance,
         float maxSideSpinRps,
         float maxFollowSpinRps,
-        float maxDrawSpinRps)
+        float maxDrawSpinRps,
+        float slidingFrictionAccelerationMetersPerSecondSquared = 1.8f,
+        float rollingFrictionAccelerationMetersPerSecondSquared = 0.22f,
+        float spinDecayRpsPerSecond = 1.2f,
+        float rollingMatchToleranceMetersPerSecond = 0.01f,
+        float spinSettleThresholdRps = 0.05f)
     {
         if (fixedStepSeconds <= 0.0f)
         {
@@ -52,12 +62,50 @@ public sealed class SimulationConfig
             throw new ArgumentOutOfRangeException(nameof(maxDrawSpinRps), "Max draw spin cannot be negative.");
         }
 
+        if (slidingFrictionAccelerationMetersPerSecondSquared < 0.0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(slidingFrictionAccelerationMetersPerSecondSquared),
+                "Sliding friction acceleration cannot be negative.");
+        }
+
+        if (rollingFrictionAccelerationMetersPerSecondSquared < 0.0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(rollingFrictionAccelerationMetersPerSecondSquared),
+                "Rolling friction acceleration cannot be negative.");
+        }
+
+        if (spinDecayRpsPerSecond < 0.0f)
+        {
+            throw new ArgumentOutOfRangeException(nameof(spinDecayRpsPerSecond), "Spin decay cannot be negative.");
+        }
+
+        if (rollingMatchToleranceMetersPerSecond < 0.0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(rollingMatchToleranceMetersPerSecond),
+                "Rolling-match tolerance cannot be negative.");
+        }
+
+        if (spinSettleThresholdRps < 0.0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(spinSettleThresholdRps),
+                "Spin-settle threshold cannot be negative.");
+        }
+
         FixedStepSeconds = fixedStepSeconds;
         SettleSpeedThresholdMetersPerSecond = settleSpeedThresholdMetersPerSecond;
         MaxFixedStepsPerAdvance = maxFixedStepsPerAdvance;
         MaxSideSpinRps = maxSideSpinRps;
         MaxFollowSpinRps = maxFollowSpinRps;
         MaxDrawSpinRps = maxDrawSpinRps;
+        SlidingFrictionAccelerationMetersPerSecondSquared = slidingFrictionAccelerationMetersPerSecondSquared;
+        RollingFrictionAccelerationMetersPerSecondSquared = rollingFrictionAccelerationMetersPerSecondSquared;
+        SpinDecayRpsPerSecond = spinDecayRpsPerSecond;
+        RollingMatchToleranceMetersPerSecond = rollingMatchToleranceMetersPerSecond;
+        SpinSettleThresholdRps = spinSettleThresholdRps;
     }
 
     public float FixedStepSeconds { get; }
@@ -71,4 +119,14 @@ public sealed class SimulationConfig
     public float MaxFollowSpinRps { get; }
 
     public float MaxDrawSpinRps { get; }
+
+    public float SlidingFrictionAccelerationMetersPerSecondSquared { get; }
+
+    public float RollingFrictionAccelerationMetersPerSecondSquared { get; }
+
+    public float SpinDecayRpsPerSecond { get; }
+
+    public float RollingMatchToleranceMetersPerSecond { get; }
+
+    public float SpinSettleThresholdRps { get; }
 }

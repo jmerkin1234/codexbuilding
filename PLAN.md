@@ -47,7 +47,7 @@ Not included:
 - collision-side spin transfer
 
 5. Cloth motion model
-Status: pending
+Status: complete
 Scope:
 - sliding
 - rolling
@@ -74,4 +74,4 @@ Status: pending
 
 ## Current Focus
 
-Right now the repo is moving from step 4 to step 5. Cue strike input is seeded into the shell; the next increment is cloth motion and spin decay.
+Right now the repo is moving from step 5 to step 6. Straight-line cloth motion is in; the next increment is ball-ball collision resolution.

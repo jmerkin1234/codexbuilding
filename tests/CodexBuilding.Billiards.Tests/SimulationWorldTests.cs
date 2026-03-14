@@ -9,7 +9,7 @@ public sealed class SimulationWorldTests
     [Fact]
     public void Advance_AccumulatesPartialDeltaUntilFixedStepBoundary()
     {
-        var world = CreateWorld(new Vector2(1.0f, 0.0f));
+        var world = CreateShellWorld(new Vector2(1.0f, 0.0f));
 
         var first = world.Advance(0.05f);
         var second = world.Advance(0.05f);
@@ -29,7 +29,7 @@ public sealed class SimulationWorldTests
     [Fact]
     public void Advance_UsesOnlyWholeFixedSteps()
     {
-        var world = CreateWorld(new Vector2(2.0f, 0.0f));
+        var world = CreateShellWorld(new Vector2(2.0f, 0.0f));
 
         var result = world.Advance(0.35f);
 
@@ -43,7 +43,7 @@ public sealed class SimulationWorldTests
     [Fact]
     public void Advance_DoesNotConsumeTimeWhileIdle()
     {
-        var world = CreateWorld(Vector2.Zero);
+        var world = CreateShellWorld(Vector2.Zero);
 
         var result = world.Advance(0.5f);
 
@@ -56,7 +56,7 @@ public sealed class SimulationWorldTests
     [Fact]
     public void Advance_EmitsSettledEventOnlyOnceAfterShotStops()
     {
-        var world = CreateWorld(Vector2.Zero);
+        var world = CreateShellWorld(Vector2.Zero);
         world.ApplyCueStrike(new ShotInput(Vector2.UnitX, 0.005f, Vector2.Zero));
 
         var first = world.Advance(0.1f);
@@ -75,7 +75,7 @@ public sealed class SimulationWorldTests
     [Fact]
     public void ApplyCueStrike_NormalizesAimAndSetsCueBallVelocity()
     {
-        var world = CreateWorld(Vector2.Zero);
+        var world = CreateShellWorld(Vector2.Zero);
 
         var resolved = world.ApplyCueStrike(new ShotInput(new Vector2(3.0f, 4.0f), 2.5f, Vector2.Zero));
 
@@ -88,7 +88,7 @@ public sealed class SimulationWorldTests
     [Fact]
     public void ApplyCueStrike_ClampsTipOffsetAndMapsSpin()
     {
-        var world = CreateWorld(Vector2.Zero);
+        var world = CreateShellWorld(Vector2.Zero);
 
         var resolved = world.ApplyCueStrike(new ShotInput(Vector2.UnitX, 3.0f, new Vector2(2.0f, 0.0f)));
 
@@ -101,7 +101,7 @@ public sealed class SimulationWorldTests
     [Fact]
     public void ApplyCueStrike_ThrowsForZeroAimDirection()
     {
-        var world = CreateWorld(Vector2.Zero);
+        var world = CreateShellWorld(Vector2.Zero);
 
         Assert.Throws<ArgumentException>(() => world.ApplyCueStrike(new ShotInput(Vector2.Zero, 1.0f, Vector2.Zero)));
     }
@@ -119,12 +119,70 @@ public sealed class SimulationWorldTests
     [Fact]
     public void ApplyCueStrike_ThrowsWhileBallsAreStillMoving()
     {
-        var world = CreateWorld(new Vector2(1.0f, 0.0f));
+        var world = CreateShellWorld(new Vector2(1.0f, 0.0f));
 
         Assert.Throws<InvalidOperationException>(() => world.ApplyCueStrike(new ShotInput(Vector2.UnitX, 1.0f, Vector2.Zero)));
     }
 
-    private static SimulationWorld CreateWorld(Vector2 cueBallVelocity)
+    [Fact]
+    public void Advance_SlidingBallDeceleratesAndBuildsForwardSpin()
+    {
+        var world = CreateClothWorld(
+            velocity: new Vector2(1.0f, 0.0f),
+            spin: new SpinState(0.0f, 0.0f, 0.0f));
+
+        var result = world.Advance(0.1f);
+
+        Assert.True(result.Balls[0].Velocity.Length() < 1.0f);
+        Assert.True(result.Balls[0].Spin.ForwardSpinRps > 0.0f);
+        Assert.True(result.Balls[0].Position.X > 0.0f);
+    }
+
+    [Fact]
+    public void Advance_RollingBallStaysMatchedWhileSlowing()
+    {
+        const float speed = 1.0f;
+        var rollingSpin = ToForwardSpinRps(speed);
+        var world = CreateClothWorld(
+            velocity: new Vector2(speed, 0.0f),
+            spin: new SpinState(0.0f, rollingSpin, 0.0f));
+
+        var result = world.Advance(0.1f);
+        var newSpeed = result.Balls[0].Velocity.Length();
+        var newSurfaceSpeed = ToSurfaceSpeed(result.Balls[0].Spin.ForwardSpinRps);
+
+        Assert.True(newSpeed < speed);
+        Assert.InRange(MathF.Abs(newSpeed - newSurfaceSpeed), 0.0f, 0.0001f);
+    }
+
+    [Fact]
+    public void Advance_OverspinBallAcceleratesForwardBeforeItMatchesRoll()
+    {
+        const float initialSpeed = 0.4f;
+        var overspin = ToForwardSpinRps(0.9f);
+        var world = CreateClothWorld(
+            velocity: new Vector2(initialSpeed, 0.0f),
+            spin: new SpinState(0.0f, overspin, 0.0f));
+
+        var result = world.Advance(0.1f);
+
+        Assert.True(result.Balls[0].Velocity.Length() > initialSpeed);
+        Assert.True(result.Balls[0].Spin.ForwardSpinRps < overspin);
+    }
+
+    [Fact]
+    public void Advance_SideSpinDecaysWhileBallTravels()
+    {
+        var world = CreateClothWorld(
+            velocity: new Vector2(1.0f, 0.0f),
+            spin: new SpinState(4.0f, 0.0f, 0.0f));
+
+        var result = world.Advance(0.2f);
+
+        Assert.True(result.Balls[0].Spin.SideSpinRps < 4.0f);
+    }
+
+    private static SimulationWorld CreateShellWorld(Vector2 cueBallVelocity)
     {
         var table = CustomTable9FtSpec.Create();
         var config = new SimulationConfig(
@@ -133,17 +191,57 @@ public sealed class SimulationWorldTests
             maxFixedStepsPerAdvance: 64,
             maxSideSpinRps: 12.0f,
             maxFollowSpinRps: 10.0f,
-            maxDrawSpinRps: 11.0f);
+            maxDrawSpinRps: 11.0f,
+            slidingFrictionAccelerationMetersPerSecondSquared: 0.0f,
+            rollingFrictionAccelerationMetersPerSecondSquared: 0.0f,
+            spinDecayRpsPerSecond: 0.0f,
+            rollingMatchToleranceMetersPerSecond: 0.01f,
+            spinSettleThresholdRps: 0.05f);
+
+        return CreateWorld(cueBallVelocity, new SpinState(0.0f, 0.0f, 0.0f), config);
+    }
+
+    private static SimulationWorld CreateClothWorld(Vector2 velocity, SpinState spin)
+    {
+        var config = new SimulationConfig(
+            fixedStepSeconds: 0.1f,
+            settleSpeedThresholdMetersPerSecond: 0.01f,
+            maxFixedStepsPerAdvance: 64,
+            maxSideSpinRps: 12.0f,
+            maxFollowSpinRps: 10.0f,
+            maxDrawSpinRps: 11.0f,
+            slidingFrictionAccelerationMetersPerSecondSquared: 1.8f,
+            rollingFrictionAccelerationMetersPerSecondSquared: 0.22f,
+            spinDecayRpsPerSecond: 1.2f,
+            rollingMatchToleranceMetersPerSecond: 0.01f,
+            spinSettleThresholdRps: 0.05f);
+
+        return CreateWorld(velocity, spin, config);
+    }
+
+    private static SimulationWorld CreateWorld(Vector2 cueBallVelocity, SpinState spin, SimulationConfig config)
+    {
+        var table = CustomTable9FtSpec.Create();
 
         var cueBall = new BallState(
             BallNumber: 0,
             Kind: BallKind.Cue,
             Position: Vector2.Zero,
             Velocity: cueBallVelocity,
-            Spin: new SpinState(0.0f, 0.0f, 0.0f),
+            Spin: spin,
             IsPocketed: false);
 
         return new SimulationWorld(table, config, new[] { cueBall });
+    }
+
+    private static float ToForwardSpinRps(float surfaceSpeed)
+    {
+        return surfaceSpeed / (2.0f * MathF.PI * 0.028575f);
+    }
+
+    private static float ToSurfaceSpeed(float forwardSpinRps)
+    {
+        return forwardSpinRps * 2.0f * MathF.PI * 0.028575f;
     }
 
     private sealed class Vector2Comparer : IEqualityComparer<Vector2>
