@@ -27,7 +27,7 @@ public partial class Main : Node3D
 	private const float PocketDepthMeters = 0.08f;
 	private const float CueGuideThicknessMeters = 0.012f;
 	private const float CueGuideHeightMeters = 0.012f;
-	private const float AimGuideThicknessMeters = 0.008f;
+	private const float AimGuideThicknessPixels = 2.0f;
 	private const float AimGuideHeightMeters = 0.01f;
 	private const float ComputerTurnThinkDelaySeconds = 0.8f;
 	private const int ComputerMaxSimulationSteps = 900;
@@ -49,8 +49,8 @@ public partial class Main : Node3D
 	private const float BallVisualTeleportResetMeters = 0.4f;
 	private const float CueStickTipGapMeters = 0.03f;
 	private const float CueStickPowerPullbackMeters = 0.18f;
-	private const int AimPreviewPostInteractionFrames = 18;
-	private const int AimPreviewMaxSteps = 240;
+	private const int AimPreviewPostInteractionFrames = 48;
+	private const int AimPreviewMaxSteps = 360;
 
 	private readonly Color[] _ballPalette =
 	[

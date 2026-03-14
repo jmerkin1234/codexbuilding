@@ -275,7 +275,7 @@ public partial class Main
 
 		guideNode.Visible = true;
 		guideNode.Position = (startPoint + endPoint) * 0.5f;
-		((BoxMesh)guideNode.Mesh!).Size = new Vector3(AimGuideThicknessMeters, AimGuideHeightMeters, segmentLength);
+		((BoxMesh)guideNode.Mesh!).Size = new Vector3(GetGuideLineThicknessWorldMeters(AimGuideThicknessPixels), AimGuideHeightMeters, segmentLength);
 		guideNode.LookAt(guideNode.Position + segment, Vector3.Up);
 	}
 
@@ -298,11 +298,11 @@ public partial class Main
 
 		guideNode.Visible = true;
 		guideNode.Position = (startPoint + endPoint) * 0.5f;
-		((BoxMesh)guideNode.Mesh!).Size = new Vector3(GetOverlayLineThicknessWorldMeters(), OverlayLineHeightMeters, segmentLength);
+		((BoxMesh)guideNode.Mesh!).Size = new Vector3(GetGuideLineThicknessWorldMeters(_overlayLineThicknessPixels), OverlayLineHeightMeters, segmentLength);
 		guideNode.LookAt(guideNode.Position + segment, Vector3.Up);
 	}
 
-	private float GetOverlayLineThicknessWorldMeters()
+	private float GetGuideLineThicknessWorldMeters(float thicknessPixels)
 	{
 		if (_camera == null)
 		{
@@ -313,14 +313,14 @@ public partial class Main
 		if (_camera.Projection == Camera3D.ProjectionType.Orthogonal)
 		{
 			var worldUnitsPerPixel = _camera.Size / viewportHeightPixels;
-			return Mathf.Clamp(_overlayLineThicknessPixels * worldUnitsPerPixel, 0.0005f, 0.01f);
+			return Mathf.Clamp(thicknessPixels * worldUnitsPerPixel, 0.0005f, 0.01f);
 		}
 
 		var tableCenter = GetTableCenter3D();
 		var distanceToTable = Mathf.Max((_camera.GlobalPosition - tableCenter).Length(), 0.1f);
 		var worldHeightAtTable = 2.0f * distanceToTable * Mathf.Tan(Mathf.DegToRad(_camera.Fov) * 0.5f);
 		var perspectiveUnitsPerPixel = worldHeightAtTable / viewportHeightPixels;
-		return Mathf.Clamp(_overlayLineThicknessPixels * perspectiveUnitsPerPixel, 0.0005f, 0.01f);
+		return Mathf.Clamp(thicknessPixels * perspectiveUnitsPerPixel, 0.0005f, 0.01f);
 	}
 
 	private Color ResolveOverlayColor(string overlayName, Color defaultColor)
