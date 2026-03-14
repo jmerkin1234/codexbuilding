@@ -12,3 +12,6 @@ export_presets.cfg
 # OS/editor noise
 .DS_Store
 Thumbs.db
+
+# Blender backups
+*.blend1

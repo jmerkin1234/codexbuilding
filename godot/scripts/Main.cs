@@ -41,10 +41,12 @@ public partial class Main : Node3D
 	private enum RuleMode
 	{
 		EightBall,
-		Training
+		Training,
+		Calibration
 	}
 
 	private const string ImportedTableScenePath = "res://art/customtable_9ft.blend";
+	private const string CalibrationProfilePath = "user://table_calibration.json";
 	private const float FeltThicknessMeters = 0.04f;
 	private const float FrameThicknessMeters = 0.1f;
 	private const float FrameOverhangMeters = 0.22f;
@@ -105,7 +107,10 @@ public partial class Main : Node3D
 		new("SideRail", new Vector3(0.0f, 1.82f, 2.35f), false, 0.0f, 40.0f)
 	];
 
+	private readonly List<CalibrationField> _calibrationFields = new();
+	private TableSpec _baseTableSpec = null!;
 	private TableSpec _tableSpec = null!;
+	private TableCalibrationProfile _tableCalibrationProfile = null!;
 	private SimulationConfig _config = null!;
 	private SimulationWorld _world = null!;
 	private Node3D _godotRoot = null!;
@@ -131,6 +136,7 @@ public partial class Main : Node3D
 	private Label _menuModeLabel = null!;
 	private Button _menuPlayEightBallButton = null!;
 	private Button _menuPlayFreePlayButton = null!;
+	private Button _menuOpenTuningButton = null!;
 	private Button _menuResumeButton = null!;
 	private Button _menuResetButton = null!;
 	private Button _menuReturnToMenuButton = null!;
@@ -182,6 +188,7 @@ public partial class Main : Node3D
 	private bool _menuVisible = true;
 	private bool _sessionStarted;
 	private DebugTuningField _selectedTuningField = DebugTuningField.SlidingFriction;
+	private int _selectedCalibrationFieldIndex;
 	private int _trainingSelectedBallNumber;
 	private int _cameraPresetIndex = 1;
 	private float _cameraZoomScale = 1.0f;
@@ -198,7 +205,10 @@ public partial class Main : Node3D
 	public override void _Ready()
 	{
 		ConfigureWindowDefaults();
-		_tableSpec = CustomTable9FtSpec.Create();
+		_baseTableSpec = CustomTable9FtSpec.Create();
+		_tableCalibrationProfile = TableCalibrationProfile.LoadOrDefault(GetCalibrationProfileAbsolutePath(), _baseTableSpec);
+		_tableSpec = TableCalibrationBuilder.Apply(_baseTableSpec, _tableCalibrationProfile);
+		BuildCalibrationFields();
 		_config = SimulationConfig.Default;
 		_world = new SimulationWorld(_tableSpec, _config, StandardEightBallRack.Create(_tableSpec));
 
@@ -338,6 +348,9 @@ public partial class Main : Node3D
 				case Key.Key2:
 					StartMenuSelection(RuleMode.Training);
 					break;
+				case Key.Key3:
+					StartMenuSelection(RuleMode.Calibration);
+					break;
 			}
 
 			return;
@@ -346,6 +359,34 @@ public partial class Main : Node3D
 		if (_world.Phase == SimulationPhase.Running)
 		{
 			return;
+		}
+
+		if (_ruleMode == RuleMode.Calibration)
+		{
+			switch (keyEvent.Keycode)
+			{
+				case Key.Comma:
+					CycleCalibrationField(-1, keyEvent.ShiftPressed);
+					return;
+				case Key.Period:
+					CycleCalibrationField(1, keyEvent.ShiftPressed);
+					return;
+				case Key.Minus:
+					AdjustSelectedCalibrationField(-1, keyEvent.ShiftPressed);
+					return;
+				case Key.Equal:
+					AdjustSelectedCalibrationField(1, keyEvent.ShiftPressed);
+					return;
+				case Key.P:
+					SaveCalibrationProfile();
+					return;
+				case Key.O:
+					ReloadCalibrationProfile();
+					return;
+				case Key.U:
+					ResetCalibrationProfile();
+					return;
+			}
 		}
 
 		switch (keyEvent.Keycode)
@@ -481,9 +522,9 @@ public partial class Main : Node3D
 		_menuPanel.AnchorTop = 0.5f;
 		_menuPanel.AnchorBottom = 0.5f;
 		_menuPanel.OffsetLeft = -250.0f;
-		_menuPanel.OffsetTop = -225.0f;
+		_menuPanel.OffsetTop = -260.0f;
 		_menuPanel.OffsetRight = 250.0f;
-		_menuPanel.OffsetBottom = 225.0f;
+		_menuPanel.OffsetBottom = 260.0f;
 		_menuPanel.AddThemeStyleboxOverride(
 			"panel",
 			CreateHudPanelStyle(
@@ -519,13 +560,16 @@ public partial class Main : Node3D
 		_menuPlayFreePlayButton = CreateMenuButton(_menuPanel, "MenuPlayFreePlayButton", "Open FreePlay", 242.0f);
 		_menuPlayFreePlayButton.Pressed += () => StartMenuSelection(RuleMode.Training);
 
-		_menuResumeButton = CreateMenuButton(_menuPanel, "MenuResumeButton", "Resume Current Table", 296.0f);
+		_menuOpenTuningButton = CreateMenuButton(_menuPanel, "MenuOpenTuningButton", "Open Tuning Mode", 296.0f);
+		_menuOpenTuningButton.Pressed += () => StartMenuSelection(RuleMode.Calibration);
+
+		_menuResumeButton = CreateMenuButton(_menuPanel, "MenuResumeButton", "Resume Current Table", 350.0f);
 		_menuResumeButton.Pressed += CloseMenu;
 
-		_menuResetButton = CreateMenuButton(_menuPanel, "MenuResetButton", "Reset Current Mode", 350.0f);
+		_menuResetButton = CreateMenuButton(_menuPanel, "MenuResetButton", "Reset Current Mode", 404.0f);
 		_menuResetButton.Pressed += ResetCurrentModeFromMenu;
 
-		_menuReturnToMenuButton = CreateMenuButton(_menuPanel, "MenuReturnToMenuButton", "Return To Start Screen", 404.0f);
+		_menuReturnToMenuButton = CreateMenuButton(_menuPanel, "MenuReturnToMenuButton", "Return To Start Screen", 458.0f);
 		_menuReturnToMenuButton.Pressed += ReturnToStartMenu;
 
 		_shotBannerPanel = EnsureNode<Panel>(hud, "ShotBannerPanel");
@@ -952,10 +996,10 @@ public partial class Main : Node3D
 		var bottomLeft = new NumericsVector2(clothMin.X, clothMax.Y);
 		var bottomRight = new NumericsVector2(clothMax.X, clothMax.Y);
 
-		AddOverlaySegment(_overlayClothRoot, "OverlayClothTop", topLeft, topRight, new Color(0.76f, 0.92f, 0.98f), 0.020f);
-		AddOverlaySegment(_overlayClothRoot, "OverlayClothBottom", bottomLeft, bottomRight, new Color(0.76f, 0.92f, 0.98f), 0.020f);
-		AddOverlaySegment(_overlayClothRoot, "OverlayClothLeft", topLeft, bottomLeft, new Color(0.76f, 0.92f, 0.98f), 0.020f);
-		AddOverlaySegment(_overlayClothRoot, "OverlayClothRight", topRight, bottomRight, new Color(0.76f, 0.92f, 0.98f), 0.020f);
+		AddOverlaySegment(_overlayClothRoot, "OverlayClothTop", topLeft, topRight, ResolveOverlayColor("OverlayClothTop", new Color(0.76f, 0.92f, 0.98f)), 0.020f);
+		AddOverlaySegment(_overlayClothRoot, "OverlayClothBottom", bottomLeft, bottomRight, ResolveOverlayColor("OverlayClothBottom", new Color(0.76f, 0.92f, 0.98f)), 0.020f);
+		AddOverlaySegment(_overlayClothRoot, "OverlayClothLeft", topLeft, bottomLeft, ResolveOverlayColor("OverlayClothLeft", new Color(0.76f, 0.92f, 0.98f)), 0.020f);
+		AddOverlaySegment(_overlayClothRoot, "OverlayClothRight", topRight, bottomRight, ResolveOverlayColor("OverlayClothRight", new Color(0.76f, 0.92f, 0.98f)), 0.020f);
 
 		foreach (var cushion in _tableSpec.Cushions)
 		{
@@ -964,7 +1008,7 @@ public partial class Main : Node3D
 				$"Overlay_{cushion.SourceName}",
 				cushion.Start,
 				cushion.End,
-				new Color(0.98f, 0.59f, 0.2f),
+				ResolveOverlayColor($"Overlay_{cushion.SourceName}", new Color(0.98f, 0.59f, 0.2f)),
 				0.024f);
 		}
 
@@ -975,7 +1019,7 @@ public partial class Main : Node3D
 				$"Overlay_{jaw.SourceName}",
 				jaw.Start,
 				jaw.End,
-				new Color(0.95f, 0.31f, 0.35f),
+				ResolveOverlayColor($"Overlay_{jaw.SourceName}", new Color(0.95f, 0.31f, 0.35f)),
 				0.028f);
 		}
 
@@ -986,12 +1030,12 @@ public partial class Main : Node3D
 				$"Overlay_{pocket.SourceName}",
 				pocket.Center,
 				pocket.CaptureRadiusMeters,
-				new Color(0.44f, 0.86f, 0.97f),
+				ResolveOverlayColor($"Overlay_{pocket.SourceName}", new Color(0.44f, 0.86f, 0.97f)),
 				0.032f);
 		}
 
-		AddOverlayCross(_overlaySpotRoot, "OverlayCueBallSpawn", _tableSpec.CueBallSpawn, 0.032f, new Color(0.95f, 0.95f, 0.95f), 0.036f);
-		AddOverlayCross(_overlaySpotRoot, "OverlayRackApexSpot", _tableSpec.RackApexSpot, 0.032f, new Color(0.95f, 0.82f, 0.22f), 0.036f);
+		AddOverlayCross(_overlaySpotRoot, "OverlayCueBallSpawn", _tableSpec.CueBallSpawn, 0.032f, ResolveOverlayColor("OverlayCueBallSpawn", new Color(0.95f, 0.95f, 0.95f)), 0.036f);
+		AddOverlayCross(_overlaySpotRoot, "OverlayRackApexSpot", _tableSpec.RackApexSpot, 0.032f, ResolveOverlayColor("OverlayRackApexSpot", new Color(0.95f, 0.82f, 0.22f)), 0.036f);
 
 		UpdateOverlayVisibility();
 	}
@@ -1010,10 +1054,14 @@ public partial class Main : Node3D
 		_capturedShotFrames.Clear();
 		_recentFrameEvents.Clear();
 		_recentRuleNotes.Clear();
-		_recentRuleNotes.Add(_ruleMode == RuleMode.Training ? "FreePlay ready." : "Eight-ball vs computer ready.");
+		_recentRuleNotes.Add(GetModeReadyText());
 		_aimAngleRadians = GetDefaultAimAngle();
 		_strikeSpeedMetersPerSecond = DefaultStrikeSpeedMetersPerSecond;
 		_tipOffsetNormalized = Vector2.Zero;
+		if (_ruleMode == RuleMode.Calibration)
+		{
+			_hardcodeOverlayVisible = true;
+		}
 		ResetShotSummary();
 		MarkAimPreviewDirty();
 
@@ -1023,7 +1071,7 @@ public partial class Main : Node3D
 		}
 
 		ShowShotBanner(
-			_ruleMode == RuleMode.Training ? "FreePlay ready." : "Eight-ball vs computer ready.",
+			GetModeReadyText(),
 			new ShotBannerStyle(
 				new Color(0.08f, 0.18f, 0.22f, 0.9f),
 				new Color(0.48f, 0.83f, 0.92f, 0.95f),
@@ -1036,7 +1084,12 @@ public partial class Main : Node3D
 
 	private void ToggleRuleMode()
 	{
-		_ruleMode = _ruleMode == RuleMode.EightBall ? RuleMode.Training : RuleMode.EightBall;
+		_ruleMode = _ruleMode switch
+		{
+			RuleMode.EightBall => RuleMode.Training,
+			RuleMode.Training => RuleMode.Calibration,
+			_ => RuleMode.EightBall
+		};
 		ResetSessionForCurrentMode();
 	}
 
@@ -1106,10 +1159,10 @@ public partial class Main : Node3D
 		var activeMode = GetRuleModeLabel();
 		_menuSubtitleLabel.Text = _sessionStarted
 			? "Pause the table, swap modes, or reset without digging through hotkeys. The portable core stays live underneath this menu."
-			: "Choose how you want to play. Eight-ball uses the simple computer opponent; FreePlay leaves the whole table open for practice and layout work.";
+			: "Choose how you want to play. Eight-ball uses the simple computer opponent; FreePlay leaves the whole table open for practice and layout work; Tuning mode calibrates the hardcoded table geometry.";
 		_menuModeLabel.Text = _sessionStarted
 			? $"Current mode: {activeMode}  |  Esc closes menu"
-			: $"Start mode: {activeMode}  |  Keyboard: 1 = EightBall, 2 = FreePlay";
+			: $"Start mode: {activeMode}  |  Keyboard: 1 = EightBall, 2 = FreePlay, 3 = Tuning";
 
 		_menuResumeButton.Visible = _sessionStarted;
 		_menuResumeButton.Disabled = !_sessionStarted;
@@ -1182,7 +1235,7 @@ public partial class Main : Node3D
 			return;
 		}
 
-		if (_debugModeEnabled && mouseButtonEvent.CtrlPressed)
+		if ((_debugModeEnabled || _ruleMode == RuleMode.Calibration) && mouseButtonEvent.CtrlPressed)
 		{
 			AdjustOverlayThickness(direction, mouseButtonEvent.ShiftPressed);
 			return;
@@ -1461,7 +1514,7 @@ public partial class Main : Node3D
 
 	private void SelectTrainingBall(int direction)
 	{
-		if (_ruleMode != RuleMode.Training || direction == 0)
+		if ((_ruleMode != RuleMode.Training && _ruleMode != RuleMode.Calibration) || direction == 0)
 		{
 			return;
 		}
@@ -1476,7 +1529,9 @@ public partial class Main : Node3D
 		var nextIndex = (currentIndex + direction + selectable.Length) % selectable.Length;
 		_trainingSelectedBallNumber = selectable[nextIndex];
 		_recentRuleNotes.Clear();
-		_recentRuleNotes.Add($"FreePlay selection: {GetTrainingSelectionLabel()}");
+		_recentRuleNotes.Add(_ruleMode == RuleMode.Calibration
+			? $"Tuning selection: {GetTrainingSelectionLabel()}"
+			: $"FreePlay selection: {GetTrainingSelectionLabel()}");
 		MarkAimPreviewDirty();
 		UpdateCueGuide();
 		UpdateStatusLabel(Array.Empty<ShotEvent>());
@@ -1604,8 +1659,8 @@ public partial class Main : Node3D
 
 		ExecuteShot(
 			shot,
-			_ruleMode == RuleMode.Training ? "FreePlay shot started." : "Eight-ball shot started.",
-			_ruleMode == RuleMode.Training ? "FreePlay shot started" : "Eight-ball shot started");
+			GetShotStartedNote(),
+			GetShotStartedNote().TrimEnd('.'));
 	}
 
 	private void ExecuteShot(ShotInput shot, string recentNote, string bannerText)
@@ -2075,6 +2130,7 @@ public partial class Main : Node3D
 		{
 			RuleMode.EightBall => _eightBallState.BallInHandPlayer == _eightBallState.CurrentPlayer,
 			RuleMode.Training => true,
+			RuleMode.Calibration => true,
 			_ => false
 		};
 	}
@@ -2086,7 +2142,7 @@ public partial class Main : Node3D
 
 	private int GetPlacementBallNumber()
 	{
-		return _ruleMode == RuleMode.Training ? _trainingSelectedBallNumber : 0;
+		return _ruleMode is RuleMode.Training or RuleMode.Calibration ? _trainingSelectedBallNumber : 0;
 	}
 
 	private bool IsMatchOver()
@@ -2210,7 +2266,9 @@ public partial class Main : Node3D
 	{
 		_trainingState = turnResult.NextState;
 		_recentRuleNotes.Clear();
-		_recentRuleNotes.Add($"FreePlay shots: {_trainingState.ShotCount}");
+		_recentRuleNotes.Add(_ruleMode == RuleMode.Calibration
+			? $"Tuning shots: {_trainingState.ShotCount}"
+			: $"FreePlay shots: {_trainingState.ShotCount}");
 
 		if (turnResult.Summary.PocketedBallNumbers.Count > 0)
 		{
@@ -2222,7 +2280,9 @@ public partial class Main : Node3D
 			_recentRuleNotes.Add("8-ball respot required.");
 		}
 
-		_recentRuleNotes.Add("Cue ball can be moved freely.");
+		_recentRuleNotes.Add(_ruleMode == RuleMode.Calibration
+			? "Tuning mode keeps cue ball free and table geometry live."
+			: "Cue ball can be moved freely.");
 		ShowShotBanner(
 			BuildTrainingTurnBanner(turnResult),
 			ResolveTrainingBannerStyle(turnResult),
@@ -2275,14 +2335,16 @@ public partial class Main : Node3D
 		_world.Reset(updatedBalls);
 		MarkAimPreviewDirty();
 
-		if (_ruleMode == RuleMode.Training)
+		if (_ruleMode is RuleMode.Training or RuleMode.Calibration)
 		{
 			_trainingState = new TrainingModeState(
 				shotCount: _trainingState.ShotCount,
 				pocketedObjectBallNumbers: _trainingState.PocketedObjectBallNumbers.Where(number => number != ballNumber).ToArray(),
 				cueBallInHand: true);
 			_recentRuleNotes.Clear();
-			_recentRuleNotes.Add($"FreePlay layout: moved {GetTrainingSelectionLabel()}");
+			_recentRuleNotes.Add(_ruleMode == RuleMode.Calibration
+				? $"Tuning layout: moved {GetTrainingSelectionLabel()}"
+				: $"FreePlay layout: moved {GetTrainingSelectionLabel()}");
 		}
 	}
 
@@ -2622,6 +2684,23 @@ public partial class Main : Node3D
 
 	private void UpdateAimPanel(BallState cueBall)
 	{
+		if (_ruleMode == RuleMode.Calibration)
+		{
+			var selectedField = GetSelectedCalibrationField();
+			_aimHeaderLabel.Text = "Tuning Mode";
+			_aimMetricsLabel.Text =
+				$"Selected: {selectedField.Label}\n" +
+				$"Current: {selectedField.GetFormattedValue(_tableCalibrationProfile)}\n" +
+				$"Range: {selectedField.Minimum:0.0000} to {selectedField.Maximum:0.0000}\n" +
+				$"Overlay thickness: {_overlayLineThicknessMeters:0.0000} m\n" +
+				$"Profile: {CalibrationProfilePath}\n" +
+				$"Save: P  Reload: O  Reset: U";
+			_aimSpeedFill.Size = new Vector2(220.0f, _aimSpeedFill.Size.Y);
+			_aimSpeedFill.Color = new Color(0.96f, 0.74f, 0.32f, 0.98f);
+			_aimTipIndicator.Position = new Vector2(64.0f, 64.0f);
+			return;
+		}
+
 		var activeMaximumStrikeSpeed = GetCurrentMaximumStrikeSpeedMetersPerSecond();
 		var speedNormalized = Mathf.InverseLerp(
 			MinimumStrikeSpeedMetersPerSecond,
@@ -2649,6 +2728,18 @@ public partial class Main : Node3D
 
 	private void UpdateHelpPanel()
 	{
+		if (_ruleMode == RuleMode.Calibration)
+		{
+			_helpHeaderLabel.Text = "Controls | Tuning";
+			_helpLabel.Text =
+				"Tuning: ,/. field  Shift+,/. section jump  -/= adjust  Shift+-/= coarse\n" +
+				"Profile: P save  O reload  U reset profile  Ctrl+wheel overlay thickness\n" +
+				"View: C camera preset  Q/E zoom  H hardcode overlay  1-5 overlay layers\n" +
+				"Shot: A/D aim  Mouse wheel fine aim  W/S speed  J/L side spin  I/K follow-draw  Space shoot\n" +
+				"Modes: Esc menu  Tab quick-switch mode  R reset mode  F1 debug window  F6 help  F7 HUD";
+			return;
+		}
+
 		_helpHeaderLabel.Text = _ruleMode == RuleMode.Training ? "Controls | FreePlay" : "Controls | EightBall";
 		_helpLabel.Text =
 			"Shot: Space shoot  A/D aim  Mouse wheel fine aim  W/S speed  J/L side spin  I/K follow-draw  Backspace center tip\n" +
@@ -2660,6 +2751,16 @@ public partial class Main : Node3D
 
 	private void ResetShotSummary()
 	{
+		if (_ruleMode == RuleMode.Calibration)
+		{
+			var selectedField = GetSelectedCalibrationField();
+			SetShotSummary(
+				"Tuning Mode | Table Calibration",
+				$"Selected field: {selectedField.Label}\nCurrent value: {selectedField.GetFormattedValue(_tableCalibrationProfile)}\nUse ,/. to select fields, -/= to adjust, P to save, O to reload, and U to reset the profile.",
+				new Color(0.98f, 0.82f, 0.36f, 0.98f));
+			return;
+		}
+
 		if (_ruleMode == RuleMode.Training)
 		{
 			SetShotSummary(
@@ -2700,13 +2801,14 @@ public partial class Main : Node3D
 	private void ApplyTrainingShotSummary(TrainingTurnResult turnResult)
 	{
 		var summary = turnResult.Summary;
+		var modeLabel = GetNonMatchModeLabel();
 		var header = summary.IsScratch
-			? "Last FreePlay Shot | Scratch"
+			? $"Last {modeLabel} Shot | Scratch"
 			: summary.PocketedBallNumbers.Count > 0
-				? "Last FreePlay Shot | Pocketed"
-				: "Last FreePlay Shot | Settled";
+				? $"Last {modeLabel} Shot | Pocketed"
+				: $"Last {modeLabel} Shot | Settled";
 		var summaryText =
-			$"FreePlay shot: {turnResult.NextState.ShotCount}\n" +
+			$"{modeLabel} shot: {turnResult.NextState.ShotCount}\n" +
 			$"Outcome: {BuildTrainingOutcomeSummary(turnResult)}\n" +
 			$"First contact: {FormatOptionalBallLabel(summary.FirstContactBallNumber)}  Pocketed: {FormatBallNumberListOrNone(summary.PocketedBallNumbers)}\n" +
 			$"Object rails: {FormatBallNumberListOrNone(summary.DistinctObjectBallRailContacts)}  Rail/pocket after contact: {FormatYesNo(summary.HasRailOrPocketAfterFirstContact)}  Scratch: {FormatYesNo(summary.IsScratch)}";
@@ -2797,6 +2899,14 @@ public partial class Main : Node3D
 
 	private string BuildModeStatusLine()
 	{
+		if (_ruleMode == RuleMode.Calibration)
+		{
+			var selectedField = GetSelectedCalibrationField();
+			return
+				$"Tuning field: {selectedField.Label} ({_selectedCalibrationFieldIndex + 1}/{_calibrationFields.Count})  " +
+				$"Value: {selectedField.GetFormattedValue(_tableCalibrationProfile)}  Overlay thickness: {_overlayLineThicknessMeters:0.0000} m";
+		}
+
 		if (_ruleMode == RuleMode.Training)
 		{
 			var pocketed = _trainingState.PocketedObjectBallNumbers.Count == 0
@@ -2821,6 +2931,11 @@ public partial class Main : Node3D
 				: "Start Menu | Choose a mode";
 		}
 
+		if (_ruleMode == RuleMode.Calibration)
+		{
+			return $"Tuning | {GetSelectedCalibrationField().Label}";
+		}
+
 		if (_ruleMode == RuleMode.Training)
 		{
 			return $"FreePlay | Selected {GetTrainingSelectionLabel()} | Cue Ball In Hand";
@@ -2842,6 +2957,11 @@ public partial class Main : Node3D
 
 	private Color ResolveStatusAccentColor()
 	{
+		if (_ruleMode == RuleMode.Calibration)
+		{
+			return new Color(0.98f, 0.82f, 0.36f, 0.98f);
+		}
+
 		if (_ruleMode == RuleMode.Training)
 		{
 			return new Color(0.47f, 0.86f, 0.88f, 0.98f);
@@ -2885,7 +3005,13 @@ public partial class Main : Node3D
 
 	private string GetRuleModeLabel()
 	{
-		return _ruleMode == RuleMode.EightBall ? "EightBall" : "FreePlay";
+		return _ruleMode switch
+		{
+			RuleMode.EightBall => "EightBall",
+			RuleMode.Training => "FreePlay",
+			RuleMode.Calibration => "Tuning",
+			_ => "Unknown"
+		};
 	}
 
 	private static string GetPlayerLabel(PlayerSlot player)
@@ -2921,7 +3047,7 @@ public partial class Main : Node3D
 
 	private void UpdateOverlayVisibility()
 	{
-		_hardcodeOverlayRoot.Visible = _hardcodeOverlayVisible || _debugModeEnabled;
+		_hardcodeOverlayRoot.Visible = _hardcodeOverlayVisible || _debugModeEnabled || _ruleMode == RuleMode.Calibration;
 		_overlayClothRoot.Visible = _overlayClothVisible;
 		_overlayCushionRoot.Visible = _overlayCushionVisible;
 		_overlayJawRoot.Visible = _overlayJawVisible;
@@ -3062,6 +3188,231 @@ public partial class Main : Node3D
 		return _ruleMode == RuleMode.EightBall && _eightBallState.IsBreakShot
 			? MaximumBreakStrikeSpeedMetersPerSecond
 			: MaximumRegularStrikeSpeedMetersPerSecond;
+	}
+
+	private string GetCalibrationProfileAbsolutePath()
+	{
+		return ProjectSettings.GlobalizePath(CalibrationProfilePath);
+	}
+
+	private string GetModeReadyText()
+	{
+		return _ruleMode switch
+		{
+			RuleMode.EightBall => "Eight-ball vs computer ready.",
+			RuleMode.Training => "FreePlay ready.",
+			RuleMode.Calibration => "Tuning mode ready.",
+			_ => "Mode ready."
+		};
+	}
+
+	private string GetNonMatchModeLabel()
+	{
+		return _ruleMode == RuleMode.Calibration ? "Tuning" : "FreePlay";
+	}
+
+	private string GetShotStartedNote()
+	{
+		return _ruleMode switch
+		{
+			RuleMode.EightBall => "Eight-ball shot started.",
+			RuleMode.Calibration => "Tuning shot started.",
+			_ => "FreePlay shot started."
+		};
+	}
+
+	private void BuildCalibrationFields()
+	{
+		_calibrationFields.Clear();
+
+		AddCalibrationField("Cloth", "Cloth Min X", "OverlayClothLeft", -0.4f, 0.4f, 0.0005f, 0.005f,
+			() => _tableCalibrationProfile.ClothMinOffset.X,
+			value => _tableCalibrationProfile.ClothMinOffset.X = value);
+		AddCalibrationField("Cloth", "Cloth Min Y", "OverlayClothTop", -0.4f, 0.4f, 0.0005f, 0.005f,
+			() => _tableCalibrationProfile.ClothMinOffset.Y,
+			value => _tableCalibrationProfile.ClothMinOffset.Y = value);
+		AddCalibrationField("Cloth", "Cloth Max X", "OverlayClothRight", -0.4f, 0.4f, 0.0005f, 0.005f,
+			() => _tableCalibrationProfile.ClothMaxOffset.X,
+			value => _tableCalibrationProfile.ClothMaxOffset.X = value);
+		AddCalibrationField("Cloth", "Cloth Max Y", "OverlayClothBottom", -0.4f, 0.4f, 0.0005f, 0.005f,
+			() => _tableCalibrationProfile.ClothMaxOffset.Y,
+			value => _tableCalibrationProfile.ClothMaxOffset.Y = value);
+
+		AddCalibrationField("Spots", "Cue Ball Spawn X", "OverlayCueBallSpawn", -0.4f, 0.4f, 0.0005f, 0.005f,
+			() => _tableCalibrationProfile.CueBallSpawnOffset.X,
+			value => _tableCalibrationProfile.CueBallSpawnOffset.X = value);
+		AddCalibrationField("Spots", "Cue Ball Spawn Y", "OverlayCueBallSpawn", -0.4f, 0.4f, 0.0005f, 0.005f,
+			() => _tableCalibrationProfile.CueBallSpawnOffset.Y,
+			value => _tableCalibrationProfile.CueBallSpawnOffset.Y = value);
+		AddCalibrationField("Spots", "Rack Apex X", "OverlayRackApexSpot", -0.4f, 0.4f, 0.0005f, 0.005f,
+			() => _tableCalibrationProfile.RackApexSpotOffset.X,
+			value => _tableCalibrationProfile.RackApexSpotOffset.X = value);
+		AddCalibrationField("Spots", "Rack Apex Y", "OverlayRackApexSpot", -0.4f, 0.4f, 0.0005f, 0.005f,
+			() => _tableCalibrationProfile.RackApexSpotOffset.Y,
+			value => _tableCalibrationProfile.RackApexSpotOffset.Y = value);
+
+		foreach (var cushion in _baseTableSpec.Cushions)
+		{
+			var sourceName = cushion.SourceName;
+			AddCalibrationField("Cushions", $"{sourceName} Start X", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
+				() => _tableCalibrationProfile.Cushions[sourceName].StartOffset.X,
+				value => _tableCalibrationProfile.Cushions[sourceName].StartOffset.X = value);
+			AddCalibrationField("Cushions", $"{sourceName} Start Y", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
+				() => _tableCalibrationProfile.Cushions[sourceName].StartOffset.Y,
+				value => _tableCalibrationProfile.Cushions[sourceName].StartOffset.Y = value);
+			AddCalibrationField("Cushions", $"{sourceName} End X", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
+				() => _tableCalibrationProfile.Cushions[sourceName].EndOffset.X,
+				value => _tableCalibrationProfile.Cushions[sourceName].EndOffset.X = value);
+			AddCalibrationField("Cushions", $"{sourceName} End Y", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
+				() => _tableCalibrationProfile.Cushions[sourceName].EndOffset.Y,
+				value => _tableCalibrationProfile.Cushions[sourceName].EndOffset.Y = value);
+		}
+
+		foreach (var jaw in _baseTableSpec.JawSegments)
+		{
+			var sourceName = jaw.SourceName;
+			AddCalibrationField("Jaws", $"{sourceName} Start X", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
+				() => _tableCalibrationProfile.Jaws[sourceName].StartOffset.X,
+				value => _tableCalibrationProfile.Jaws[sourceName].StartOffset.X = value);
+			AddCalibrationField("Jaws", $"{sourceName} Start Y", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
+				() => _tableCalibrationProfile.Jaws[sourceName].StartOffset.Y,
+				value => _tableCalibrationProfile.Jaws[sourceName].StartOffset.Y = value);
+			AddCalibrationField("Jaws", $"{sourceName} End X", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
+				() => _tableCalibrationProfile.Jaws[sourceName].EndOffset.X,
+				value => _tableCalibrationProfile.Jaws[sourceName].EndOffset.X = value);
+			AddCalibrationField("Jaws", $"{sourceName} End Y", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
+				() => _tableCalibrationProfile.Jaws[sourceName].EndOffset.Y,
+				value => _tableCalibrationProfile.Jaws[sourceName].EndOffset.Y = value);
+		}
+
+		foreach (var pocket in _baseTableSpec.Pockets)
+		{
+			var sourceName = pocket.SourceName;
+			AddCalibrationField("Pockets", $"{sourceName} Center X", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
+				() => _tableCalibrationProfile.Pockets[sourceName].CenterOffset.X,
+				value => _tableCalibrationProfile.Pockets[sourceName].CenterOffset.X = value);
+			AddCalibrationField("Pockets", $"{sourceName} Center Y", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
+				() => _tableCalibrationProfile.Pockets[sourceName].CenterOffset.Y,
+				value => _tableCalibrationProfile.Pockets[sourceName].CenterOffset.Y = value);
+			AddCalibrationField("Pockets", $"{sourceName} Capture Radius", $"Overlay_{sourceName}", -0.05f, 0.05f, 0.0005f, 0.003f,
+				() => _tableCalibrationProfile.Pockets[sourceName].CaptureRadiusOffset,
+				value => _tableCalibrationProfile.Pockets[sourceName].CaptureRadiusOffset = value);
+			AddCalibrationField("Pockets", $"{sourceName} Drop Radius", $"Overlay_{sourceName}", -0.05f, 0.05f, 0.0005f, 0.003f,
+				() => _tableCalibrationProfile.Pockets[sourceName].DropRadiusOffset,
+				value => _tableCalibrationProfile.Pockets[sourceName].DropRadiusOffset = value);
+		}
+
+		if (_calibrationFields.Count == 0)
+		{
+			throw new InvalidOperationException("Calibration mode requires at least one calibration field.");
+		}
+
+		_selectedCalibrationFieldIndex = Mathf.Clamp(_selectedCalibrationFieldIndex, 0, _calibrationFields.Count - 1);
+	}
+
+	private void AddCalibrationField(
+		string section,
+		string label,
+		string overlayTarget,
+		float minimum,
+		float maximum,
+		float fineStep,
+		float coarseStep,
+		Func<float> getter,
+		Action<float> setter)
+	{
+		_calibrationFields.Add(new CalibrationField(section, label, overlayTarget, minimum, maximum, fineStep, coarseStep, getter, setter));
+	}
+
+	private CalibrationField GetSelectedCalibrationField()
+	{
+		return _calibrationFields[Mathf.Clamp(_selectedCalibrationFieldIndex, 0, _calibrationFields.Count - 1)];
+	}
+
+	private void CycleCalibrationField(int direction, bool sectionOnly)
+	{
+		if (_calibrationFields.Count == 0 || direction == 0)
+		{
+			return;
+		}
+
+		var currentIndex = _selectedCalibrationFieldIndex;
+		var currentSection = _calibrationFields[currentIndex].Section;
+
+		for (var steps = 0; steps < _calibrationFields.Count; steps++)
+		{
+			currentIndex = (currentIndex + direction + _calibrationFields.Count) % _calibrationFields.Count;
+			if (!sectionOnly || _calibrationFields[currentIndex].Section != currentSection)
+			{
+				_selectedCalibrationFieldIndex = currentIndex;
+				_recentRuleNotes.Clear();
+				_recentRuleNotes.Add($"Tuning field: {GetSelectedCalibrationField().Label}");
+				BuildHardcodeOverlay();
+				UpdateStatusLabel(Array.Empty<ShotEvent>());
+				return;
+			}
+		}
+	}
+
+	private void AdjustSelectedCalibrationField(int direction, bool coarse)
+	{
+		if (_calibrationFields.Count == 0 || direction == 0)
+		{
+			return;
+		}
+
+		if (_world.Phase == SimulationPhase.Running || _shotCaptureActive)
+		{
+			_recentRuleNotes.Clear();
+			_recentRuleNotes.Add("Stop balls before adjusting tuning mode values.");
+			UpdateStatusLabel(Array.Empty<ShotEvent>());
+			return;
+		}
+
+		var field = GetSelectedCalibrationField();
+		var currentValue = field.GetValue();
+		var step = coarse ? field.CoarseStep : field.FineStep;
+		var updatedValue = Mathf.Clamp(currentValue + (step * direction), field.Minimum, field.Maximum);
+		if (Mathf.IsEqualApprox(currentValue, updatedValue))
+		{
+			return;
+		}
+
+		field.SetValue(updatedValue);
+		ApplyCalibrationProfile($"Tuned {field.Label} -> {field.GetFormattedValue(_tableCalibrationProfile)}");
+	}
+
+	private void ApplyCalibrationProfile(string note)
+	{
+		_tableSpec = TableCalibrationBuilder.Apply(_baseTableSpec, _tableCalibrationProfile);
+		BuildHardcodeOverlay();
+		RebuildWorldWithCurrentState();
+		ResetShotSummary();
+		_recentRuleNotes.Clear();
+		_recentRuleNotes.Add(note);
+		UpdateStatusLabel(Array.Empty<ShotEvent>());
+	}
+
+	private void SaveCalibrationProfile()
+	{
+		_tableCalibrationProfile.Save(GetCalibrationProfileAbsolutePath());
+		_recentRuleNotes.Clear();
+		_recentRuleNotes.Add($"Saved tuning profile to {CalibrationProfilePath}");
+		UpdateStatusLabel(Array.Empty<ShotEvent>());
+	}
+
+	private void ReloadCalibrationProfile()
+	{
+		_tableCalibrationProfile = TableCalibrationProfile.LoadOrDefault(GetCalibrationProfileAbsolutePath(), _baseTableSpec);
+		BuildCalibrationFields();
+		ApplyCalibrationProfile("Reloaded tuning profile.");
+	}
+
+	private void ResetCalibrationProfile()
+	{
+		_tableCalibrationProfile = TableCalibrationProfile.CreateDefault(_baseTableSpec);
+		BuildCalibrationFields();
+		ApplyCalibrationProfile("Reset tuning profile to source values.");
 	}
 
 	private void RebuildWorldWithCurrentState()
@@ -3352,21 +3703,22 @@ public partial class Main : Node3D
 
 	private string BuildTrainingTurnBanner(TrainingTurnResult turnResult)
 	{
+		var modeLabel = GetNonMatchModeLabel();
 		var pocketedObjectBalls = turnResult.Summary.PocketedBallNumbers
 			.Where(ballNumber => ballNumber != 0)
 			.ToArray();
 
 		if (turnResult.RequiresEightBallRespot)
 		{
-			return "FreePlay: 8-ball respot required";
+			return $"{modeLabel}: 8-ball respot required";
 		}
 
 		if (pocketedObjectBalls.Length > 0)
 		{
-			return $"FreePlay pocketed {FormatBallNumberList(pocketedObjectBalls)}";
+			return $"{modeLabel} pocketed {FormatBallNumberList(pocketedObjectBalls)}";
 		}
 
-		return $"FreePlay shot {_trainingState.ShotCount} settled";
+		return $"{modeLabel} shot {_trainingState.ShotCount} settled";
 	}
 
 	private static ShotBannerStyle ResolveTrainingBannerStyle(TrainingTurnResult turnResult)
@@ -3705,6 +4057,22 @@ public partial class Main : Node3D
 		guideNode.LookAt(guideNode.Position + segment, Vector3.Up);
 	}
 
+	private Color ResolveOverlayColor(string overlayName, Color defaultColor)
+	{
+		if (_ruleMode != RuleMode.Calibration || _calibrationFields.Count == 0)
+		{
+			return defaultColor;
+		}
+
+		var selectedField = GetSelectedCalibrationField();
+		if (selectedField.OverlayTarget != overlayName)
+		{
+			return defaultColor;
+		}
+
+		return defaultColor.Lerp(new Color(1.0f, 0.98f, 0.52f), 0.45f);
+	}
+
 	private bool TryInstantiateImportedTable()
 	{
 		if (!ResourceLoader.Exists(ImportedTableScenePath))
@@ -3888,6 +4256,64 @@ public partial class Main : Node3D
 		public NumericsVector2? TargetStart { get; }
 
 		public NumericsVector2? TargetEnd { get; }
+	}
+
+	private sealed class CalibrationField
+	{
+		public CalibrationField(
+			string section,
+			string label,
+			string overlayTarget,
+			float minimum,
+			float maximum,
+			float fineStep,
+			float coarseStep,
+			Func<float> getter,
+			Action<float> setter)
+		{
+			Section = section;
+			Label = label;
+			OverlayTarget = overlayTarget;
+			Minimum = minimum;
+			Maximum = maximum;
+			FineStep = fineStep;
+			CoarseStep = coarseStep;
+			Getter = getter;
+			Setter = setter;
+		}
+
+		public string Section { get; }
+
+		public string Label { get; }
+
+		public string OverlayTarget { get; }
+
+		public float Minimum { get; }
+
+		public float Maximum { get; }
+
+		public float FineStep { get; }
+
+		public float CoarseStep { get; }
+
+		private Func<float> Getter { get; }
+
+		private Action<float> Setter { get; }
+
+		public float GetValue()
+		{
+			return Getter();
+		}
+
+		public void SetValue(float value)
+		{
+			Setter(value);
+		}
+
+		public string GetFormattedValue(TableCalibrationProfile profile)
+		{
+			return $"{GetValue():0.0000}";
+		}
 	}
 
 	private readonly record struct ComputerShotCandidate(

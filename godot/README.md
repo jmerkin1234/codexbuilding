@@ -22,10 +22,11 @@ Current behavior:
 - The Godot project copy of `customtable_9ft.blend` now has `Tableslate` custom normals cleared and `Tableslate`, `Tableframe`, `CueStick`, and `rail_upper_right` triangulated so Godot can generate tangents and preserve the imported shading more faithfully.
 - Godot now imports the ball textures lossless with mipmaps disabled, and the project render settings now keep 3D at native scale with TAA and screen-space AA disabled plus `MSAA 3D` enabled for a sharper standalone desktop result.
 - The render setup now preserves the imported Blender light and layers in a procedural sky plus fill/rim lighting, so chrome and glossy ball materials have stronger reflections than the earlier flat fallback lighting.
+- The adapter now has a separate `Tuning` mode for table calibration. It is not tied to the debug window and instead persists calibration offsets in `user://table_calibration.json`, rebuilds the hardcoded `TableSpec`, keeps the overlay visible, and highlights the active calibration target in the main play HUD.
 - The portable core now includes modest cloth side-spin drift/scrub, tangential spin transfer in ball-ball contact, controlled follow/draw carry-through after object contact, angle-aware rail rebound tuning, and a separate rail-english transfer term for stronger cushion spin response; Godot only mirrors the resulting state.
 - The portable core now also uses a mouth/drop-based pocket model derived from hardcoded jaw geometry, with an added slow-speed lip-hang rule so edge-hangers can stay up while center-line rollers still fall.
 - The adapter captures live shot traces and resolves them through the portable `Rules` layer.
-- `Tab` switches between `EightBall` versus computer and `FreePlay` inside the running adapter.
+- `Tab` now cycles between `EightBall`, `FreePlay`, and `Tuning`.
 - The HUD now shows mode, current player, group assignment, ball-in-hand, winner, and recent rules outcomes.
 - Cue-ball-in-hand and freeplay placement are handled in the adapter with arrow-key repositioning, while the portable core remains the physics authority.
 - Predictive guide meshes are generated from cloned portable simulations, including the primary cue path, post-bounce/post-collision cue continuation, and first-contact object-ball path.
@@ -41,15 +42,15 @@ Current behavior:
 - `F7` now toggles the gameplay HUD cards and shot banner without affecting the menu overlay, so the table can be viewed with the HUD fully cleared.
 - The playable Godot window now starts at `1920x1080` by default, while headless verification still runs at the CLI as before.
 - Shot speed now uses a split feel-tuned envelope in the adapter: regular play clamps to `0.3-5.0 m/s`, eight-ball break shots clamp to `0.3-8.0 m/s`, and the shot-setup/debug readouts show the currently active cap.
-- The adapter now opens on a proper menu/start overlay with button-based `EightBall` and `FreePlay` selection, and `Esc` reopens that menu later for resume/reset/return-to-start actions.
+- The adapter now opens on a proper menu/start overlay with button-based `EightBall`, `FreePlay`, and `Tuning` selection, and `Esc` reopens that menu later for resume/reset/return-to-start actions.
 - Training/freeplay no longer draws the pulsing selection ring around the selected ball.
 - In 8-ball, Player 2 is now driven by a simple computer opponent that also uses a separate harder break-speed sample set; FreePlay remains human-controlled.
 - If the computer planner fails to produce a valid shot, the adapter now fails the turn forward by giving the opponent ball in hand instead of retrying the same broken turn forever.
 - A transient banner now surfaces shot starts, contact, pocketing, scratch, foul, win, and turn/result feedback in the running adapter.
 - The status panel now has a color-accented header for current mode and turn state.
-- `F1` toggles a detached debug window with live portable-engine data such as `SimulationConfig` values, world counters, cue-ball state, selected-ball state, moving-ball counts, preview lengths, and active tuning state. That separate play-mode window can be moved to another monitor, and debug mode still forces the hardcoded-table overlay visible.
+- `F1` toggles a detached debug window with live portable-engine data such as `SimulationConfig` values, world counters, cue-ball state, selected-ball state, moving-ball counts, preview lengths, and active debug-tuning state. That separate play-mode window can be moved to another monitor, and debug mode still forces the hardcoded-table overlay visible.
 - The project now disables embedded subwindows so the debug view can become a native OS window; if you still use Godot editor embedded play, the editor itself can still keep the whole game trapped inside the editor pane.
-- Debug mode now supports live tuning of key portable-physics constants, including ball follow/draw carry, glancing rail restitution, tangential rail retention, and rail-english transfer, and immediately rebuilds `SimulationWorld` with the current ball layout after each change.
+- Debug mode now supports live tuning of key portable-physics constants, including ball follow/draw carry, glancing rail restitution, tangential rail retention, and rail-english transfer, and immediately rebuilds `SimulationWorld` with the current ball layout after each change. Table-geometry calibration is handled separately in `Tuning` mode.
 
 Verification on `2026-03-14`:
 
@@ -61,7 +62,7 @@ Verification on `2026-03-14`:
 
 Keyboard controls:
 
-- `Tab`: toggle between 8-ball vs computer and FreePlay
+- `Tab`: cycle between `EightBall`, `FreePlay`, and `Tuning`
 - `F1`: toggle the detached debug window and engine-data view
 - `F2/F3`: select the active debug tuning parameter
 - `F4/F5`: decrease or increase the selected tuning value
@@ -86,3 +87,10 @@ Keyboard controls:
 - `Space`: shoot
 - `Backspace`: center the tip offset
 - `R`: reset the standard rack
+- `,/.`: previous or next tuning field in `Tuning` mode
+- `Shift + ,/.`: jump to previous or next tuning section in `Tuning` mode
+- `- / =`: decrease or increase the selected tuning field in `Tuning` mode
+- `Shift + - / =`: coarse decrease or increase in `Tuning` mode
+- `P`: save `user://table_calibration.json` in `Tuning` mode
+- `O`: reload the saved tuning profile in `Tuning` mode
+- `U`: reset the tuning profile back to hardcoded source values in `Tuning` mode
