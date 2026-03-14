@@ -3,20 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bctc8ujq2j5bx"
-path.s3tc="res://.godot/imported/Ball15.png-54504f0f04e592eeaeb0723d6eb021a6.s3tc.ctex"
+path="res://.godot/imported/Ball15.png-54504f0f04e592eeaeb0723d6eb021a6.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://art/textures/Ball15.png"
-dest_files=["res://.godot/imported/Ball15.png-54504f0f04e592eeaeb0723d6eb021a6.s3tc.ctex"]
+dest_files=["res://.godot/imported/Ball15.png-54504f0f04e592eeaeb0723d6eb021a6.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -24,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

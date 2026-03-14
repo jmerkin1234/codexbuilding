@@ -20,6 +20,7 @@ Current behavior:
 - Godot now also accumulates visible roll from mirrored ball travel plus side-spin yaw, so the authored Blender balls rotate instead of visually sliding.
 - The authored Blender cue stick is now used during shot setup instead of hiding it behind the old placeholder cue mesh.
 - The Godot project copy of `customtable_9ft.blend` now has `Tableslate` custom normals cleared and `Tableslate`, `Tableframe`, `CueStick`, and `rail_upper_right` triangulated so Godot can generate tangents and preserve the imported shading more faithfully.
+- Godot now imports the ball textures lossless with mipmaps disabled, and the project render settings now keep 3D at native scale with TAA and screen-space AA disabled plus `MSAA 3D` enabled for a sharper standalone desktop result.
 - The portable core now includes modest cloth side-spin drift/scrub, tangential spin transfer in ball-ball contact, controlled follow/draw carry-through after object contact, angle-aware rail rebound tuning, and a separate rail-english transfer term for stronger cushion spin response; Godot only mirrors the resulting state.
 - The portable core now also uses a mouth/drop-based pocket model derived from hardcoded jaw geometry, with an added slow-speed lip-hang rule so edge-hangers can stay up while center-line rollers still fall.
 - The adapter captures live shot traces and resolves them through the portable `Rules` layer.
@@ -32,6 +33,7 @@ Current behavior:
 - `1` through `5` now toggle the cloth, cushion, jaw, pocket, and spot overlay sublayers independently.
 - The adapter now starts in an orthographic top-down main camera preset, and `C` still cycles between broadcast, top-down, foot-rail, and side-rail camera presets while `Q/E` zoom the active preset in and out.
 - The HUD now uses dedicated framed status and debug panels instead of raw overlay labels.
+- The shot-setup panel now shows shot power as a percentage of the active speed cap in addition to the raw strike speed.
 - The HUD now also keeps a dedicated last-shot summary panel for completed eight-ball and training/freeplay shots.
 - The HUD now also has a dedicated shot-setup panel for aim/speed/tip information and a separate controls/help panel, so the main status card stays concise.
 - `F7` now toggles the gameplay HUD cards and shot banner without affecting the menu overlay, so the table can be viewed with the HUD fully cleared.
@@ -43,7 +45,7 @@ Current behavior:
 - If the computer planner fails to produce a valid shot, the adapter now fails the turn forward by giving the opponent ball in hand instead of retrying the same broken turn forever.
 - A transient banner now surfaces shot starts, contact, pocketing, scratch, foul, win, and turn/result feedback in the running adapter.
 - The status panel now has a color-accented header for current mode and turn state.
-- `F1` toggles a debug panel with live portable-engine data such as `SimulationConfig` values, world counters, cue-ball state, selected-ball state, moving-ball counts, and preview lengths. Debug mode also forces the hardcoded-table overlay visible.
+- `F1` toggles a detached debug window with live portable-engine data such as `SimulationConfig` values, world counters, cue-ball state, selected-ball state, moving-ball counts, preview lengths, and active tuning state. That separate play-mode window can be moved to another monitor, and debug mode still forces the hardcoded-table overlay visible.
 - Debug mode now supports live tuning of key portable-physics constants, including ball follow/draw carry, glancing rail restitution, tangential rail retention, and rail-english transfer, and immediately rebuilds `SimulationWorld` with the current ball layout after each change.
 
 Verification on `2026-03-14`:
@@ -57,7 +59,7 @@ Verification on `2026-03-14`:
 Keyboard controls:
 
 - `Tab`: toggle between 8-ball vs computer and FreePlay
-- `F1`: toggle debug mode and engine-data panel
+- `F1`: toggle the detached debug window and engine-data view
 - `F2/F3`: select the active debug tuning parameter
 - `F4/F5`: decrease or increase the selected tuning value
 - `Shift` + `F4/F5`: coarse debug tuning adjustments
