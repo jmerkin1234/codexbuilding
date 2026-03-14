@@ -88,6 +88,10 @@ public partial class Main : Node3D
     private Panel _statusPanel = null!;
     private ColorRect _statusAccentBar = null!;
     private Label _statusHeaderLabel = null!;
+    private Panel _summaryPanel = null!;
+    private ColorRect _summaryAccentBar = null!;
+    private Label _summaryHeaderLabel = null!;
+    private Label _summaryLabel = null!;
     private Panel _debugPanel = null!;
     private Label _statusLabel = null!;
     private Label _debugLabel = null!;
@@ -306,6 +310,37 @@ public partial class Main : Node3D
         _statusLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _statusLabel.VerticalAlignment = VerticalAlignment.Top;
         _statusLabel.AddThemeFontSizeOverride("font_size", 15);
+
+        _summaryPanel = EnsureNode<Panel>(hud, "SummaryPanel");
+        _summaryPanel.Position = new Vector2(18.0f, 384.0f);
+        _summaryPanel.Size = new Vector2(780.0f, 208.0f);
+        _summaryPanel.MouseFilter = Control.MouseFilterEnum.Ignore;
+        _summaryPanel.AddThemeStyleboxOverride(
+            "panel",
+            CreateHudPanelStyle(
+                new Color(0.02f, 0.04f, 0.06f, 0.82f),
+                new Color(0.31f, 0.63f, 0.72f, 0.95f)));
+
+        _summaryAccentBar = EnsureNode<ColorRect>(_summaryPanel, "SummaryAccentBar");
+        _summaryAccentBar.Position = new Vector2(0.0f, 0.0f);
+        _summaryAccentBar.Size = new Vector2(780.0f, 6.0f);
+        _summaryAccentBar.Color = new Color(0.42f, 0.83f, 0.89f, 0.95f);
+
+        _summaryHeaderLabel = EnsureNode<Label>(_summaryPanel, "SummaryHeaderLabel");
+        _summaryHeaderLabel.Position = new Vector2(16.0f, 16.0f);
+        _summaryHeaderLabel.Size = new Vector2(748.0f, 30.0f);
+        _summaryHeaderLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _summaryHeaderLabel.VerticalAlignment = VerticalAlignment.Center;
+        _summaryHeaderLabel.AddThemeFontSizeOverride("font_size", 21);
+        _summaryHeaderLabel.Modulate = new Color(0.9f, 0.98f, 1.0f);
+
+        _summaryLabel = EnsureNode<Label>(_summaryPanel, "SummaryLabel");
+        _summaryLabel.Position = new Vector2(16.0f, 52.0f);
+        _summaryLabel.Size = new Vector2(748.0f, 138.0f);
+        _summaryLabel.Modulate = Colors.White;
+        _summaryLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _summaryLabel.VerticalAlignment = VerticalAlignment.Top;
+        _summaryLabel.AddThemeFontSizeOverride("font_size", 15);
 
         _debugPanel = EnsureNode<Panel>(hud, "DebugPanel");
         _debugPanel.Position = new Vector2(816.0f, 18.0f);
@@ -558,6 +593,7 @@ public partial class Main : Node3D
         _aimAngleRadians = GetDefaultAimAngle();
         _strikeSpeedMetersPerSecond = 2.0f;
         _tipOffsetNormalized = Vector2.Zero;
+        ResetShotSummary();
         MarkAimPreviewDirty();
 
         if (CanPlaceCueBall())
@@ -977,6 +1013,7 @@ public partial class Main : Node3D
             BuildEightBallTurnBanner(turnResult),
             ResolveEightBallBannerStyle(turnResult),
             ResolveEightBallBannerDuration(turnResult));
+        ApplyEightBallShotSummary(turnResult);
 
         if (!turnResult.NextState.IsGameOver)
         {
@@ -1009,6 +1046,7 @@ public partial class Main : Node3D
             BuildTrainingTurnBanner(turnResult),
             ResolveTrainingBannerStyle(turnResult),
             ResolveTrainingBannerDuration(turnResult));
+        ApplyTrainingShotSummary(turnResult);
 
         ResetWorldForNextTurn(
             cueBallInHand: turnResult.CanRepositionCueBallAnywhere,
@@ -1323,6 +1361,143 @@ public partial class Main : Node3D
         UpdateDebugPanel();
     }
 
+    private void ResetShotSummary()
+    {
+        if (_ruleMode == RuleMode.Training)
+        {
+            SetShotSummary(
+                "Last Practice Shot | Ready",
+                "No completed practice shot yet.\nCue ball placement is free, and training mode keeps the table open for freeplay setup.",
+                new Color(0.47f, 0.86f, 0.88f, 0.98f));
+            return;
+        }
+
+        SetShotSummary(
+            "Last EightBall Shot | Ready",
+            $"No completed shot yet.\n{GetPlayerLabel(_eightBallState.CurrentPlayer)} is on the break and the table is open.",
+            new Color(0.45f, 0.76f, 0.98f, 0.98f));
+    }
+
+    private void ApplyEightBallShotSummary(EightBallTurnResult turnResult)
+    {
+        var summary = turnResult.Summary;
+        var header = turnResult.NextState.Winner.HasValue
+            ? $"Last EightBall Shot | Winner: {GetPlayerLabel(turnResult.NextState.Winner.Value)}"
+            : turnResult.IsFoul
+                ? "Last EightBall Shot | Foul"
+                : turnResult.PlayerContinues
+                    ? "Last EightBall Shot | Table Run"
+                    : "Last EightBall Shot | Turn End";
+        var summaryText =
+            $"Shooter: {GetPlayerLabel(turnResult.ShootingPlayer)}  Shot: {turnResult.NextState.ShotNumber}\n" +
+            $"Outcome: {BuildEightBallOutcomeSummary(turnResult)}\n" +
+            $"First contact: {FormatOptionalBallLabel(summary.FirstContactBallNumber)}  Pocketed: {FormatBallNumberListOrNone(summary.PocketedBallNumbers)}\n" +
+            $"Object rails: {FormatBallNumberListOrNone(summary.DistinctObjectBallRailContacts)}  Rail/pocket after contact: {FormatYesNo(summary.HasRailOrPocketAfterFirstContact)}  Scratch: {FormatYesNo(summary.IsScratch)}";
+
+        SetShotSummary(
+            header,
+            summaryText,
+            ResolveEightBallBannerStyle(turnResult).BorderColor);
+    }
+
+    private void ApplyTrainingShotSummary(TrainingTurnResult turnResult)
+    {
+        var summary = turnResult.Summary;
+        var header = summary.IsScratch
+            ? "Last Practice Shot | Scratch"
+            : summary.PocketedBallNumbers.Count > 0
+                ? "Last Practice Shot | Pocketed"
+                : "Last Practice Shot | Settled";
+        var summaryText =
+            $"Practice shot: {turnResult.NextState.ShotCount}\n" +
+            $"Outcome: {BuildTrainingOutcomeSummary(turnResult)}\n" +
+            $"First contact: {FormatOptionalBallLabel(summary.FirstContactBallNumber)}  Pocketed: {FormatBallNumberListOrNone(summary.PocketedBallNumbers)}\n" +
+            $"Object rails: {FormatBallNumberListOrNone(summary.DistinctObjectBallRailContacts)}  Rail/pocket after contact: {FormatYesNo(summary.HasRailOrPocketAfterFirstContact)}  Scratch: {FormatYesNo(summary.IsScratch)}";
+
+        SetShotSummary(
+            header,
+            summaryText,
+            ResolveTrainingBannerStyle(turnResult).BorderColor);
+    }
+
+    private void SetShotSummary(string header, string text, Color accentColor)
+    {
+        _summaryHeaderLabel.Text = header;
+        _summaryHeaderLabel.Modulate = accentColor;
+        _summaryAccentBar.Color = accentColor;
+        _summaryLabel.Text = text;
+    }
+
+    private string BuildEightBallOutcomeSummary(EightBallTurnResult turnResult)
+    {
+        var parts = new List<string>();
+        if (turnResult.NextState.ShotNumber == 1)
+        {
+            parts.Add(turnResult.BreakWasLegal ? "legal break" : "illegal break");
+        }
+
+        if (turnResult.IsFoul)
+        {
+            parts.Add($"foul: {string.Join(", ", turnResult.Fouls)}");
+        }
+
+        if (turnResult.AssignedGroup.HasValue)
+        {
+            parts.Add($"claimed {turnResult.AssignedGroup.Value}");
+        }
+
+        if (turnResult.RequiresEightBallRespot)
+        {
+            parts.Add("8-ball respot");
+        }
+
+        if (turnResult.NextState.Winner.HasValue)
+        {
+            parts.Add($"winner {GetPlayerLabel(turnResult.NextState.Winner.Value)}");
+        }
+        else if (turnResult.PlayerContinues)
+        {
+            parts.Add($"{GetPlayerLabel(turnResult.ShootingPlayer)} continues");
+        }
+        else
+        {
+            parts.Add($"next: {GetPlayerLabel(turnResult.NextState.CurrentPlayer)}");
+        }
+
+        if (turnResult.NextState.BallInHandPlayer.HasValue)
+        {
+            parts.Add($"ball in hand {GetPlayerLabel(turnResult.NextState.BallInHandPlayer.Value)}");
+        }
+
+        return string.Join(" | ", parts);
+    }
+
+    private string BuildTrainingOutcomeSummary(TrainingTurnResult turnResult)
+    {
+        var parts = new List<string>();
+
+        if (turnResult.Summary.PocketedBallNumbers.Count > 0)
+        {
+            parts.Add($"pocketed {FormatBallNumberList(turnResult.Summary.PocketedBallNumbers)}");
+        }
+        else
+        {
+            parts.Add("no balls pocketed");
+        }
+
+        if (turnResult.RequiresEightBallRespot)
+        {
+            parts.Add("8-ball respot");
+        }
+
+        if (turnResult.CanRepositionCueBallAnywhere)
+        {
+            parts.Add("cue ball free placement");
+        }
+
+        return string.Join(" | ", parts);
+    }
+
     private string BuildModeStatusLine()
     {
         if (_ruleMode == RuleMode.Training)
@@ -1401,6 +1576,22 @@ public partial class Main : Node3D
     private static string GetPlayerLabel(PlayerSlot player)
     {
         return player == PlayerSlot.PlayerOne ? "Player 1" : "Player 2";
+    }
+
+    private string FormatOptionalBallLabel(int? ballNumber)
+    {
+        return ballNumber.HasValue ? FormatBallLabel(ballNumber.Value) : "none";
+    }
+
+    private string FormatBallNumberListOrNone(IEnumerable<int> ballNumbers)
+    {
+        var values = ballNumbers.ToArray();
+        return values.Length == 0 ? "none" : FormatBallNumberList(values);
+    }
+
+    private static string FormatYesNo(bool value)
+    {
+        return value ? "yes" : "no";
     }
 
     private void UpdateOverlayVisibility()

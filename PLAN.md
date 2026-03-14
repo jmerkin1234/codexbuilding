@@ -134,8 +134,9 @@ Status: in_progress
 Scope:
 - hardcoded-table debug overlay lines from `TableSpec`
 - live debug-mode engine data panel in the Godot adapter
+- last-shot summary presentation in the Godot HUD
 - broader presentation polish
 
 ## Current Focus
 
-Right now the repo is in step 14. The Godot adapter is rules-aware, training-aware, has predictive guide visuals, exposes the hardcoded table geometry as a toggleable overlay with per-layer visibility control, now boots into an orthographic top-down main camera while still supporting switchable inspection camera presets with zoom, presents state/debug text in dedicated HUD panels, shows transient shot-feedback banners, highlights turn state in a color-accented header, and passes Godot 4.6 Mono headless startup verification; the remaining backlog is broader presentation polish.
+Right now the repo is in step 14. The Godot adapter is rules-aware, training-aware, has predictive guide visuals, exposes the hardcoded table geometry as a toggleable overlay with per-layer visibility control, now boots into an orthographic top-down main camera while still supporting switchable inspection camera presets with zoom, presents state/debug text in dedicated HUD panels, shows transient shot-feedback banners, highlights turn state in a color-accented header, now keeps a dedicated last-shot summary panel for completed eight-ball and training/freeplay shots, and passes Godot 4.6 Mono headless startup verification; the remaining backlog is broader presentation polish.
