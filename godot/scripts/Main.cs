@@ -284,8 +284,8 @@ public partial class Main : Node3D
                 new Color(0.19f, 0.12f, 0.09f),
                 midpoint + outwardOffset);
 
-            rail.LookAt(rail.Position + segmentVector, Vector3.Up);
             _tableRoot.AddChild(rail);
+            rail.LookAt(rail.Position + segmentVector, Vector3.Up);
         }
 
         foreach (var pocket in _tableSpec.Pockets)

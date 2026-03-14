@@ -25,6 +25,13 @@ Current behavior:
 - `H` toggles a hardcoded-table overlay sourced from `TableSpec` that shows cloth bounds, cushion segments, jaw segments, pocket capture circles, and cue/rack reference spots.
 - `F1` toggles a debug panel with live portable-engine data such as `SimulationConfig` values, world counters, cue-ball state, selected-ball state, moving-ball counts, and preview lengths. Debug mode also forces the hardcoded-table overlay visible.
 
+Verification on `2026-03-14`:
+
+- `dotnet build CodexBuilding.Billiards.Godot46.csproj --no-restore`
+- `dotnet test ../tests/CodexBuilding.Billiards.Tests/CodexBuilding.Billiards.Tests.csproj --no-restore`
+- Godot 4.6 Mono `--build-solutions --quit`
+- Godot 4.6 Mono headless startup `--quit-after 10`
+
 Keyboard controls:
 
 - `Tab`: toggle between 8-ball and training mode
