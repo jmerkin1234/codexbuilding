@@ -358,6 +358,81 @@ public sealed class SimulationWorldTests
     }
 
     [Fact]
+    public void Advance_GlancingCushionCollisionRetainsTangentialTravelDirection()
+    {
+        var table = CustomTable9FtSpec.Create();
+        var segment = table.Cushions[0];
+        var ball = CreateBallAgainstSegment(segment, incomingSpeed: 0.7f, tangentSpeed: 1.2f);
+        var world = CreateBoundaryWorld(ball);
+
+        var result = world.Advance(0.01f);
+        var tangentVelocity = Vector2.Dot(result.Balls[0].Velocity, segment.Direction);
+
+        Assert.True(tangentVelocity > 0.5f);
+        Assert.True(tangentVelocity < 1.2f);
+    }
+
+    [Fact]
+    public void Advance_GlancingCushionCollisionReboundsLessThanHeadOnCollision()
+    {
+        var table = CustomTable9FtSpec.Create();
+        var segment = table.Cushions[0];
+        var tunedConfig = new SimulationConfig(
+            fixedStepSeconds: 0.01f,
+            settleSpeedThresholdMetersPerSecond: 0.0001f,
+            maxFixedStepsPerAdvance: 64,
+            maxSideSpinRps: 12.0f,
+            maxFollowSpinRps: 10.0f,
+            maxDrawSpinRps: 11.0f,
+            slidingFrictionAccelerationMetersPerSecondSquared: 0.0f,
+            rollingFrictionAccelerationMetersPerSecondSquared: 0.0f,
+            spinDecayRpsPerSecond: 0.0f,
+            rollingMatchToleranceMetersPerSecond: 0.01f,
+            spinSettleThresholdRps: 0.05f,
+            ballCollisionRestitution: 1.0f,
+            maxCollisionIterationsPerStep: 4,
+            boundaryRestitution: 1.0f,
+            boundaryTangentialFrictionFactor: 0.0f,
+            boundarySpinTransferFactor: 0.0f,
+            maxBoundaryIterationsPerStep: 4,
+            boundaryGlancingRestitution: 0.5f,
+            boundaryTangentialVelocityRetention: 1.0f);
+        var headOnWorld = CreateBoundaryWorld(CreateBallAgainstSegment(segment, incomingSpeed: 1.0f), tunedConfig);
+        var glancingWorld = CreateBoundaryWorld(
+            CreateBallAgainstSegment(segment, incomingSpeed: 1.0f, tangentSpeed: 1.732f),
+            tunedConfig);
+
+        var headOnResult = headOnWorld.Advance(0.01f);
+        var glancingResult = glancingWorld.Advance(0.01f);
+        var headOnNormal = Vector2.Dot(headOnResult.Balls[0].Velocity, segment.InwardNormal);
+        var glancingNormal = Vector2.Dot(glancingResult.Balls[0].Velocity, segment.InwardNormal);
+
+        Assert.True(headOnNormal > glancingNormal);
+        Assert.InRange(glancingNormal, 0.70f, 0.80f);
+    }
+
+    [Fact]
+    public void Advance_OverlapCorrectionDoesNotScrubOutgoingRailVelocity()
+    {
+        var table = CustomTable9FtSpec.Create();
+        var segment = table.Cushions[0];
+        var ball = new BallState(
+            BallNumber: 0,
+            Kind: BallKind.Cue,
+            Position: ((segment.Start + segment.End) * 0.5f) + (segment.InwardNormal * (0.028575f - 0.002f)),
+            Velocity: (segment.InwardNormal * 0.4f) + (segment.Direction * 0.9f),
+            Spin: new SpinState(0.0f, 0.0f, 0.0f),
+            IsPocketed: false);
+        var world = CreateBoundaryWorld(ball);
+
+        var result = world.Advance(0.01f);
+        var correctedBall = result.Balls[0];
+
+        Assert.Equal(0.4f, Vector2.Dot(correctedBall.Velocity, segment.InwardNormal), 3);
+        Assert.Equal(0.9f, Vector2.Dot(correctedBall.Velocity, segment.Direction), 3);
+    }
+
+    [Fact]
     public void Advance_TableSpecProvidesJawSegmentsWithInwardNormals()
     {
         var table = CustomTable9FtSpec.Create();
@@ -441,7 +516,7 @@ public sealed class SimulationWorldTests
         var fingerprintHash = SimulationFingerprintBuilder.BuildSha256(trace);
 
         Assert.True(trace.Completed);
-        Assert.Equal("d317d81f59530acc884987a9869805047203f4be969aa7034287c78a8e3eff6f", fingerprintHash);
+        Assert.Equal("eefdb8c9320f16e02ca261af596cc6910d2487f324b508363a3b11433107e9a3", fingerprintHash);
     }
 
     private static SimulationWorld CreateShellWorld(Vector2 cueBallVelocity)
@@ -504,27 +579,10 @@ public sealed class SimulationWorldTests
         return new SimulationWorld(table, config, new[] { firstBall, secondBall });
     }
 
-    private static SimulationWorld CreateBoundaryWorld(BallState ball)
+    private static SimulationWorld CreateBoundaryWorld(BallState ball, SimulationConfig? config = null)
     {
-        var config = new SimulationConfig(
-            fixedStepSeconds: 0.01f,
-            settleSpeedThresholdMetersPerSecond: 0.0001f,
-            maxFixedStepsPerAdvance: 64,
-            maxSideSpinRps: 12.0f,
-            maxFollowSpinRps: 10.0f,
-            maxDrawSpinRps: 11.0f,
-            slidingFrictionAccelerationMetersPerSecondSquared: 0.0f,
-            rollingFrictionAccelerationMetersPerSecondSquared: 0.0f,
-            spinDecayRpsPerSecond: 0.0f,
-            rollingMatchToleranceMetersPerSecond: 0.01f,
-            spinSettleThresholdRps: 0.05f,
-            ballCollisionRestitution: 1.0f,
-            maxCollisionIterationsPerStep: 4,
-            boundaryRestitution: 1.0f,
-            maxBoundaryIterationsPerStep: 4);
-
         var table = CustomTable9FtSpec.Create();
-        return new SimulationWorld(table, config, new[] { ball });
+        return new SimulationWorld(table, config ?? CreateBoundaryConfig(), new[] { ball });
     }
 
     private static SimulationWorld CreatePocketWorld(BallState ball)
@@ -567,6 +625,26 @@ public sealed class SimulationWorldTests
             ballCollisionRestitution: 0.96f,
             maxCollisionIterationsPerStep: 4,
             boundaryRestitution: 0.9f,
+            maxBoundaryIterationsPerStep: 4);
+    }
+
+    private static SimulationConfig CreateBoundaryConfig()
+    {
+        return new SimulationConfig(
+            fixedStepSeconds: 0.01f,
+            settleSpeedThresholdMetersPerSecond: 0.0001f,
+            maxFixedStepsPerAdvance: 64,
+            maxSideSpinRps: 12.0f,
+            maxFollowSpinRps: 10.0f,
+            maxDrawSpinRps: 11.0f,
+            slidingFrictionAccelerationMetersPerSecondSquared: 0.0f,
+            rollingFrictionAccelerationMetersPerSecondSquared: 0.0f,
+            spinDecayRpsPerSecond: 0.0f,
+            rollingMatchToleranceMetersPerSecond: 0.01f,
+            spinSettleThresholdRps: 0.05f,
+            ballCollisionRestitution: 1.0f,
+            maxCollisionIterationsPerStep: 4,
+            boundaryRestitution: 1.0f,
             maxBoundaryIterationsPerStep: 4);
     }
 
@@ -630,19 +708,23 @@ public sealed class SimulationWorldTests
         return forwardSpinRps * 2.0f * MathF.PI * 0.028575f;
     }
 
-    private static BallState CreateBallAgainstSegment(CushionSegment segment, float incomingSpeed)
+    private static BallState CreateBallAgainstSegment(
+        CushionSegment segment,
+        float incomingSpeed,
+        float tangentSpeed = 0.0f,
+        SpinState? spin = null)
     {
         var midpoint = (segment.Start + segment.End) * 0.5f;
         var radius = 0.028575f;
         var position = midpoint + (segment.InwardNormal * (radius - 0.002f));
-        var velocity = -segment.InwardNormal * incomingSpeed;
+        var velocity = (-segment.InwardNormal * incomingSpeed) + (segment.Direction * tangentSpeed);
 
         return new BallState(
             BallNumber: 0,
             Kind: BallKind.Cue,
             Position: position,
             Velocity: velocity,
-            Spin: new SpinState(0.0f, 0.0f, 0.0f),
+            Spin: spin ?? new SpinState(0.0f, 0.0f, 0.0f),
             IsPocketed: false);
     }
 

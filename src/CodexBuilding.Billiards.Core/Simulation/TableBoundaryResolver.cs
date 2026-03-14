@@ -75,20 +75,29 @@ public static class TableBoundaryResolver
         var correctedPosition = ball.Position + (contactNormal * penetration);
         var correctedVelocity = ball.Velocity;
         var inwardSpeed = Vector2.Dot(correctedVelocity, contactNormal);
+        var sideSpin = ball.Spin.SideSpinRps;
+
         if (inwardSpeed < 0.0f)
         {
-            correctedVelocity -= (1.0f + config.BoundaryRestitution) * inwardSpeed * contactNormal;
+            var tangent = segment.Direction;
+            var totalSpeed = MathF.Max(correctedVelocity.Length(), 0.0001f);
+            var impactRatio = Math.Clamp(MathF.Abs(inwardSpeed) / totalSpeed, 0.0f, 1.0f);
+            var effectiveRestitution = Lerp(
+                config.BoundaryGlancingRestitution,
+                config.BoundaryRestitution,
+                impactRatio);
+
+            var tangentSpeed = Vector2.Dot(correctedVelocity, tangent) *
+                               config.BoundaryTangentialVelocityRetention;
+            var slipSpeed = tangentSpeed + SpinToSurfaceSpeed(ballRadiusMeters, sideSpin);
+            var tangentialVelocityDelta = -slipSpeed * config.BoundaryTangentialFrictionFactor;
+            var correctedTangentSpeed = tangentSpeed + tangentialVelocityDelta;
+            var correctedNormalSpeed = -inwardSpeed * effectiveRestitution;
+
+            correctedVelocity = (tangent * correctedTangentSpeed) + (contactNormal * correctedNormalSpeed);
+            sideSpin += SurfaceSpeedToSpinRps(ballRadiusMeters, tangentialVelocityDelta) *
+                        config.BoundarySpinTransferFactor;
         }
-
-        var tangent = segment.Direction;
-        var contactTangentSpeed = Vector2.Dot(correctedVelocity, tangent) +
-                                  SpinToSurfaceSpeed(ballRadiusMeters, ball.Spin.SideSpinRps);
-        var tangentialVelocityDelta = -contactTangentSpeed * config.BoundaryTangentialFrictionFactor;
-        correctedVelocity += tangent * tangentialVelocityDelta;
-
-        var sideSpin = ball.Spin.SideSpinRps +
-                       (SurfaceSpeedToSpinRps(ballRadiusMeters, tangentialVelocityDelta) *
-                        config.BoundarySpinTransferFactor);
 
         ball = ball with
         {
@@ -127,5 +136,10 @@ public static class TableBoundaryResolver
         }
 
         return surfaceSpeedMetersPerSecond / (2.0f * MathF.PI * ballRadiusMeters);
+    }
+
+    private static float Lerp(float start, float end, float amount)
+    {
+        return start + ((end - start) * amount);
     }
 }

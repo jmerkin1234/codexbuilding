@@ -23,7 +23,9 @@ public sealed class SimulationConfig
         boundaryRestitution: 0.9f,
         boundaryTangentialFrictionFactor: 0.25f,
         boundarySpinTransferFactor: 0.45f,
-        maxBoundaryIterationsPerStep: 4);
+        maxBoundaryIterationsPerStep: 4,
+        boundaryGlancingRestitution: 0.78f,
+        boundaryTangentialVelocityRetention: 0.97f);
 
     public SimulationConfig(
         float fixedStepSeconds,
@@ -46,7 +48,9 @@ public sealed class SimulationConfig
         float boundaryRestitution = 0.9f,
         float boundaryTangentialFrictionFactor = 0.25f,
         float boundarySpinTransferFactor = 0.45f,
-        int maxBoundaryIterationsPerStep = 4)
+        int maxBoundaryIterationsPerStep = 4,
+        float boundaryGlancingRestitution = 0.78f,
+        float boundaryTangentialVelocityRetention = 0.97f)
     {
         if (fixedStepSeconds <= 0.0f)
         {
@@ -178,6 +182,20 @@ public sealed class SimulationConfig
                 "Boundary spin transfer factor must be between zero and one.");
         }
 
+        if (boundaryGlancingRestitution < 0.0f || boundaryGlancingRestitution > 1.0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(boundaryGlancingRestitution),
+                "Boundary glancing restitution must be between zero and one.");
+        }
+
+        if (boundaryTangentialVelocityRetention < 0.0f || boundaryTangentialVelocityRetention > 1.0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(boundaryTangentialVelocityRetention),
+                "Boundary tangential velocity retention must be between zero and one.");
+        }
+
         if (maxBoundaryIterationsPerStep <= 0)
         {
             throw new ArgumentOutOfRangeException(
@@ -206,6 +224,8 @@ public sealed class SimulationConfig
         BoundaryTangentialFrictionFactor = boundaryTangentialFrictionFactor;
         BoundarySpinTransferFactor = boundarySpinTransferFactor;
         MaxBoundaryIterationsPerStep = maxBoundaryIterationsPerStep;
+        BoundaryGlancingRestitution = boundaryGlancingRestitution;
+        BoundaryTangentialVelocityRetention = boundaryTangentialVelocityRetention;
     }
 
     public float FixedStepSeconds { get; }
@@ -249,4 +269,8 @@ public sealed class SimulationConfig
     public float BoundarySpinTransferFactor { get; }
 
     public int MaxBoundaryIterationsPerStep { get; }
+
+    public float BoundaryGlancingRestitution { get; }
+
+    public float BoundaryTangentialVelocityRetention { get; }
 }

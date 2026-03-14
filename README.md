@@ -24,9 +24,10 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - Ball-ball collisions now resolve equal-mass contacts with restitution, overlap separation, capped tangential transfer, and side-spin exchange during contact.
 - Cushion and pocket-jaw interactions now resolve against explicit hardcoded boundary segments derived from the Blender table reference, including tangential rail friction and side-spin rail response.
 - Pocket capture now uses a hardcoded pocket-mouth/drop model derived from jaw geometry, so pocket acceptance depends on entry lane and speed instead of a single radius check.
+- Rail rebound tuning now distinguishes glancing versus head-on cushion impacts, preserves most tangential bank travel through a separate retention term, and no longer applies fake rail scrub when a ball is only being pushed out of overlap.
 - Shot event expansion now covers first cue-ball contact, cushion/jaw contact, pocketed balls, scratch, and settled-shot events.
 - Deterministic replay now records per-step frames, cue-strike seeds, and shot events into a portable trace object.
-- Regression coverage now locks a canonical straight-shot SHA-256 fingerprint for deterministic replay validation and was updated on `2026-03-14` after the spin-response refinement pass.
+- Regression coverage now locks a canonical straight-shot SHA-256 fingerprint for deterministic replay validation and was updated on `2026-03-14` after the rail-rebound tuning pass.
 - The Godot 4.6 adapter now seeds a standard 8-ball rack from the portable core, mirrors core ball state into named visual nodes, exposes keyboard shot controls, directly instantiates `res://art/customtable_9ft.blend` as the render-only table when present, and falls back to a procedural table if that Blender asset is not available.
 - The checked-in Blender table now imports directly through Godot 4.6, which also extracted the referenced texture set into `godot/art/textures/` so the visual asset can load without a manual export step.
 - The Godot scene graph now preserves Blender-facing names where used: `GodotRoot`, `TableRoot`, `BallsRoot`, `CueRoot`, `CueStick`, `CueBall`, `Ball_01` through `Ball_15`, rail names, and pocket names.
@@ -45,10 +46,10 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - The Godot adapter now raises a transient shot-feedback banner for shot starts, first contact, pocketed balls, scratches, fouls, wins, and other key rule outcomes.
 - The status panel now gives the current mode, turn, winner, and ball-in-hand state a dedicated color-accented header so match flow is readable at a glance.
 - `F1` now enables a Godot debug panel that shows live portable-engine data, including table/config values, simulation counters, cue-ball state, selected-ball state, moving-ball counts, preview status, and live tuning state. Debug mode also forces the hardcoded-table overlay visible.
-- The Godot adapter now supports runtime debug tuning of core-physics constants such as cloth friction, spin decay, side-spin drift, ball/rail restitution, tangential transfer, and solver iteration counts, while preserving the current ball layout between changes.
+- The Godot adapter now supports runtime debug tuning of core-physics constants such as cloth friction, spin decay, side-spin drift, ball/rail restitution, glancing rail restitution, tangential rail retention, tangential transfer, and solver iteration counts, while preserving the current ball layout between changes.
 - The Godot HUD now has a dedicated shot-setup card with speed, tip-offset, and tuning readouts, plus a separate controls/help card toggled with `F6`, so the main status panel no longer has to carry the full control map as raw text.
 - The Godot adapter now opens on a proper start/menu overlay with button-based `EightBall` and `FreePlay` selection, and `Esc` reopens that menu later for resume/reset/return-to-start actions.
-- Validation on `2026-03-14` covers `45` passing standalone tests via `dotnet test`, a successful Godot adapter compile via `dotnet build`, a successful Godot 4.6 Mono `--build-solutions` pass, a clean headless startup pass via `--quit-after 10`, and a verified direct import of `godot/art/customtable_9ft.blend` through Godot’s Blender pipeline.
+- Validation on `2026-03-14` covers `48` passing standalone tests via `dotnet test`, a successful Godot adapter compile via `dotnet build`, a successful Godot 4.6 Mono `--build-solutions` pass, a clean headless startup pass via `--quit-after 10`, and a verified direct import of `godot/art/customtable_9ft.blend` through Godot’s Blender pipeline.
 
 ## Repository Layout
 
@@ -93,4 +94,4 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 
 ## Next Step
 
-The next implementation step is rail rebound tuning and richer english on rails, now that pocket-mouth behavior is no longer a single-circle capture.
+The next implementation step is stronger english on rails, now that pocket-mouth behavior and base rail rebound tuning are both in place.
