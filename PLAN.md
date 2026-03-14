@@ -133,6 +133,7 @@ Scope:
 Status: in_progress
 Scope:
 - hardcoded-table debug overlay lines from `TableSpec`
+- live debug-mode engine data panel in the Godot adapter
 - continued scenario tooling
 - broader presentation polish
 

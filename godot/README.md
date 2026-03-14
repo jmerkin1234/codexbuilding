@@ -23,10 +23,12 @@ Current behavior:
 - Predictive guide meshes are generated from cloned portable simulations, including the primary cue path, post-bounce/post-collision cue continuation, and first-contact object-ball path.
 - Practice mode supports freeplay layout editing by cycling the selected ball and moving it around the cloth.
 - `H` toggles a hardcoded-table overlay sourced from `TableSpec` that shows cloth bounds, cushion segments, jaw segments, pocket capture circles, and cue/rack reference spots.
+- `F1` toggles a debug panel with live portable-engine data such as `SimulationConfig` values, world counters, cue-ball state, selected-ball state, moving-ball counts, and preview lengths. Debug mode also forces the hardcoded-table overlay visible.
 
 Keyboard controls:
 
 - `Tab`: toggle between 8-ball and training mode
+- `F1`: toggle debug mode and engine-data panel
 - `H`: show or hide the hardcoded-table overlay
 - `A/D`: aim left/right
 - `W/S`: raise/lower strike speed

@@ -69,6 +69,7 @@ public partial class Main : Node3D
     private Node3D _hardcodeOverlayRoot = null!;
     private Camera3D _camera = null!;
     private Label _statusLabel = null!;
+    private Label _debugLabel = null!;
     private MeshInstance3D _cueGuide = null!;
     private MeshInstance3D _aimPrimaryGuide = null!;
     private MeshInstance3D _aimSecondaryGuide = null!;
@@ -81,6 +82,7 @@ public partial class Main : Node3D
     private int _capturedShotFrameIndex;
     private bool _aimPreviewDirty = true;
     private AimPreviewResult? _cachedAimPreview;
+    private bool _debugModeEnabled;
     private bool _hardcodeOverlayVisible = true;
     private int _trainingSelectedBallNumber;
     private float _aimAngleRadians;
@@ -123,6 +125,16 @@ public partial class Main : Node3D
             return;
         }
 
+        switch (keyEvent.Keycode)
+        {
+            case Key.F1:
+                ToggleDebugMode();
+                return;
+            case Key.H:
+                ToggleHardcodeOverlay();
+                return;
+        }
+
         if (_world.Phase == SimulationPhase.Running)
         {
             return;
@@ -149,9 +161,6 @@ public partial class Main : Node3D
                 break;
             case Key.X:
                 SelectTrainingBall(1);
-                break;
-            case Key.H:
-                ToggleHardcodeOverlay();
                 break;
         }
     }
@@ -190,6 +199,12 @@ public partial class Main : Node3D
         _statusLabel.Position = new Vector2(18.0f, 18.0f);
         _statusLabel.Size = new Vector2(760.0f, 260.0f);
         _statusLabel.Modulate = Colors.White;
+
+        _debugLabel = EnsureNode<Label>(hud, "DebugLabel");
+        _debugLabel.Position = new Vector2(18.0f, 286.0f);
+        _debugLabel.Size = new Vector2(980.0f, 520.0f);
+        _debugLabel.Modulate = new Color(0.84f, 0.98f, 0.89f);
+        _debugLabel.Visible = false;
     }
 
     private void ConfigureCameraAndLighting()
@@ -371,7 +386,7 @@ public partial class Main : Node3D
         AddOverlayCross("OverlayCueBallSpawn", _tableSpec.CueBallSpawn, 0.032f, new Color(0.95f, 0.95f, 0.95f), 0.036f);
         AddOverlayCross("OverlayRackApexSpot", _tableSpec.RackApexSpot, 0.032f, new Color(0.95f, 0.82f, 0.22f), 0.036f);
 
-        _hardcodeOverlayRoot.Visible = _hardcodeOverlayVisible;
+        UpdateOverlayVisibility();
     }
 
     private void ResetSessionForCurrentMode()
@@ -411,11 +426,23 @@ public partial class Main : Node3D
     private void ToggleHardcodeOverlay()
     {
         _hardcodeOverlayVisible = !_hardcodeOverlayVisible;
-        _hardcodeOverlayRoot.Visible = _hardcodeOverlayVisible;
+        UpdateOverlayVisibility();
         _recentRuleNotes.Clear();
         _recentRuleNotes.Add(_hardcodeOverlayVisible
             ? "Hardcoded-table overlay visible."
             : "Hardcoded-table overlay hidden.");
+        UpdateStatusLabel(Array.Empty<ShotEvent>());
+    }
+
+    private void ToggleDebugMode()
+    {
+        _debugModeEnabled = !_debugModeEnabled;
+        _debugLabel.Visible = _debugModeEnabled;
+        UpdateOverlayVisibility();
+        _recentRuleNotes.Clear();
+        _recentRuleNotes.Add(_debugModeEnabled
+            ? "Debug mode enabled."
+            : "Debug mode disabled.");
         UpdateStatusLabel(Array.Empty<ShotEvent>());
     }
 
@@ -998,9 +1025,11 @@ public partial class Main : Node3D
             $"{BuildModeStatusLine()}\n" +
             $"Phase: {_world.Phase}  SimTime: {_world.SimulationTimeSeconds:0.000}s  FixedSteps: {_world.TotalFixedStepsExecuted}\n" +
             $"CueBall: {cueBallStatus}  Aim: {Mathf.RadToDeg(_aimAngleRadians):0.0} deg  Speed: {_strikeSpeedMetersPerSecond:0.00} m/s  Tip: ({_tipOffsetNormalized.X:0.00}, {_tipOffsetNormalized.Y:0.00})  Overlay: {_hardcodeOverlayVisible}\n" +
-            "Controls: Tab mode  H hardcode overlay  A/D aim  W/S speed  J/L side spin  I/K follow-draw  Arrow keys move selected placement ball  Z/X cycle practice ball  Space shoot  Backspace center tip  R reset\n" +
+            "Controls: F1 debug  Tab mode  H hardcode overlay  A/D aim  W/S speed  J/L side spin  I/K follow-draw  Arrow keys move selected placement ball  Z/X cycle practice ball  Space shoot  Backspace center tip  R reset\n" +
             $"Recent shot events:\n{recentEventText}\n" +
             $"Rules/training:\n{recentRuleText}";
+
+        UpdateDebugPanel();
     }
 
     private string BuildModeStatusLine()
@@ -1028,6 +1057,81 @@ public partial class Main : Node3D
     private static string GetPlayerLabel(PlayerSlot player)
     {
         return player == PlayerSlot.PlayerOne ? "Player 1" : "Player 2";
+    }
+
+    private void UpdateOverlayVisibility()
+    {
+        _hardcodeOverlayRoot.Visible = _hardcodeOverlayVisible || _debugModeEnabled;
+    }
+
+    private void UpdateDebugPanel()
+    {
+        _debugLabel.Visible = _debugModeEnabled;
+        if (!_debugModeEnabled)
+        {
+            return;
+        }
+
+        _debugLabel.Text = BuildDebugText();
+    }
+
+    private string BuildDebugText()
+    {
+        var cueBall = _world.Balls.FirstOrDefault(ball => ball.BallNumber == 0);
+        var selectedBall = _world.Balls.FirstOrDefault(ball => ball.BallNumber == GetPlacementBallNumber());
+        var movingBalls = _world.Balls
+            .Where(ball => !ball.IsPocketed && ball.Velocity.LengthSquared() > 0.000001f)
+            .OrderBy(ball => ball.BallNumber)
+            .ToArray();
+        var pocketedCount = _world.Balls.Count(ball => ball.IsPocketed);
+        var preview = _cachedAimPreview;
+        var previewPrimary = preview == null ? 0.0f : NumericsVector2.Distance(preview.CueStart, preview.PrimaryCueEnd);
+        var previewSecondary = preview?.SecondaryCueEnd is NumericsVector2 secondaryCueEnd
+            ? NumericsVector2.Distance(preview.PrimaryCueEnd, secondaryCueEnd)
+            : 0.0f;
+        var previewTarget = preview?.TargetStart is NumericsVector2 targetStart && preview.TargetEnd is NumericsVector2 targetEnd
+            ? NumericsVector2.Distance(targetStart, targetEnd)
+            : 0.0f;
+        var movingSummary = movingBalls.Length == 0
+            ? "none"
+            : string.Join(", ", movingBalls.Take(6).Select(ball => $"{ball.BallNumber}:{ball.Velocity.Length():0.000}"));
+
+        return
+            "Debug Mode\n" +
+            $"Table: {_tableSpec.Name}  Source: {_tableSpec.SourceBlendPath}\n" +
+            $"Cloth: min={FormatVector(_tableSpec.ClothMin)} max={FormatVector(_tableSpec.ClothMax)}  BallD={_tableSpec.BallDiameterMeters:0.00000}\n" +
+            $"Geometry: cushions={_tableSpec.Cushions.Count} jaws={_tableSpec.JawSegments.Count} pockets={_tableSpec.Pockets.Count} overlay_visible={_hardcodeOverlayRoot.Visible}\n" +
+            $"Config: dt={_config.FixedStepSeconds:0.000000} settle={_config.SettleSpeedThresholdMetersPerSecond:0.0000} slide={_config.SlidingFrictionAccelerationMetersPerSecondSquared:0.000} roll={_config.RollingFrictionAccelerationMetersPerSecondSquared:0.000}\n" +
+            $"Config: spin_decay={_config.SpinDecayRpsPerSecond:0.000} ball_rest={_config.BallCollisionRestitution:0.00} rail_rest={_config.BoundaryRestitution:0.00} pair_iter={_config.MaxCollisionIterationsPerStep} rail_iter={_config.MaxBoundaryIterationsPerStep}\n" +
+            $"World: phase={_world.Phase} sim_t={_world.SimulationTimeSeconds:0.000} acc={_world.AccumulatorSeconds:0.000000} steps={_world.TotalFixedStepsExecuted} capture={_shotCaptureActive} frames={_capturedShotFrames.Count}\n" +
+            $"Rules: mode={GetRuleModeLabel()} debug_overlay_manual={_hardcodeOverlayVisible} debug_enabled={_debugModeEnabled}\n" +
+            $"Cue: pos={FormatVector(cueBall.Position)} vel={FormatVector(cueBall.Velocity)} spin={FormatSpin(cueBall.Spin)} pocketed={cueBall.IsPocketed}\n" +
+            $"Selected: {GetTrainingSelectionLabel()} pos={FormatVector(selectedBall.Position)} vel={FormatVector(selectedBall.Velocity)} spin={FormatSpin(selectedBall.Spin)} pocketed={selectedBall.IsPocketed}\n" +
+            $"Balls: moving={movingBalls.Length} pocketed={pocketedCount} moving_list={movingSummary}\n" +
+            $"Preview: dirty={_aimPreviewDirty} primary={previewPrimary:0.000} secondary={previewSecondary:0.000} target={previewTarget:0.000}\n" +
+            $"State: {BuildDebugStateLine()}";
+    }
+
+    private string BuildDebugStateLine()
+    {
+        if (_ruleMode == RuleMode.Training)
+        {
+            return $"practice_shots={_trainingState.ShotCount} cue_ball_in_hand={_trainingState.CueBallInHand} selected={GetTrainingSelectionLabel()}";
+        }
+
+        return
+            $"current={GetPlayerLabel(_eightBallState.CurrentPlayer)} open={_eightBallState.OpenTable} groups=P1:{_eightBallState.PlayerOneGroup}/P2:{_eightBallState.PlayerTwoGroup} " +
+            $"break={_eightBallState.IsBreakShot} winner={_eightBallState.Winner?.ToString() ?? "none"} bih={_eightBallState.BallInHandPlayer?.ToString() ?? "none"}";
+    }
+
+    private static string FormatVector(NumericsVector2 value)
+    {
+        return $"({value.X:0.000},{value.Y:0.000})";
+    }
+
+    private static string FormatSpin(SpinState spin)
+    {
+        return $"({spin.SideSpinRps:0.000},{spin.ForwardSpinRps:0.000},{spin.VerticalSpinRps:0.000})";
     }
 
     private void AddOverlaySegment(
