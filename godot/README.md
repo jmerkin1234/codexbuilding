@@ -46,6 +46,7 @@ Current behavior:
 - A transient banner now surfaces shot starts, contact, pocketing, scratch, foul, win, and turn/result feedback in the running adapter.
 - The status panel now has a color-accented header for current mode and turn state.
 - `F1` toggles a detached debug window with live portable-engine data such as `SimulationConfig` values, world counters, cue-ball state, selected-ball state, moving-ball counts, preview lengths, and active tuning state. That separate play-mode window can be moved to another monitor, and debug mode still forces the hardcoded-table overlay visible.
+- The project now disables embedded subwindows so the debug view can become a native OS window; if you still use Godot editor embedded play, the editor itself can still keep the whole game trapped inside the editor pane.
 - Debug mode now supports live tuning of key portable-physics constants, including ball follow/draw carry, glancing rail restitution, tangential rail retention, and rail-english transfer, and immediately rebuilds `SimulationWorld` with the current ball layout after each change.
 
 Verification on `2026-03-14`:
