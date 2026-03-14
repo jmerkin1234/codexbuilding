@@ -16,14 +16,19 @@ Current behavior:
 - If `res://art/ImportedTable.tscn` exists, it is instantiated under `TableRoot`.
 - If that imported scene is absent, the adapter renders a procedural fallback using the hardcoded table spec and Blender-derived source names.
 - Ball motion is always driven by the portable core and mirrored into Godot transforms each frame.
-- The portable `Rules` layer and training-mode state now exist in the core, but they are not yet wired into the Godot HUD or turn-flow code.
+- The adapter captures live shot traces and resolves them through the portable `Rules` layer.
+- `Tab` switches between `EightBall` and `Training` mode inside the running adapter.
+- The HUD now shows mode, current player, group assignment, ball-in-hand, winner, and recent rules outcomes.
+- Cue-ball-in-hand and training placement are handled in the adapter with arrow-key repositioning, while the portable core remains the physics authority.
 
 Keyboard controls:
 
+- `Tab`: toggle between 8-ball and training mode
 - `A/D`: aim left/right
 - `W/S`: raise/lower strike speed
 - `J/L`: apply left/right english
 - `I/K`: apply follow/draw
+- `Arrow keys`: move the cue ball when ball-in-hand or training placement is active
 - `Space`: shoot
 - `Backspace`: center the tip offset
 - `R`: reset the standard rack

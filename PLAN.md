@@ -110,8 +110,18 @@ Scope:
 - standalone rules-engine tests
 
 12. Godot rules/training integration
+Status: complete
+Scope:
+- live shot-trace capture inside the Godot adapter
+- 8-ball and training-mode switching from the adapter
+- HUD display for player, groups, winner, and rules state
+- cue-ball-in-hand placement controls
+- 8-ball respot and post-shot layout reset flow
+- Godot adapter compile verification after rules wiring
+
+13. Training/presentation expansion
 Status: pending
 
 ## Current Focus
 
-Right now the repo is moving from step 11 to step 12. The portable rules layer and training mode exist in the core; the next increment is wiring them into the Godot adapter, HUD, and turn flow.
+Right now the repo is moving from step 12 to step 13. The Godot adapter is rules-aware and training-aware; the next increment is expanding training layout tools and richer in-game presentation.

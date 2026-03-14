@@ -1,5 +1,6 @@
 using System.Linq;
 using CodexBuilding.Billiards.Core.Geometry;
+using CodexBuilding.Billiards.Core.Rules;
 using CodexBuilding.Billiards.Core.Simulation;
 using Godot;
 using GodotEnvironment = Godot.Environment;
@@ -9,6 +10,12 @@ namespace CodexBuilding.Billiards.Godot46;
 
 public partial class Main : Node3D
 {
+    private enum RuleMode
+    {
+        EightBall,
+        Training
+    }
+
     private const string ImportedTableScenePath = "res://art/ImportedTable.tscn";
     private const float FeltThicknessMeters = 0.04f;
     private const float FrameThicknessMeters = 0.1f;
@@ -22,6 +29,7 @@ public partial class Main : Node3D
     private const float AimTurnRadiansPerSecond = 1.8f;
     private const float StrikeSpeedAdjustPerSecond = 1.5f;
     private const float TipAdjustPerSecond = 1.2f;
+    private const float CueBallPlacementMetersPerSecond = 0.9f;
     private const float MinimumStrikeSpeedMetersPerSecond = 0.3f;
     private const float MaximumStrikeSpeedMetersPerSecond = 4.0f;
 
@@ -38,6 +46,11 @@ public partial class Main : Node3D
         new Color(0.08f, 0.08f, 0.09f)
     ];
 
+    private readonly List<string> _recentFrameEvents = new(capacity: 4);
+    private readonly List<string> _recentRuleNotes = new(capacity: 4);
+    private readonly List<SimulationReplayFrame> _capturedShotFrames = new(capacity: 1024);
+    private readonly Dictionary<int, MeshInstance3D> _ballVisuals = new();
+
     private TableSpec _tableSpec = null!;
     private SimulationConfig _config = null!;
     private SimulationWorld _world = null!;
@@ -48,8 +61,12 @@ public partial class Main : Node3D
     private Camera3D _camera = null!;
     private Label _statusLabel = null!;
     private MeshInstance3D _cueGuide = null!;
-    private readonly Dictionary<int, MeshInstance3D> _ballVisuals = new();
-    private readonly List<string> _recentFrameEvents = new(capacity: 4);
+    private RuleMode _ruleMode = RuleMode.EightBall;
+    private EightBallMatchState _eightBallState = EightBallMatchState.CreateNew();
+    private TrainingModeState _trainingState = TrainingModeState.CreateNew();
+    private ResolvedCueStrike? _capturedCueStrike;
+    private bool _shotCaptureActive;
+    private int _capturedShotFrameIndex;
     private float _aimAngleRadians;
     private float _strikeSpeedMetersPerSecond = 2.0f;
     private Vector2 _tipOffsetNormalized = Vector2.Zero;
@@ -59,26 +76,25 @@ public partial class Main : Node3D
         _tableSpec = CustomTable9FtSpec.Create();
         _config = SimulationConfig.Default;
         _world = new SimulationWorld(_tableSpec, _config, StandardEightBallRack.Create(_tableSpec));
-        _aimAngleRadians = GetDefaultAimAngle();
 
         ConfigureSceneGraph();
         ConfigureCameraAndLighting();
         BuildTableVisual();
         BuildBallVisuals();
-        SyncBallVisuals(_world.Balls);
-        UpdateCueGuide();
-        UpdateStatusLabel(Array.Empty<ShotEvent>());
+        ResetSessionForCurrentMode();
     }
 
     public override void _Process(double delta)
     {
         var deltaSeconds = (float)delta;
 
+        UpdateCueBallPlacement(deltaSeconds);
         UpdateShotControls(deltaSeconds);
 
         var result = _world.Advance(deltaSeconds);
         CacheRecentEvents(result.Events);
-        SyncBallVisuals(result.Balls);
+        CaptureShotFrame(result);
+        SyncBallVisuals(_world.Balls);
         UpdateCueGuide();
         UpdateStatusLabel(result.Events);
     }
@@ -90,18 +106,26 @@ public partial class Main : Node3D
             return;
         }
 
+        if (_world.Phase == SimulationPhase.Running)
+        {
+            return;
+        }
+
         switch (keyEvent.Keycode)
         {
             case Key.Space:
                 TryShoot();
                 break;
             case Key.R:
-                ResetTable();
+                ResetSessionForCurrentMode();
                 break;
             case Key.Backspace:
                 _tipOffsetNormalized = Vector2.Zero;
                 UpdateCueGuide();
                 UpdateStatusLabel(Array.Empty<ShotEvent>());
+                break;
+            case Key.Tab:
+                ToggleRuleMode();
                 break;
         }
     }
@@ -121,7 +145,7 @@ public partial class Main : Node3D
         var hud = EnsureNode<CanvasLayer>(this, "Hud");
         _statusLabel = EnsureNode<Label>(hud, "StatusLabel");
         _statusLabel.Position = new Vector2(18.0f, 18.0f);
-        _statusLabel.Size = new Vector2(740.0f, 180.0f);
+        _statusLabel.Size = new Vector2(760.0f, 260.0f);
         _statusLabel.Modulate = Colors.White;
     }
 
@@ -255,16 +279,79 @@ public partial class Main : Node3D
         }
     }
 
-    private void ResetTable()
+    private void ResetSessionForCurrentMode()
     {
         _world.Reset(StandardEightBallRack.Create(_tableSpec));
+        _eightBallState = EightBallMatchState.CreateNew();
+        _trainingState = TrainingModeState.CreateNew();
+        _capturedCueStrike = null;
+        _capturedShotFrameIndex = 0;
+        _shotCaptureActive = false;
+        _capturedShotFrames.Clear();
+        _recentFrameEvents.Clear();
+        _recentRuleNotes.Clear();
+        _recentRuleNotes.Add($"{GetRuleModeLabel()} mode ready.");
         _aimAngleRadians = GetDefaultAimAngle();
         _strikeSpeedMetersPerSecond = 2.0f;
         _tipOffsetNormalized = Vector2.Zero;
-        _recentFrameEvents.Clear();
+
+        if (CanPlaceCueBall())
+        {
+            ResetWorldForNextTurn(cueBallInHand: true, requiresEightBallRespot: false);
+        }
+
         SyncBallVisuals(_world.Balls);
         UpdateCueGuide();
         UpdateStatusLabel(Array.Empty<ShotEvent>());
+    }
+
+    private void ToggleRuleMode()
+    {
+        _ruleMode = _ruleMode == RuleMode.EightBall ? RuleMode.Training : RuleMode.EightBall;
+        ResetSessionForCurrentMode();
+    }
+
+    private void UpdateCueBallPlacement(float deltaSeconds)
+    {
+        if (!CanPlaceCueBall())
+        {
+            return;
+        }
+
+        var moveInput = Vector2.Zero;
+
+        if (Input.IsKeyPressed(Key.Left))
+        {
+            moveInput.X -= 1.0f;
+        }
+
+        if (Input.IsKeyPressed(Key.Right))
+        {
+            moveInput.X += 1.0f;
+        }
+
+        if (Input.IsKeyPressed(Key.Up))
+        {
+            moveInput.Y -= 1.0f;
+        }
+
+        if (Input.IsKeyPressed(Key.Down))
+        {
+            moveInput.Y += 1.0f;
+        }
+
+        if (moveInput == Vector2.Zero)
+        {
+            return;
+        }
+
+        var cueBall = _world.Balls.FirstOrDefault(ball => ball.BallNumber == 0);
+        var currentPosition = cueBall.IsPocketed ? _tableSpec.CueBallSpawn : cueBall.Position;
+        var desiredPosition = currentPosition +
+                              new NumericsVector2(moveInput.Normalized().X, moveInput.Normalized().Y) *
+                              (CueBallPlacementMetersPerSecond * deltaSeconds);
+
+        MoveBallToPlacement(0, desiredPosition, keepPocketed: false);
     }
 
     private void UpdateShotControls(float deltaSeconds)
@@ -335,14 +422,16 @@ public partial class Main : Node3D
                 _strikeSpeedMetersPerSecond,
                 new NumericsVector2(_tipOffsetNormalized.X, _tipOffsetNormalized.Y));
 
-            _world.ApplyCueStrike(shot);
+            var resolvedCueStrike = _world.ApplyCueStrike(shot);
+            BeginShotCapture(resolvedCueStrike);
             _recentFrameEvents.Clear();
-            _recentFrameEvents.Add($"CueStrike speed={_strikeSpeedMetersPerSecond:0.00} tip=({_tipOffsetNormalized.X:0.00},{_tipOffsetNormalized.Y:0.00})");
+            _recentRuleNotes.Clear();
+            _recentRuleNotes.Add($"{GetRuleModeLabel()} shot started.");
         }
         catch (Exception exception)
         {
-            _recentFrameEvents.Clear();
-            _recentFrameEvents.Add(exception.Message);
+            _recentRuleNotes.Clear();
+            _recentRuleNotes.Add(exception.Message);
         }
 
         UpdateCueGuide();
@@ -351,7 +440,301 @@ public partial class Main : Node3D
 
     private bool CanEditShot()
     {
-        return _world.Phase != SimulationPhase.Running && _world.Balls.Any(ball => ball.Kind == BallKind.Cue && !ball.IsPocketed);
+        return _world.Phase != SimulationPhase.Running &&
+               !_shotCaptureActive &&
+               !IsMatchOver() &&
+               _world.Balls.Any(ball => ball.Kind == BallKind.Cue && !ball.IsPocketed);
+    }
+
+    private bool CanPlaceCueBall()
+    {
+        if (_world.Phase == SimulationPhase.Running || _shotCaptureActive)
+        {
+            return false;
+        }
+
+        return _ruleMode switch
+        {
+            RuleMode.EightBall => _eightBallState.BallInHandPlayer == _eightBallState.CurrentPlayer,
+            RuleMode.Training => _trainingState.CueBallInHand,
+            _ => false
+        };
+    }
+
+    private bool IsMatchOver()
+    {
+        return _ruleMode == RuleMode.EightBall && _eightBallState.IsGameOver;
+    }
+
+    private void BeginShotCapture(ResolvedCueStrike resolvedCueStrike)
+    {
+        _capturedCueStrike = resolvedCueStrike;
+        _capturedShotFrameIndex = 0;
+        _capturedShotFrames.Clear();
+        _shotCaptureActive = true;
+    }
+
+    private void CaptureShotFrame(ShotResult result)
+    {
+        if (!_shotCaptureActive || !_capturedCueStrike.HasValue)
+        {
+            return;
+        }
+
+        if (result.FixedStepsExecuted == 0 &&
+            result.Events.Count == 0 &&
+            result.Phase == SimulationPhase.Running)
+        {
+            return;
+        }
+
+        _capturedShotFrames.Add(new SimulationReplayFrame(
+            stepIndex: _capturedShotFrameIndex++,
+            phase: result.Phase,
+            simulationTimeSeconds: result.SimulationTimeSeconds,
+            balls: result.Balls.ToArray(),
+            events: result.Events.ToArray()));
+
+        if (result.Phase is SimulationPhase.Settled or SimulationPhase.Idle)
+        {
+            FinalizeCapturedShot();
+        }
+    }
+
+    private void FinalizeCapturedShot()
+    {
+        if (!_capturedCueStrike.HasValue || _capturedShotFrames.Count == 0)
+        {
+            ClearShotCapture();
+            return;
+        }
+
+        var trace = new SimulationReplayTrace(
+            _capturedCueStrike.Value,
+            _capturedShotFrames.ToArray(),
+            completed: true,
+            maxSteps: _capturedShotFrames.Count);
+
+        if (_ruleMode == RuleMode.EightBall)
+        {
+            ApplyEightBallTurnResult(EightBallRulesEngine.ResolveShot(_eightBallState, trace));
+        }
+        else
+        {
+            ApplyTrainingTurnResult(TrainingModeEngine.ResolveShot(_trainingState, trace));
+        }
+
+        ClearShotCapture();
+    }
+
+    private void ApplyEightBallTurnResult(EightBallTurnResult turnResult)
+    {
+        _eightBallState = turnResult.NextState;
+        _recentRuleNotes.Clear();
+        _recentRuleNotes.Add($"Turn: {GetPlayerLabel(turnResult.ShootingPlayer)} -> {GetPlayerLabel(turnResult.NextState.CurrentPlayer)}");
+
+        if (turnResult.AssignedGroup.HasValue)
+        {
+            _recentRuleNotes.Add($"{GetPlayerLabel(turnResult.ShootingPlayer)} claimed {turnResult.AssignedGroup.Value}.");
+        }
+
+        if (turnResult.IsFoul)
+        {
+            _recentRuleNotes.Add($"Foul: {string.Join(", ", turnResult.Fouls)}");
+        }
+
+        if (turnResult.RequiresEightBallRespot)
+        {
+            _recentRuleNotes.Add("8-ball respot required.");
+        }
+
+        if (turnResult.NextState.Winner.HasValue)
+        {
+            _recentRuleNotes.Add($"Winner: {GetPlayerLabel(turnResult.NextState.Winner.Value)}");
+        }
+        else if (turnResult.NextState.BallInHandPlayer.HasValue)
+        {
+            _recentRuleNotes.Add($"Ball in hand: {GetPlayerLabel(turnResult.NextState.BallInHandPlayer.Value)}");
+        }
+        else if (turnResult.PlayerContinues)
+        {
+            _recentRuleNotes.Add($"{GetPlayerLabel(turnResult.ShootingPlayer)} continues.");
+        }
+
+        if (!turnResult.NextState.IsGameOver)
+        {
+            ResetWorldForNextTurn(
+                cueBallInHand: turnResult.NextState.BallInHandPlayer == turnResult.NextState.CurrentPlayer,
+                requiresEightBallRespot: turnResult.RequiresEightBallRespot);
+        }
+    }
+
+    private void ApplyTrainingTurnResult(TrainingTurnResult turnResult)
+    {
+        _trainingState = turnResult.NextState;
+        _recentRuleNotes.Clear();
+        _recentRuleNotes.Add($"Training shots: {_trainingState.ShotCount}");
+
+        if (turnResult.Summary.PocketedBallNumbers.Count > 0)
+        {
+            _recentRuleNotes.Add($"Pocketed: {string.Join(", ", turnResult.Summary.PocketedBallNumbers)}");
+        }
+
+        if (turnResult.RequiresEightBallRespot)
+        {
+            _recentRuleNotes.Add("8-ball respot required.");
+        }
+
+        _recentRuleNotes.Add("Cue ball can be moved freely.");
+
+        ResetWorldForNextTurn(
+            cueBallInHand: turnResult.CanRepositionCueBallAnywhere,
+            requiresEightBallRespot: turnResult.RequiresEightBallRespot);
+    }
+
+    private void ResetWorldForNextTurn(bool cueBallInHand, bool requiresEightBallRespot)
+    {
+        var updatedBalls = _world.Balls
+            .Select(ball => ball with
+            {
+                Velocity = NumericsVector2.Zero,
+                Spin = new SpinState(0.0f, 0.0f, 0.0f)
+            })
+            .ToArray();
+
+        if (requiresEightBallRespot)
+        {
+            updatedBalls = ApplyBallPlacement(updatedBalls, 8, _tableSpec.RackApexSpot, keepPocketed: false);
+        }
+
+        if (cueBallInHand)
+        {
+            var cueBall = updatedBalls.First(ball => ball.BallNumber == 0);
+            var preferredCueBallPosition = cueBall.IsPocketed ? _tableSpec.CueBallSpawn : cueBall.Position;
+            updatedBalls = ApplyBallPlacement(updatedBalls, 0, preferredCueBallPosition, keepPocketed: false);
+        }
+
+        _world.Reset(updatedBalls);
+    }
+
+    private void MoveBallToPlacement(int ballNumber, NumericsVector2 desiredPosition, bool keepPocketed)
+    {
+        var updatedBalls = _world.Balls
+            .Select(ball => ball with
+            {
+                Velocity = NumericsVector2.Zero,
+                Spin = new SpinState(0.0f, 0.0f, 0.0f)
+            })
+            .ToArray();
+
+        updatedBalls = ApplyBallPlacement(updatedBalls, ballNumber, desiredPosition, keepPocketed);
+        _world.Reset(updatedBalls);
+    }
+
+    private BallState[] ApplyBallPlacement(
+        BallState[] balls,
+        int ballNumber,
+        NumericsVector2 preferredPosition,
+        bool keepPocketed)
+    {
+        var candidatePosition = FindLegalPlacement(preferredPosition, ballNumber, balls);
+
+        for (var index = 0; index < balls.Length; index++)
+        {
+            if (balls[index].BallNumber != ballNumber)
+            {
+                continue;
+            }
+
+            balls[index] = balls[index] with
+            {
+                Position = candidatePosition,
+                Velocity = NumericsVector2.Zero,
+                Spin = new SpinState(0.0f, 0.0f, 0.0f),
+                IsPocketed = keepPocketed && balls[index].IsPocketed
+            };
+            break;
+        }
+
+        return balls;
+    }
+
+    private NumericsVector2 FindLegalPlacement(
+        NumericsVector2 preferredPosition,
+        int movingBallNumber,
+        IReadOnlyList<BallState> balls)
+    {
+        var ballRadiusMeters = _tableSpec.BallDiameterMeters * 0.5f;
+        var clampedPreferred = ClampToCloth(preferredPosition, ballRadiusMeters);
+
+        if (IsPlacementLegal(clampedPreferred, movingBallNumber, balls))
+        {
+            return clampedPreferred;
+        }
+
+        const float searchStepMeters = 0.05f;
+        for (var ring = 1; ring <= 28; ring++)
+        {
+            for (var offsetX = -ring; offsetX <= ring; offsetX++)
+            {
+                for (var offsetY = -ring; offsetY <= ring; offsetY++)
+                {
+                    if (Math.Abs(offsetX) != ring && Math.Abs(offsetY) != ring)
+                    {
+                        continue;
+                    }
+
+                    var candidate = ClampToCloth(
+                        clampedPreferred + new NumericsVector2(offsetX * searchStepMeters, offsetY * searchStepMeters),
+                        ballRadiusMeters);
+
+                    if (IsPlacementLegal(candidate, movingBallNumber, balls))
+                    {
+                        return candidate;
+                    }
+                }
+            }
+        }
+
+        return clampedPreferred;
+    }
+
+    private bool IsPlacementLegal(
+        NumericsVector2 candidatePosition,
+        int movingBallNumber,
+        IReadOnlyList<BallState> balls)
+    {
+        var minimumDistanceSquared = (_tableSpec.BallDiameterMeters - 0.0005f) * (_tableSpec.BallDiameterMeters - 0.0005f);
+
+        foreach (var otherBall in balls)
+        {
+            if (otherBall.BallNumber == movingBallNumber || otherBall.IsPocketed)
+            {
+                continue;
+            }
+
+            if (NumericsVector2.DistanceSquared(candidatePosition, otherBall.Position) < minimumDistanceSquared)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private NumericsVector2 ClampToCloth(NumericsVector2 position, float ballRadiusMeters)
+    {
+        return new NumericsVector2(
+            Math.Clamp(position.X, _tableSpec.ClothMin.X + ballRadiusMeters, _tableSpec.ClothMax.X - ballRadiusMeters),
+            Math.Clamp(position.Y, _tableSpec.ClothMin.Y + ballRadiusMeters, _tableSpec.ClothMax.Y - ballRadiusMeters));
+    }
+
+    private void ClearShotCapture()
+    {
+        _capturedCueStrike = null;
+        _capturedShotFrameIndex = 0;
+        _capturedShotFrames.Clear();
+        _shotCaptureActive = false;
     }
 
     private void CacheRecentEvents(IReadOnlyList<ShotEvent> events)
@@ -426,13 +809,45 @@ public partial class Main : Node3D
         var recentEventText = _recentFrameEvents.Count == 0
             ? "none"
             : string.Join('\n', _recentFrameEvents);
+        var recentRuleText = _recentRuleNotes.Count == 0
+            ? "none"
+            : string.Join('\n', _recentRuleNotes);
 
         _statusLabel.Text =
-            $"Portable core: {_tableSpec.Name}\n" +
+            $"Portable core: {_tableSpec.Name}  Mode: {GetRuleModeLabel()}\n" +
+            $"{BuildModeStatusLine()}\n" +
             $"Phase: {_world.Phase}  SimTime: {_world.SimulationTimeSeconds:0.000}s  FixedSteps: {_world.TotalFixedStepsExecuted}\n" +
             $"CueBall: {cueBallStatus}  Aim: {Mathf.RadToDeg(_aimAngleRadians):0.0} deg  Speed: {_strikeSpeedMetersPerSecond:0.00} m/s  Tip: ({_tipOffsetNormalized.X:0.00}, {_tipOffsetNormalized.Y:0.00})\n" +
-            "Controls: A/D aim  W/S speed  J/L side spin  I/K follow-draw  Space shoot  Backspace center tip  R reset\n" +
-            $"Recent events:\n{recentEventText}";
+            "Controls: Tab mode  A/D aim  W/S speed  J/L side spin  I/K follow-draw  Arrow keys move cue ball in hand  Space shoot  Backspace center tip  R reset\n" +
+            $"Recent shot events:\n{recentEventText}\n" +
+            $"Rules/training:\n{recentRuleText}";
+    }
+
+    private string BuildModeStatusLine()
+    {
+        if (_ruleMode == RuleMode.Training)
+        {
+            var pocketed = _trainingState.PocketedObjectBallNumbers.Count == 0
+                ? "none"
+                : string.Join(", ", _trainingState.PocketedObjectBallNumbers);
+            return $"Training shots: {_trainingState.ShotCount}  Cue ball in hand: {_trainingState.CueBallInHand}  Pocketed objects: {pocketed}";
+        }
+
+        var winnerText = _eightBallState.Winner.HasValue ? GetPlayerLabel(_eightBallState.Winner.Value) : "none";
+        var ballInHandText = _eightBallState.BallInHandPlayer.HasValue ? GetPlayerLabel(_eightBallState.BallInHandPlayer.Value) : "none";
+        return
+            $"Current player: {GetPlayerLabel(_eightBallState.CurrentPlayer)}  Break shot: {_eightBallState.IsBreakShot}  Open table: {_eightBallState.OpenTable}  " +
+            $"Groups: P1={_eightBallState.PlayerOneGroup} P2={_eightBallState.PlayerTwoGroup}  Ball in hand: {ballInHandText}  Winner: {winnerText}";
+    }
+
+    private string GetRuleModeLabel()
+    {
+        return _ruleMode == RuleMode.EightBall ? "EightBall" : "Training";
+    }
+
+    private static string GetPlayerLabel(PlayerSlot player)
+    {
+        return player == PlayerSlot.PlayerOne ? "Player 1" : "Player 2";
     }
 
     private bool TryInstantiateImportedTable()
