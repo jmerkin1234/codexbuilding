@@ -29,6 +29,7 @@ Current behavior:
 - The adapter now starts in an orthographic top-down main camera preset, and `C` still cycles between broadcast, top-down, foot-rail, and side-rail camera presets while `Q/E` zoom the active preset in and out.
 - The HUD now uses dedicated framed status and debug panels instead of raw overlay labels.
 - The HUD now also keeps a dedicated last-shot summary panel for completed eight-ball and training/freeplay shots.
+- The HUD now also has a dedicated shot-setup panel for aim/speed/tip information and a separate controls/help panel, so the main status card stays concise.
 - Training/freeplay now marks the selected layout ball with a pulsing in-world ring instead of only a subtle scale change.
 - In 8-ball, Player 2 is now driven by a simple computer opponent; FreePlay remains human-controlled.
 - A transient banner now surfaces shot starts, contact, pocketing, scratch, foul, win, and turn/result feedback in the running adapter.
@@ -51,6 +52,7 @@ Keyboard controls:
 - `F2/F3`: select the active debug tuning parameter
 - `F4/F5`: decrease or increase the selected tuning value
 - `Shift` + `F4/F5`: coarse debug tuning adjustments
+- `F6`: show or hide the controls/help panel
 - `H`: show or hide the hardcoded-table overlay
 - `1`: toggle cloth overlay lines
 - `2`: toggle cushion overlay lines

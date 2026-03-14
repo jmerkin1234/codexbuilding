@@ -115,6 +115,18 @@ public partial class Main : Node3D
     private Panel _statusPanel = null!;
     private ColorRect _statusAccentBar = null!;
     private Label _statusHeaderLabel = null!;
+    private Panel _aimPanel = null!;
+    private Label _aimHeaderLabel = null!;
+    private Label _aimMetricsLabel = null!;
+    private ColorRect _aimSpeedTrack = null!;
+    private ColorRect _aimSpeedFill = null!;
+    private Panel _aimTipPad = null!;
+    private ColorRect _aimTipHorizontal = null!;
+    private ColorRect _aimTipVertical = null!;
+    private ColorRect _aimTipIndicator = null!;
+    private Panel _helpPanel = null!;
+    private Label _helpHeaderLabel = null!;
+    private Label _helpLabel = null!;
     private Panel _summaryPanel = null!;
     private ColorRect _summaryAccentBar = null!;
     private Label _summaryHeaderLabel = null!;
@@ -141,6 +153,7 @@ public partial class Main : Node3D
     private bool _overlayJawVisible = true;
     private bool _overlayPocketVisible = true;
     private bool _overlaySpotVisible = true;
+    private bool _helpPanelVisible = true;
     private DebugTuningField _selectedTuningField = DebugTuningField.SlidingFriction;
     private int _trainingSelectedBallNumber;
     private int _cameraPresetIndex = 1;
@@ -196,6 +209,9 @@ public partial class Main : Node3D
         {
             case Key.F1:
                 ToggleDebugMode();
+                return;
+            case Key.F6:
+                ToggleHelpPanel();
                 return;
             case Key.H:
                 ToggleHardcodeOverlay();
@@ -355,7 +371,7 @@ public partial class Main : Node3D
 
         _statusPanel = EnsureNode<Panel>(hud, "StatusPanel");
         _statusPanel.Position = new Vector2(18.0f, 18.0f);
-        _statusPanel.Size = new Vector2(780.0f, 354.0f);
+        _statusPanel.Size = new Vector2(860.0f, 246.0f);
         _statusPanel.MouseFilter = Control.MouseFilterEnum.Ignore;
         _statusPanel.AddThemeStyleboxOverride(
             "panel",
@@ -365,12 +381,12 @@ public partial class Main : Node3D
 
         _statusAccentBar = EnsureNode<ColorRect>(_statusPanel, "StatusAccentBar");
         _statusAccentBar.Position = new Vector2(0.0f, 0.0f);
-        _statusAccentBar.Size = new Vector2(780.0f, 6.0f);
+        _statusAccentBar.Size = new Vector2(860.0f, 6.0f);
         _statusAccentBar.Color = new Color(0.42f, 0.83f, 0.89f, 0.95f);
 
         _statusHeaderLabel = EnsureNode<Label>(_statusPanel, "StatusHeaderLabel");
         _statusHeaderLabel.Position = new Vector2(16.0f, 18.0f);
-        _statusHeaderLabel.Size = new Vector2(748.0f, 34.0f);
+        _statusHeaderLabel.Size = new Vector2(828.0f, 34.0f);
         _statusHeaderLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _statusHeaderLabel.VerticalAlignment = VerticalAlignment.Center;
         _statusHeaderLabel.AddThemeFontSizeOverride("font_size", 23);
@@ -378,15 +394,15 @@ public partial class Main : Node3D
 
         _statusLabel = EnsureNode<Label>(_statusPanel, "StatusLabel");
         _statusLabel.Position = new Vector2(16.0f, 58.0f);
-        _statusLabel.Size = new Vector2(748.0f, 280.0f);
+        _statusLabel.Size = new Vector2(828.0f, 170.0f);
         _statusLabel.Modulate = Colors.White;
         _statusLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _statusLabel.VerticalAlignment = VerticalAlignment.Top;
         _statusLabel.AddThemeFontSizeOverride("font_size", 15);
 
         _summaryPanel = EnsureNode<Panel>(hud, "SummaryPanel");
-        _summaryPanel.Position = new Vector2(18.0f, 384.0f);
-        _summaryPanel.Size = new Vector2(780.0f, 208.0f);
+        _summaryPanel.Position = new Vector2(18.0f, 282.0f);
+        _summaryPanel.Size = new Vector2(860.0f, 208.0f);
         _summaryPanel.MouseFilter = Control.MouseFilterEnum.Ignore;
         _summaryPanel.AddThemeStyleboxOverride(
             "panel",
@@ -396,12 +412,12 @@ public partial class Main : Node3D
 
         _summaryAccentBar = EnsureNode<ColorRect>(_summaryPanel, "SummaryAccentBar");
         _summaryAccentBar.Position = new Vector2(0.0f, 0.0f);
-        _summaryAccentBar.Size = new Vector2(780.0f, 6.0f);
+        _summaryAccentBar.Size = new Vector2(860.0f, 6.0f);
         _summaryAccentBar.Color = new Color(0.42f, 0.83f, 0.89f, 0.95f);
 
         _summaryHeaderLabel = EnsureNode<Label>(_summaryPanel, "SummaryHeaderLabel");
         _summaryHeaderLabel.Position = new Vector2(16.0f, 16.0f);
-        _summaryHeaderLabel.Size = new Vector2(748.0f, 30.0f);
+        _summaryHeaderLabel.Size = new Vector2(828.0f, 30.0f);
         _summaryHeaderLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _summaryHeaderLabel.VerticalAlignment = VerticalAlignment.Center;
         _summaryHeaderLabel.AddThemeFontSizeOverride("font_size", 21);
@@ -409,15 +425,98 @@ public partial class Main : Node3D
 
         _summaryLabel = EnsureNode<Label>(_summaryPanel, "SummaryLabel");
         _summaryLabel.Position = new Vector2(16.0f, 52.0f);
-        _summaryLabel.Size = new Vector2(748.0f, 138.0f);
+        _summaryLabel.Size = new Vector2(828.0f, 138.0f);
         _summaryLabel.Modulate = Colors.White;
         _summaryLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _summaryLabel.VerticalAlignment = VerticalAlignment.Top;
         _summaryLabel.AddThemeFontSizeOverride("font_size", 15);
 
+        _aimPanel = EnsureNode<Panel>(hud, "AimPanel");
+        _aimPanel.Position = new Vector2(896.0f, 18.0f);
+        _aimPanel.Size = new Vector2(440.0f, 220.0f);
+        _aimPanel.MouseFilter = Control.MouseFilterEnum.Ignore;
+        _aimPanel.AddThemeStyleboxOverride(
+            "panel",
+            CreateHudPanelStyle(
+                new Color(0.04f, 0.05f, 0.09f, 0.84f),
+                new Color(0.43f, 0.76f, 0.97f, 0.95f)));
+
+        _aimHeaderLabel = EnsureNode<Label>(_aimPanel, "AimHeaderLabel");
+        _aimHeaderLabel.Position = new Vector2(16.0f, 14.0f);
+        _aimHeaderLabel.Size = new Vector2(408.0f, 30.0f);
+        _aimHeaderLabel.AddThemeFontSizeOverride("font_size", 20);
+        _aimHeaderLabel.Modulate = new Color(0.92f, 0.97f, 1.0f);
+
+        _aimMetricsLabel = EnsureNode<Label>(_aimPanel, "AimMetricsLabel");
+        _aimMetricsLabel.Position = new Vector2(16.0f, 46.0f);
+        _aimMetricsLabel.Size = new Vector2(220.0f, 154.0f);
+        _aimMetricsLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _aimMetricsLabel.VerticalAlignment = VerticalAlignment.Top;
+        _aimMetricsLabel.AddThemeFontSizeOverride("font_size", 15);
+        _aimMetricsLabel.Modulate = new Color(0.89f, 0.95f, 1.0f);
+
+        _aimSpeedTrack = EnsureNode<ColorRect>(_aimPanel, "AimSpeedTrack");
+        _aimSpeedTrack.Position = new Vector2(16.0f, 166.0f);
+        _aimSpeedTrack.Size = new Vector2(220.0f, 12.0f);
+        _aimSpeedTrack.Color = new Color(0.14f, 0.18f, 0.23f, 0.95f);
+
+        _aimSpeedFill = EnsureNode<ColorRect>(_aimSpeedTrack, "AimSpeedFill");
+        _aimSpeedFill.Position = Vector2.Zero;
+        _aimSpeedFill.Size = new Vector2(110.0f, 12.0f);
+        _aimSpeedFill.Color = new Color(0.43f, 0.82f, 0.98f, 0.98f);
+
+        _aimTipPad = EnsureNode<Panel>(_aimPanel, "AimTipPad");
+        _aimTipPad.Position = new Vector2(268.0f, 48.0f);
+        _aimTipPad.Size = new Vector2(140.0f, 140.0f);
+        _aimTipPad.AddThemeStyleboxOverride(
+            "panel",
+            CreateHudPanelStyle(
+                new Color(0.05f, 0.08f, 0.12f, 0.95f),
+                new Color(0.31f, 0.63f, 0.89f, 0.95f)));
+
+        _aimTipHorizontal = EnsureNode<ColorRect>(_aimTipPad, "AimTipHorizontal");
+        _aimTipHorizontal.Position = new Vector2(18.0f, 69.0f);
+        _aimTipHorizontal.Size = new Vector2(104.0f, 2.0f);
+        _aimTipHorizontal.Color = new Color(0.44f, 0.76f, 0.95f, 0.8f);
+
+        _aimTipVertical = EnsureNode<ColorRect>(_aimTipPad, "AimTipVertical");
+        _aimTipVertical.Position = new Vector2(69.0f, 18.0f);
+        _aimTipVertical.Size = new Vector2(2.0f, 104.0f);
+        _aimTipVertical.Color = new Color(0.44f, 0.76f, 0.95f, 0.8f);
+
+        _aimTipIndicator = EnsureNode<ColorRect>(_aimTipPad, "AimTipIndicator");
+        _aimTipIndicator.Position = new Vector2(64.0f, 64.0f);
+        _aimTipIndicator.Size = new Vector2(12.0f, 12.0f);
+        _aimTipIndicator.Color = new Color(0.99f, 0.79f, 0.28f, 0.98f);
+
+        _helpPanel = EnsureNode<Panel>(hud, "HelpPanel");
+        _helpPanel.Position = new Vector2(896.0f, 256.0f);
+        _helpPanel.Size = new Vector2(440.0f, 234.0f);
+        _helpPanel.MouseFilter = Control.MouseFilterEnum.Ignore;
+        _helpPanel.AddThemeStyleboxOverride(
+            "panel",
+            CreateHudPanelStyle(
+                new Color(0.04f, 0.06f, 0.08f, 0.84f),
+                new Color(0.4f, 0.67f, 0.78f, 0.95f)));
+
+        _helpHeaderLabel = EnsureNode<Label>(_helpPanel, "HelpHeaderLabel");
+        _helpHeaderLabel.Position = new Vector2(16.0f, 14.0f);
+        _helpHeaderLabel.Size = new Vector2(408.0f, 28.0f);
+        _helpHeaderLabel.AddThemeFontSizeOverride("font_size", 19);
+        _helpHeaderLabel.Modulate = new Color(0.92f, 0.97f, 1.0f);
+        _helpHeaderLabel.Text = "Controls";
+
+        _helpLabel = EnsureNode<Label>(_helpPanel, "HelpLabel");
+        _helpLabel.Position = new Vector2(16.0f, 46.0f);
+        _helpLabel.Size = new Vector2(408.0f, 172.0f);
+        _helpLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _helpLabel.VerticalAlignment = VerticalAlignment.Top;
+        _helpLabel.AddThemeFontSizeOverride("font_size", 14);
+        _helpLabel.Modulate = new Color(0.9f, 0.95f, 0.98f);
+
         _debugPanel = EnsureNode<Panel>(hud, "DebugPanel");
-        _debugPanel.Position = new Vector2(816.0f, 18.0f);
-        _debugPanel.Size = new Vector2(520.0f, 760.0f);
+        _debugPanel.Position = new Vector2(896.0f, 256.0f);
+        _debugPanel.Size = new Vector2(440.0f, 508.0f);
         _debugPanel.MouseFilter = Control.MouseFilterEnum.Ignore;
         _debugPanel.AddThemeStyleboxOverride(
             "panel",
@@ -428,12 +527,14 @@ public partial class Main : Node3D
 
         _debugLabel = EnsureNode<Label>(_debugPanel, "DebugLabel");
         _debugLabel.Position = new Vector2(16.0f, 14.0f);
-        _debugLabel.Size = new Vector2(488.0f, 730.0f);
+        _debugLabel.Size = new Vector2(408.0f, 478.0f);
         _debugLabel.Modulate = new Color(0.84f, 0.98f, 0.89f);
         _debugLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _debugLabel.VerticalAlignment = VerticalAlignment.Top;
         _debugLabel.AddThemeFontSizeOverride("font_size", 14);
         _debugLabel.Visible = false;
+
+        UpdateAuxiliaryPanelVisibility();
     }
 
     private void ConfigureCameraAndLighting()
@@ -722,13 +823,21 @@ public partial class Main : Node3D
     private void ToggleDebugMode()
     {
         _debugModeEnabled = !_debugModeEnabled;
-        _debugPanel.Visible = _debugModeEnabled;
-        _debugLabel.Visible = _debugModeEnabled;
+        UpdateAuxiliaryPanelVisibility();
         UpdateOverlayVisibility();
         _recentRuleNotes.Clear();
         _recentRuleNotes.Add(_debugModeEnabled
             ? "Debug mode enabled."
             : "Debug mode disabled.");
+        UpdateStatusLabel(Array.Empty<ShotEvent>());
+    }
+
+    private void ToggleHelpPanel()
+    {
+        _helpPanelVisible = !_helpPanelVisible;
+        UpdateAuxiliaryPanelVisibility();
+        _recentRuleNotes.Clear();
+        _recentRuleNotes.Add(_helpPanelVisible ? "Controls panel visible." : "Controls panel hidden.");
         UpdateStatusLabel(Array.Empty<ShotEvent>());
     }
 
@@ -1941,17 +2050,51 @@ public partial class Main : Node3D
         _statusAccentBar.Color = ResolveStatusAccentColor();
 
         _statusLabel.Text =
-            $"Portable core: {_tableSpec.Name}\n" +
+            $"Core: {_tableSpec.Name}\n" +
             $"{BuildModeStatusLine()}\n" +
-            $"Phase: {_world.Phase}  SimTime: {_world.SimulationTimeSeconds:0.000}s  FixedSteps: {_world.TotalFixedStepsExecuted}\n" +
-            $"CueBall: {cueBallStatus}  Aim: {Mathf.RadToDeg(_aimAngleRadians):0.0} deg  Speed: {_strikeSpeedMetersPerSecond:0.00} m/s  Tip: ({_tipOffsetNormalized.X:0.00}, {_tipOffsetNormalized.Y:0.00})  Overlay: {BuildOverlaySummary()}\n" +
-            $"Camera: {GetActiveCameraPreset().Name}  Zoom: {_cameraZoomScale:0.00}x\n" +
-            $"Debug tuning: {GetTuningFieldLabel(_selectedTuningField)} = {GetSelectedTuningValueText()}\n" +
-            "Controls: F1 debug  F2/F3 tune select  F4/F5 tune -/+ (Shift coarse)  Tab mode  H hardcode overlay  1 cloth  2 cushions  3 jaws  4 pockets  5 spots  C camera preset  Q/E zoom  A/D aim  W/S speed  J/L side spin  I/K follow-draw  Arrow keys move selected placement ball  Z/X cycle practice ball  Space shoot  Backspace center tip  R reset\n" +
+            $"Phase: {_world.Phase}  SimTime: {_world.SimulationTimeSeconds:0.000}s  FixedSteps: {_world.TotalFixedStepsExecuted}  Camera: {GetActiveCameraPreset().Name} @ {_cameraZoomScale:0.00}x\n" +
+            $"CueBall: {cueBallStatus}  Overlay: {BuildOverlaySummary()}\n" +
             $"Recent shot events:\n{recentEventText}\n" +
             $"Rules/training:\n{recentRuleText}";
 
+        UpdateAimPanel(cueBall);
+        UpdateHelpPanel();
         UpdateDebugPanel();
+    }
+
+    private void UpdateAimPanel(BallState cueBall)
+    {
+        var speedNormalized = Mathf.InverseLerp(
+            MinimumStrikeSpeedMetersPerSecond,
+            MaximumStrikeSpeedMetersPerSecond,
+            _strikeSpeedMetersPerSecond);
+        _aimHeaderLabel.Text = IsComputerTurnPending() ? "Computer Shot Planning" : "Shot Setup";
+        _aimMetricsLabel.Text =
+            $"Aim angle: {Mathf.RadToDeg(_aimAngleRadians):0.0} deg\n" +
+            $"Strike speed: {_strikeSpeedMetersPerSecond:0.00} m/s\n" +
+            $"Tip offset: ({_tipOffsetNormalized.X:0.00}, {_tipOffsetNormalized.Y:0.00})\n" +
+            $"Cue ball speed: {cueBall.Velocity.Length():0.000} m/s\n" +
+            $"Selected tune: {GetTuningFieldLabel(_selectedTuningField)}\n" +
+            $"Tune value: {GetSelectedTuningValueText()}";
+
+        _aimSpeedFill.Size = new Vector2(Mathf.Max(8.0f, 220.0f * speedNormalized), _aimSpeedFill.Size.Y);
+        _aimSpeedFill.Color = ResolveAimSpeedColor(speedNormalized);
+
+        var indicatorRadius = 48.0f;
+        var center = new Vector2(70.0f, 70.0f);
+        var indicatorCenter = center + new Vector2(_tipOffsetNormalized.X, -_tipOffsetNormalized.Y) * indicatorRadius;
+        _aimTipIndicator.Position = indicatorCenter - new Vector2(6.0f, 6.0f);
+    }
+
+    private void UpdateHelpPanel()
+    {
+        _helpHeaderLabel.Text = _ruleMode == RuleMode.Training ? "Controls | FreePlay" : "Controls | EightBall";
+        _helpLabel.Text =
+            "Shot: Space shoot  A/D aim  W/S speed  J/L side spin  I/K follow-draw  Backspace center tip\n" +
+            "View: C camera preset  Q/E zoom  H hardcode overlay  1-5 overlay layers\n" +
+            "Modes: Tab switch mode  R reset rack/layout  F1 debug  F6 help\n" +
+            "Placement: Arrow keys move selected ball when placement is active  Z/X cycle freeplay ball\n" +
+            "Debug tune: F2/F3 choose value  F4/F5 adjust  Shift+F4/F5 coarse";
     }
 
     private void ResetShotSummary()
@@ -2156,6 +2299,17 @@ public partial class Main : Node3D
             : new Color(0.98f, 0.62f, 0.36f, 0.98f);
     }
 
+    private static Color ResolveAimSpeedColor(float normalizedSpeed)
+    {
+        normalizedSpeed = Mathf.Clamp(normalizedSpeed, 0.0f, 1.0f);
+        return normalizedSpeed switch
+        {
+            < 0.35f => new Color(0.4f, 0.78f, 0.96f, 0.98f),
+            < 0.7f => new Color(0.52f, 0.86f, 0.48f, 0.98f),
+            _ => new Color(0.97f, 0.69f, 0.3f, 0.98f)
+        };
+    }
+
     private bool HasRecentRulePrefix(string prefix)
     {
         return _recentRuleNotes.Any(note => note.StartsWith(prefix, StringComparison.Ordinal));
@@ -2219,10 +2373,18 @@ public partial class Main : Node3D
         _overlaySpotRoot.Visible = _overlaySpotVisible;
     }
 
-    private void UpdateDebugPanel()
+    private void UpdateAuxiliaryPanelVisibility()
     {
         _debugPanel.Visible = _debugModeEnabled;
         _debugLabel.Visible = _debugModeEnabled;
+        _helpPanel.Visible = _helpPanelVisible && !_debugModeEnabled;
+        _helpHeaderLabel.Visible = _helpPanel.Visible;
+        _helpLabel.Visible = _helpPanel.Visible;
+    }
+
+    private void UpdateDebugPanel()
+    {
+        UpdateAuxiliaryPanelVisibility();
         if (!_debugModeEnabled)
         {
             return;
