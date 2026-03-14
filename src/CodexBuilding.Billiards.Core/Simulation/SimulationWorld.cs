@@ -175,6 +175,8 @@ public sealed class SimulationWorld
             _balls[index] = ClothMotionIntegrator.Advance(ball, ballRadiusMeters, Config, fixedStepSeconds);
         }
 
+        BallCollisionResolver.Resolve(_balls, TableSpec.BallDiameterMeters, Config);
+
         SimulationTimeSeconds += fixedStepSeconds;
     }
 

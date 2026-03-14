@@ -182,6 +182,83 @@ public sealed class SimulationWorldTests
         Assert.True(result.Balls[0].Spin.SideSpinRps < 4.0f);
     }
 
+    [Fact]
+    public void Advance_HeadOnCollisionTransfersVelocityToSecondBall()
+    {
+        var world = CreateCollisionWorld(
+            new BallState(
+                BallNumber: 0,
+                Kind: BallKind.Cue,
+                Position: new Vector2(-0.03f, 0.0f),
+                Velocity: new Vector2(1.0f, 0.0f),
+                Spin: new SpinState(0.0f, 0.0f, 0.0f),
+                IsPocketed: false),
+            new BallState(
+                BallNumber: 1,
+                Kind: BallKind.Solid,
+                Position: new Vector2(0.03f, 0.0f),
+                Velocity: Vector2.Zero,
+                Spin: new SpinState(0.0f, 0.0f, 0.0f),
+                IsPocketed: false));
+
+        var result = world.Advance(0.01f);
+
+        Assert.Equal(Vector2.Zero, result.Balls[0].Velocity, new Vector2Comparer(0.0001f));
+        Assert.Equal(new Vector2(1.0f, 0.0f), result.Balls[1].Velocity, new Vector2Comparer(0.0001f));
+        Assert.True(Vector2.Distance(result.Balls[0].Position, result.Balls[1].Position) >= 0.05714f);
+    }
+
+    [Fact]
+    public void Advance_GlancingCollisionTransfersNormalComponent()
+    {
+        var world = CreateCollisionWorld(
+            new BallState(
+                BallNumber: 0,
+                Kind: BallKind.Cue,
+                Position: new Vector2(-0.03f, 0.0f),
+                Velocity: new Vector2(1.0f, 0.0f),
+                Spin: new SpinState(0.0f, 0.0f, 0.0f),
+                IsPocketed: false),
+            new BallState(
+                BallNumber: 1,
+                Kind: BallKind.Solid,
+                Position: new Vector2(0.03f, 0.025f),
+                Velocity: Vector2.Zero,
+                Spin: new SpinState(0.0f, 0.0f, 0.0f),
+                IsPocketed: false));
+
+        var result = world.Advance(0.01f);
+
+        Assert.True(result.Balls[1].Velocity.X > 0.0f);
+        Assert.True(result.Balls[1].Velocity.Y > 0.0f);
+        Assert.True(result.Balls[0].Velocity.X < 1.0f);
+        Assert.True(result.Balls[0].Velocity.Y < 0.0f);
+    }
+
+    [Fact]
+    public void Advance_SeparatesBallsThatStartOverlapped()
+    {
+        var world = CreateCollisionWorld(
+            new BallState(
+                BallNumber: 0,
+                Kind: BallKind.Cue,
+                Position: new Vector2(-0.02f, 0.0f),
+                Velocity: new Vector2(0.2f, 0.0f),
+                Spin: new SpinState(0.0f, 0.0f, 0.0f),
+                IsPocketed: false),
+            new BallState(
+                BallNumber: 1,
+                Kind: BallKind.Solid,
+                Position: new Vector2(0.02f, 0.0f),
+                Velocity: Vector2.Zero,
+                Spin: new SpinState(0.0f, 0.0f, 0.0f),
+                IsPocketed: false));
+
+        var result = world.Advance(0.01f);
+
+        Assert.True(Vector2.Distance(result.Balls[0].Position, result.Balls[1].Position) >= 0.05714f);
+    }
+
     private static SimulationWorld CreateShellWorld(Vector2 cueBallVelocity)
     {
         var table = CustomTable9FtSpec.Create();
@@ -217,6 +294,27 @@ public sealed class SimulationWorldTests
             spinSettleThresholdRps: 0.05f);
 
         return CreateWorld(velocity, spin, config);
+    }
+
+    private static SimulationWorld CreateCollisionWorld(BallState firstBall, BallState secondBall)
+    {
+        var config = new SimulationConfig(
+            fixedStepSeconds: 0.01f,
+            settleSpeedThresholdMetersPerSecond: 0.0001f,
+            maxFixedStepsPerAdvance: 64,
+            maxSideSpinRps: 12.0f,
+            maxFollowSpinRps: 10.0f,
+            maxDrawSpinRps: 11.0f,
+            slidingFrictionAccelerationMetersPerSecondSquared: 0.0f,
+            rollingFrictionAccelerationMetersPerSecondSquared: 0.0f,
+            spinDecayRpsPerSecond: 0.0f,
+            rollingMatchToleranceMetersPerSecond: 0.01f,
+            spinSettleThresholdRps: 0.05f,
+            ballCollisionRestitution: 1.0f,
+            maxCollisionIterationsPerStep: 4);
+
+        var table = CustomTable9FtSpec.Create();
+        return new SimulationWorld(table, config, new[] { firstBall, secondBall });
     }
 
     private static SimulationWorld CreateWorld(Vector2 cueBallVelocity, SpinState spin, SimulationConfig config)

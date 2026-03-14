@@ -13,7 +13,9 @@ public sealed class SimulationConfig
         rollingFrictionAccelerationMetersPerSecondSquared: 0.22f,
         spinDecayRpsPerSecond: 1.2f,
         rollingMatchToleranceMetersPerSecond: 0.01f,
-        spinSettleThresholdRps: 0.05f);
+        spinSettleThresholdRps: 0.05f,
+        ballCollisionRestitution: 0.96f,
+        maxCollisionIterationsPerStep: 4);
 
     public SimulationConfig(
         float fixedStepSeconds,
@@ -26,7 +28,9 @@ public sealed class SimulationConfig
         float rollingFrictionAccelerationMetersPerSecondSquared = 0.22f,
         float spinDecayRpsPerSecond = 1.2f,
         float rollingMatchToleranceMetersPerSecond = 0.01f,
-        float spinSettleThresholdRps = 0.05f)
+        float spinSettleThresholdRps = 0.05f,
+        float ballCollisionRestitution = 0.96f,
+        int maxCollisionIterationsPerStep = 4)
     {
         if (fixedStepSeconds <= 0.0f)
         {
@@ -95,6 +99,20 @@ public sealed class SimulationConfig
                 "Spin-settle threshold cannot be negative.");
         }
 
+        if (ballCollisionRestitution < 0.0f || ballCollisionRestitution > 1.0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(ballCollisionRestitution),
+                "Ball collision restitution must be between zero and one.");
+        }
+
+        if (maxCollisionIterationsPerStep <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(maxCollisionIterationsPerStep),
+                "Max collision iterations per step must be positive.");
+        }
+
         FixedStepSeconds = fixedStepSeconds;
         SettleSpeedThresholdMetersPerSecond = settleSpeedThresholdMetersPerSecond;
         MaxFixedStepsPerAdvance = maxFixedStepsPerAdvance;
@@ -106,6 +124,8 @@ public sealed class SimulationConfig
         SpinDecayRpsPerSecond = spinDecayRpsPerSecond;
         RollingMatchToleranceMetersPerSecond = rollingMatchToleranceMetersPerSecond;
         SpinSettleThresholdRps = spinSettleThresholdRps;
+        BallCollisionRestitution = ballCollisionRestitution;
+        MaxCollisionIterationsPerStep = maxCollisionIterationsPerStep;
     }
 
     public float FixedStepSeconds { get; }
@@ -129,4 +149,8 @@ public sealed class SimulationConfig
     public float RollingMatchToleranceMetersPerSecond { get; }
 
     public float SpinSettleThresholdRps { get; }
+
+    public float BallCollisionRestitution { get; }
+
+    public int MaxCollisionIterationsPerStep { get; }
 }

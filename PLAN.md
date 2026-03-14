@@ -55,7 +55,12 @@ Scope:
 - spin decay
 
 6. Ball-ball collisions
-Status: pending
+Status: complete
+Scope:
+- equal-mass collision response
+- restitution
+- overlap correction
+- iterative pair solving
 
 7. Cushion and pocket-jaw interactions
 Status: pending
@@ -74,4 +79,4 @@ Status: pending
 
 ## Current Focus
 
-Right now the repo is moving from step 5 to step 6. Straight-line cloth motion is in; the next increment is ball-ball collision resolution.
+Right now the repo is moving from step 6 to step 7. Ball-ball collisions are in; the next increment is cushion and pocket-jaw interaction.

@@ -21,8 +21,9 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - The fixed-step shell is now implemented with an accumulator, explicit phase tracking, and settle detection.
 - Cue strike input now resolves normalized aim, clamped tip offsets, initial cue-ball velocity, and initial spin seeds.
 - Cloth motion now handles sliding, rolling, skid-to-roll transition, and passive spin decay in straight-line travel.
-- Collisions and pockets are still not implemented yet.
-- Standalone verification currently covers `16` passing tests across the table spec, fixed-step shell, cue-strike seeding, and cloth-motion behavior.
+- Ball-ball collisions now resolve equal-mass contacts with restitution and overlap separation.
+- Table interactions and pockets are still not implemented yet.
+- Standalone verification currently covers `19` passing tests across the table spec, fixed-step shell, cue-strike seeding, cloth-motion behavior, and ball-ball collision resolution.
 
 ## Repository Layout
 
@@ -64,4 +65,4 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 
 ## Next Step
 
-The next implementation step is ball-ball collision resolution.
+The next implementation step is cushion and pocket-jaw interaction.
