@@ -62,7 +62,9 @@ public partial class Main : Node3D
 	private const float ComputerTurnThinkDelaySeconds = 0.8f;
 	private const int ComputerMaxSimulationSteps = 900;
 	private const int ComputerMaxTargetBallsToConsider = 4;
-	private const float OverlayLineThicknessMeters = 0.01f;
+	private const float OverlayLineThicknessPixels = 1.5f;
+	private const float MinOverlayThicknessPixels = 0.5f;
+	private const float MaxOverlayThicknessPixels = 2.0f;
 	private const float OverlayLineHeightMeters = 0.008f;
 	private const int OverlayPocketSegments = 20;
 	private const float AimTurnRadiansPerSecond = 1.8f;
@@ -164,6 +166,9 @@ public partial class Main : Node3D
 	private Label _tuningObjectDetailsLabel = null!;
 	private GridContainer _tuningObjectMiniPanelGrid = null!;
 	private readonly List<TuningMiniPanel> _tuningMiniPanels = new();
+	private PanelContainer _tuningLegendPanel = null!;
+	private Label _tuningLegendHeaderLabel = null!;
+	private VBoxContainer _tuningLegendRows = null!;
 	private ScrollContainer _tuningScrollContainer = null!;
 	private VBoxContainer _tuningFieldsContainer = null!;
 	private readonly List<TuningFieldRow> _tuningFieldRows = new();
@@ -218,7 +223,7 @@ public partial class Main : Node3D
 	private Vector2 _aimPanelDragOffset = Vector2.Zero;
 	private int _cameraPresetIndex = 1;
 	private float _cameraZoomScale = 1.0f;
-	private float _overlayLineThicknessMeters = OverlayLineThicknessMeters;
+	private float _overlayLineThicknessPixels = OverlayLineThicknessPixels;
 	private float _shotBannerSecondsRemaining;
 	private float _computerTurnThinkSeconds;
 	private float _aimAngleRadians;
@@ -895,7 +900,17 @@ public partial class Main : Node3D
 		_tuningObjectMiniPanelGrid.AddThemeConstantOverride("h_separation", 10);
 		_tuningObjectMiniPanelGrid.AddThemeConstantOverride("v_separation", 10);
 
-		_tuningScrollContainer = EnsureNode<ScrollContainer>(tuningRoot, "TuningScrollContainer");
+		var tuningContentRow = EnsureNode<HBoxContainer>(tuningRoot, "TuningContentRow");
+		tuningContentRow.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		tuningContentRow.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+		tuningContentRow.AddThemeConstantOverride("separation", 12);
+
+		var tuningControlsColumn = EnsureNode<VBoxContainer>(tuningContentRow, "TuningControlsColumn");
+		tuningControlsColumn.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		tuningControlsColumn.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+		tuningControlsColumn.AddThemeConstantOverride("separation", 10);
+
+		_tuningScrollContainer = EnsureNode<ScrollContainer>(tuningControlsColumn, "TuningScrollContainer");
 		_tuningScrollContainer.CustomMinimumSize = new Vector2(0.0f, 520.0f);
 		_tuningScrollContainer.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
 		_tuningScrollContainer.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
@@ -905,18 +920,18 @@ public partial class Main : Node3D
 		_tuningFieldsContainer.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
 		_tuningFieldsContainer.AddThemeConstantOverride("separation", 8);
 
-		_tuningOverlayLabel = EnsureNode<Label>(tuningRoot, "TuningOverlayLabel");
+		_tuningOverlayLabel = EnsureNode<Label>(tuningControlsColumn, "TuningOverlayLabel");
 		_tuningOverlayLabel.AddThemeFontSizeOverride("font_size", 14);
 		_tuningOverlayLabel.Modulate = new Color(0.89f, 0.95f, 1.0f);
 
-		_tuningOverlaySlider = EnsureNode<HSlider>(tuningRoot, "TuningOverlaySlider");
-		_tuningOverlaySlider.MinValue = 0.002;
-		_tuningOverlaySlider.MaxValue = 0.04;
-		_tuningOverlaySlider.Step = 0.0005;
+		_tuningOverlaySlider = EnsureNode<HSlider>(tuningControlsColumn, "TuningOverlaySlider");
+		_tuningOverlaySlider.MinValue = MinOverlayThicknessPixels;
+		_tuningOverlaySlider.MaxValue = MaxOverlayThicknessPixels;
+		_tuningOverlaySlider.Step = 0.05;
 		_tuningOverlaySlider.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
 		_tuningOverlaySlider.ValueChanged += OnTuningOverlayThicknessChanged;
 
-		var tuningButtonRow = EnsureNode<HBoxContainer>(tuningRoot, "TuningButtonRow");
+		var tuningButtonRow = EnsureNode<HBoxContainer>(tuningControlsColumn, "TuningButtonRow");
 		tuningButtonRow.AddThemeConstantOverride("separation", 10);
 
 		_tuningSaveButton = EnsureNode<Button>(tuningButtonRow, "TuningSaveButton");
@@ -936,6 +951,33 @@ public partial class Main : Node3D
 		_tuningResetButton.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
 		_tuningResetButton.AddThemeFontSizeOverride("font_size", 14);
 		_tuningResetButton.Pressed += ResetCalibrationProfile;
+
+		_tuningLegendPanel = EnsureNode<PanelContainer>(tuningContentRow, "TuningLegendPanel");
+		_tuningLegendPanel.CustomMinimumSize = new Vector2(250.0f, 0.0f);
+		_tuningLegendPanel.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+		_tuningLegendPanel.AddThemeStyleboxOverride(
+			"panel",
+			CreateHudPanelStyle(
+				new Color(0.05f, 0.07f, 0.1f, 0.94f),
+				new Color(0.34f, 0.58f, 0.72f, 0.96f)));
+
+		var tuningLegendBox = EnsureNode<VBoxContainer>(_tuningLegendPanel, "TuningLegendBox");
+		tuningLegendBox.AddThemeConstantOverride("separation", 8);
+
+		_tuningLegendHeaderLabel = EnsureNode<Label>(tuningLegendBox, "TuningLegendHeaderLabel");
+		_tuningLegendHeaderLabel.Text = "Overlay Legend";
+		_tuningLegendHeaderLabel.AddThemeFontSizeOverride("font_size", 18);
+		_tuningLegendHeaderLabel.Modulate = new Color(0.93f, 0.97f, 1.0f);
+
+		var tuningLegendSubtitle = EnsureNode<Label>(tuningLegendBox, "TuningLegendSubtitle");
+		tuningLegendSubtitle.Text = "These colors map the hardcoded table and the live shot guides.";
+		tuningLegendSubtitle.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		tuningLegendSubtitle.AddThemeFontSizeOverride("font_size", 13);
+		tuningLegendSubtitle.Modulate = new Color(0.83f, 0.91f, 0.98f);
+
+		_tuningLegendRows = EnsureNode<VBoxContainer>(tuningLegendBox, "TuningLegendRows");
+		_tuningLegendRows.AddThemeConstantOverride("separation", 6);
+		BuildTuningLegendRows();
 
 		PopulateCalibrationFieldSelector();
 		SyncCalibrationControls();
@@ -1610,22 +1652,22 @@ public partial class Main : Node3D
 			return;
 		}
 
-		var step = coarse ? 0.0035f : 0.0012f;
+		var step = coarse ? 0.25f : 0.1f;
 		var updatedThickness = AdjustFloat(
-			_overlayLineThicknessMeters,
+			_overlayLineThicknessPixels,
 			step * direction,
-			0.0035f,
-			0.05f);
+			MinOverlayThicknessPixels,
+			MaxOverlayThicknessPixels);
 
-		if (Mathf.IsEqualApprox(updatedThickness, _overlayLineThicknessMeters))
+		if (Mathf.IsEqualApprox(updatedThickness, _overlayLineThicknessPixels))
 		{
 			return;
 		}
 
-		_overlayLineThicknessMeters = updatedThickness;
+		_overlayLineThicknessPixels = updatedThickness;
 		BuildHardcodeOverlay();
 		_recentRuleNotes.Clear();
-		_recentRuleNotes.Add($"Overlay thickness: {_overlayLineThicknessMeters:0.0000} m");
+		_recentRuleNotes.Add($"Overlay thickness: {_overlayLineThicknessPixels:0.0} px");
 		UpdateStatusLabel(Array.Empty<ShotEvent>());
 	}
 
@@ -1647,6 +1689,7 @@ public partial class Main : Node3D
 	{
 		_cameraPresetIndex = (_cameraPresetIndex + 1) % _cameraPresets.Length;
 		ApplyCameraPreset();
+		BuildHardcodeOverlay();
 		_recentRuleNotes.Clear();
 		_recentRuleNotes.Add($"Camera preset: {GetActiveCameraPreset().Name}");
 		UpdateStatusLabel(Array.Empty<ShotEvent>());
@@ -1656,6 +1699,7 @@ public partial class Main : Node3D
 	{
 		_cameraZoomScale = Mathf.Clamp(_cameraZoomScale + delta, 0.65f, 1.85f);
 		ApplyCameraPreset();
+		BuildHardcodeOverlay();
 		_recentRuleNotes.Clear();
 		_recentRuleNotes.Add($"Camera zoom: {_cameraZoomScale:0.00}x");
 		UpdateStatusLabel(Array.Empty<ShotEvent>());
@@ -2986,7 +3030,7 @@ public partial class Main : Node3D
 				$"  Total rows: {_calibrationFields.Count}\n\n" +
 				"PROFILE\n" +
 				$"  Path: {CalibrationProfilePath}\n" +
-				$"  Overlay thickness: {_overlayLineThicknessMeters:0.0000} m\n" +
+				$"  Overlay thickness: {_overlayLineThicknessPixels:0.0} px\n" +
 				"  Adjust this in the Tuning window.\n\n" +
 				"QUICK ACTIONS\n" +
 				"  Drag the Tuning window to another monitor.\n" +
@@ -3244,7 +3288,7 @@ public partial class Main : Node3D
 		{
 			return
 				$"Tuning target: {GetSelectedCalibrationObjectLabel()}  " +
-				$"Visible rows: {_calibrationFields.Count}  Overlay thickness: {_overlayLineThicknessMeters:0.0000} m";
+				$"Visible rows: {_calibrationFields.Count}  Overlay thickness: {_overlayLineThicknessPixels:0.0} px";
 		}
 
 		if (_ruleMode == RuleMode.Training)
@@ -3471,7 +3515,7 @@ public partial class Main : Node3D
 		builder.AppendLine($"  Ball diameter: {_tableSpec.BallDiameterMeters:0.00000} m");
 		builder.AppendLine($"  Geometry counts: cushions={_tableSpec.Cushions.Count}, jaws={_tableSpec.JawSegments.Count}, pockets={_tableSpec.Pockets.Count}");
 		builder.AppendLine($"  Overlay layers: {BuildOverlaySummary()}");
-		builder.AppendLine($"  Overlay thickness: {_overlayLineThicknessMeters:0.0000} m");
+		builder.AppendLine($"  Overlay thickness: {_overlayLineThicknessPixels:0.0} px");
 		builder.AppendLine();
 
 		builder.AppendLine("ACTIVE TUNING");
@@ -3596,6 +3640,8 @@ public partial class Main : Node3D
 		foreach (var cushion in _baseTableSpec.Cushions)
 		{
 			var sourceName = cushion.SourceName;
+			var startJawSourceName = FindClosestJawSourceName(cushion.Start);
+			var endJawSourceName = FindClosestJawSourceName(cushion.End);
 			AddCalibrationField("Cushions", sourceName, sourceName, $"{sourceName} Start X", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
 				() => _tableCalibrationProfile.Cushions[sourceName].StartOffset.X,
 				value => _tableCalibrationProfile.Cushions[sourceName].StartOffset.X = value);
@@ -3608,9 +3654,12 @@ public partial class Main : Node3D
 			AddCalibrationField("Cushions", sourceName, sourceName, $"{sourceName} End Y", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
 				() => _tableCalibrationProfile.Cushions[sourceName].EndOffset.Y,
 				value => _tableCalibrationProfile.Cushions[sourceName].EndOffset.Y = value);
-			AddCalibrationField("Cushions", sourceName, sourceName, $"{sourceName} Angle", $"Overlay_{sourceName}", -180.0f, 180.0f, 0.1f, 1.0f,
-				() => GetAdjustedSegmentAngleDegrees(_baseTableSpec.Cushions, _tableCalibrationProfile.Cushions, sourceName),
-				value => SetAdjustedSegmentAngleDegrees(_baseTableSpec.Cushions, _tableCalibrationProfile.Cushions, sourceName, value));
+			AddCalibrationField("Cushions", sourceName, sourceName, $"{sourceName} Start Pocket Angle", $"Overlay_{startJawSourceName}", -180.0f, 180.0f, 0.1f, 1.0f,
+				() => GetAdjustedSegmentAngleDegrees(_baseTableSpec.JawSegments, _tableCalibrationProfile.Jaws, startJawSourceName),
+				value => SetAdjustedSegmentAngleDegrees(_baseTableSpec.JawSegments, _tableCalibrationProfile.Jaws, startJawSourceName, value));
+			AddCalibrationField("Cushions", sourceName, sourceName, $"{sourceName} End Pocket Angle", $"Overlay_{endJawSourceName}", -180.0f, 180.0f, 0.1f, 1.0f,
+				() => GetAdjustedSegmentAngleDegrees(_baseTableSpec.JawSegments, _tableCalibrationProfile.Jaws, endJawSourceName),
+				value => SetAdjustedSegmentAngleDegrees(_baseTableSpec.JawSegments, _tableCalibrationProfile.Jaws, endJawSourceName, value));
 		}
 
 		foreach (var jaw in _baseTableSpec.JawSegments)
@@ -3855,6 +3904,82 @@ public partial class Main : Node3D
 		return label;
 	}
 
+	private void BuildTuningLegendRows()
+	{
+		if (_tuningLegendRows == null)
+		{
+			return;
+		}
+
+		ClearChildren(_tuningLegendRows);
+		AddTuningLegendRow("Cloth bounds", new Color(0.76f, 0.92f, 0.98f), "Light-cyan rectangle for the felt play-area box.");
+		AddTuningLegendRow("Cushions", new Color(0.98f, 0.59f, 0.2f), "Orange rebound lines. Balls should bounce on these, not across the pocket gaps.");
+		AddTuningLegendRow("Jaws", new Color(0.95f, 0.31f, 0.35f), "Red angled pocket-entry faces at the ends of the rails.");
+		AddTuningLegendRow("Pocket capture", new Color(0.44f, 0.86f, 0.97f), "Cyan circles showing the hardcoded pocket capture zones.");
+		AddTuningLegendRow("Cue spawn", new Color(0.95f, 0.95f, 0.95f), "White cross for the cue-ball reference spot.");
+		AddTuningLegendRow("Rack apex", new Color(0.95f, 0.82f, 0.22f), "Gold cross for the rack reference spot.");
+		AddTuningLegendRow("Aim primary", new Color(0.94f, 0.97f, 0.98f), "White shot line from the cue ball.");
+		AddTuningLegendRow("Aim continuation", new Color(0.39f, 0.84f, 0.94f), "Cyan continuation after the first bounce or contact.");
+		AddTuningLegendRow("Aim target", new Color(0.98f, 0.72f, 0.24f), "Orange object-ball path after first contact.");
+		AddTuningLegendRow("Selected target", new Color(1.0f, 0.98f, 0.52f), "Any tuned overlay brightens toward pale yellow when it is the active tuning object.");
+	}
+
+	private void AddTuningLegendRow(string labelText, Color swatchColor, string description)
+	{
+		if (_tuningLegendRows == null)
+		{
+			return;
+		}
+
+		var rowPanel = new PanelContainer
+		{
+			SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+		};
+		rowPanel.AddThemeStyleboxOverride(
+			"panel",
+			CreateHudPanelStyle(
+				new Color(0.07f, 0.09f, 0.13f, 0.94f),
+				new Color(0.2f, 0.3f, 0.4f, 0.96f)));
+		_tuningLegendRows.AddChild(rowPanel);
+
+		var rowBox = new VBoxContainer
+		{
+			SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+		};
+		rowBox.AddThemeConstantOverride("separation", 4);
+		rowPanel.AddChild(rowBox);
+
+		var headerRow = new HBoxContainer();
+		headerRow.AddThemeConstantOverride("separation", 8);
+		rowBox.AddChild(headerRow);
+
+		var swatch = new ColorRect
+		{
+			CustomMinimumSize = new Vector2(22.0f, 14.0f),
+			Color = swatchColor
+		};
+		headerRow.AddChild(swatch);
+
+		var label = new Label
+		{
+			Text = labelText,
+			SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+		};
+		label.AddThemeFontSizeOverride("font_size", 14);
+		label.Modulate = new Color(0.96f, 0.98f, 1.0f);
+		headerRow.AddChild(label);
+
+		var descriptionLabel = new Label
+		{
+			Text = description,
+			AutowrapMode = TextServer.AutowrapMode.WordSmart,
+			SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+		};
+		descriptionLabel.AddThemeFontSizeOverride("font_size", 12);
+		descriptionLabel.Modulate = new Color(0.84f, 0.91f, 0.97f);
+		rowBox.AddChild(descriptionLabel);
+	}
+
 	private void SyncCalibrationControls()
 	{
 		if (_tuningFieldSelector == null ||
@@ -3865,6 +3990,9 @@ public partial class Main : Node3D
 			_tuningObjectDetailsPanel == null ||
 			_tuningObjectDetailsLabel == null ||
 			_tuningObjectMiniPanelGrid == null ||
+			_tuningLegendPanel == null ||
+			_tuningLegendHeaderLabel == null ||
+			_tuningLegendRows == null ||
 			_tuningScrollContainer == null ||
 			_tuningFieldsContainer == null ||
 			_tuningOverlayLabel == null ||
@@ -3947,8 +4075,8 @@ public partial class Main : Node3D
 				? new Color(1.0f, 0.98f, 0.92f)
 				: Colors.White;
 		}
-		_tuningOverlayLabel.Text = $"Overlay thickness: {_overlayLineThicknessMeters:0.0000} m";
-		_tuningOverlaySlider.Value = _overlayLineThicknessMeters;
+		_tuningOverlayLabel.Text = $"Overlay thickness: {_overlayLineThicknessPixels:0.0} px";
+		_tuningOverlaySlider.Value = _overlayLineThicknessPixels;
 		_tuningOverlayLabel.Visible = true;
 		_tuningOverlaySlider.Visible = true;
 		_tuningSaveButton.Visible = true;
@@ -4012,16 +4140,16 @@ public partial class Main : Node3D
 			return;
 		}
 
-		var updatedThickness = Mathf.Clamp((float)value, 0.002f, 0.04f);
-		if (Mathf.IsEqualApprox(updatedThickness, _overlayLineThicknessMeters))
+		var updatedThickness = Mathf.Clamp((float)value, MinOverlayThicknessPixels, MaxOverlayThicknessPixels);
+		if (Mathf.IsEqualApprox(updatedThickness, _overlayLineThicknessPixels))
 		{
 			return;
 		}
 
-		_overlayLineThicknessMeters = updatedThickness;
+		_overlayLineThicknessPixels = updatedThickness;
 		BuildHardcodeOverlay();
 		_recentRuleNotes.Clear();
-		_recentRuleNotes.Add($"Overlay thickness: {_overlayLineThicknessMeters:0.0000} m");
+		_recentRuleNotes.Add($"Overlay thickness: {_overlayLineThicknessPixels:0.0} px");
 		UpdateStatusLabel(Array.Empty<ShotEvent>());
 	}
 
@@ -4206,6 +4334,35 @@ public partial class Main : Node3D
 		calibration.StartOffset.Y = newStart.Y - baseSegment.Start.Y;
 		calibration.EndOffset.X = newEnd.X - baseSegment.End.X;
 		calibration.EndOffset.Y = newEnd.Y - baseSegment.End.Y;
+	}
+
+	private string FindClosestJawSourceName(NumericsVector2 point)
+	{
+		if (_baseTableSpec.JawSegments.Count == 0)
+		{
+			throw new InvalidOperationException("No jaw segments are available for tuning.");
+		}
+
+		string? closestSourceName = null;
+		var closestDistanceSquared = float.MaxValue;
+		foreach (var jaw in _baseTableSpec.JawSegments)
+		{
+			var startDistanceSquared = NumericsVector2.DistanceSquared(point, jaw.Start);
+			if (startDistanceSquared < closestDistanceSquared)
+			{
+				closestDistanceSquared = startDistanceSquared;
+				closestSourceName = jaw.SourceName;
+			}
+
+			var endDistanceSquared = NumericsVector2.DistanceSquared(point, jaw.End);
+			if (endDistanceSquared < closestDistanceSquared)
+			{
+				closestDistanceSquared = endDistanceSquared;
+				closestSourceName = jaw.SourceName;
+			}
+		}
+
+		return closestSourceName ?? throw new InvalidOperationException("Unable to resolve a jaw segment for the selected cushion endpoint.");
 	}
 
 	private SimulationConfig CreateAdjustedConfig(
@@ -4837,8 +4994,29 @@ public partial class Main : Node3D
 
 		guideNode.Visible = true;
 		guideNode.Position = (startPoint + endPoint) * 0.5f;
-		((BoxMesh)guideNode.Mesh!).Size = new Vector3(_overlayLineThicknessMeters, OverlayLineHeightMeters, segmentLength);
+		((BoxMesh)guideNode.Mesh!).Size = new Vector3(GetOverlayLineThicknessWorldMeters(), OverlayLineHeightMeters, segmentLength);
 		guideNode.LookAt(guideNode.Position + segment, Vector3.Up);
+	}
+
+	private float GetOverlayLineThicknessWorldMeters()
+	{
+		if (_camera == null)
+		{
+			return 0.003f;
+		}
+
+		var viewportHeightPixels = Mathf.Max(GetViewport().GetVisibleRect().Size.Y, 1.0f);
+		if (_camera.Projection == Camera3D.ProjectionType.Orthogonal)
+		{
+			var worldUnitsPerPixel = _camera.Size / viewportHeightPixels;
+			return Mathf.Clamp(_overlayLineThicknessPixels * worldUnitsPerPixel, 0.0005f, 0.01f);
+		}
+
+		var tableCenter = GetTableCenter3D();
+		var distanceToTable = Mathf.Max((_camera.GlobalPosition - tableCenter).Length(), 0.1f);
+		var worldHeightAtTable = 2.0f * distanceToTable * Mathf.Tan(Mathf.DegToRad(_camera.Fov) * 0.5f);
+		var perspectiveUnitsPerPixel = worldHeightAtTable / viewportHeightPixels;
+		return Mathf.Clamp(_overlayLineThicknessPixels * perspectiveUnitsPerPixel, 0.0005f, 0.01f);
 	}
 
 	private Color ResolveOverlayColor(string overlayName, Color defaultColor)

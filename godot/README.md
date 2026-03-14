@@ -53,6 +53,7 @@ Current behavior:
 - The project now disables embedded subwindows so the debug view can become a native OS window; if you still use Godot editor embedded play, the editor itself can still keep the whole game trapped inside the editor pane.
 - Debug mode now supports live tuning of key portable-physics constants, including ball follow/draw carry, glancing rail restitution, tangential rail retention, and rail-english transfer, and immediately rebuilds `SimulationWorld` with the current ball layout after each change. Table-geometry calibration is handled separately in `Tuning` mode.
 - `Tuning` mode now uses a separate movable tuning window with direct selected-object mini-panels for literal X/Y/Angle-style edits, a flat scrollable row list with one slider row per tunable field, a dropdown that jumps to and highlights one object, an overlay-thickness slider, a `Hide Info` toggle for the explanatory text, and Save/Reload/Reset buttons.
+- That separate `Tuning` window now also keeps a fixed right-side legend with color swatches and short explanations for cloth bounds, cushions, jaws, pocket capture circles, cue/rack spots, aim guides, and the selected-target highlight color.
 - Cushion and jaw calibration rows now include both endpoint coordinates and direct segment-angle controls, so rails and jaws can be aligned either by moving endpoints or by rotating the segment around its current midpoint.
 
 Verification on `2026-03-14`:
@@ -99,6 +100,7 @@ Tuning UI:
 - Object jump dropdown: jump to and highlight one cloth/spot/cushion/jaw/pocket object in the flat row list
 - Selected-object mini-panels: direct X/Y/Angle-style sliders for the currently selected object
 - Flat tuning rows: one slider row per tunable field, with the object name shown on each row
+- Right-side legend: fixed color key for the overlay and aim-guide colors
 - Overlay slider: adjust hardcoded overlay thickness
 - `Hide Info`: collapse the explanatory tuning text without hiding the sliders
 - Save / Reload / Reset buttons: persist or restore `user://table_calibration.json`
