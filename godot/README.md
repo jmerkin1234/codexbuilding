@@ -24,6 +24,7 @@ Current behavior:
 - Practice mode supports freeplay layout editing by cycling the selected ball and moving it around the cloth.
 - `H` toggles a hardcoded-table overlay sourced from `TableSpec` that shows cloth bounds, cushion segments, jaw segments, pocket capture circles, and cue/rack reference spots.
 - `1` through `5` now toggle the cloth, cushion, jaw, pocket, and spot overlay sublayers independently.
+- `C` now cycles between broadcast, top-down, foot-rail, and side-rail camera presets, while `Q/E` zoom the active preset in and out.
 - `F1` toggles a debug panel with live portable-engine data such as `SimulationConfig` values, world counters, cue-ball state, selected-ball state, moving-ball counts, and preview lengths. Debug mode also forces the hardcoded-table overlay visible.
 
 Verification on `2026-03-14`:
@@ -43,6 +44,8 @@ Keyboard controls:
 - `3`: toggle jaw overlay lines
 - `4`: toggle pocket overlay lines
 - `5`: toggle cue/rack spot overlay lines
+- `C`: cycle camera preset
+- `Q/E`: zoom camera in/out
 - `A/D`: aim left/right
 - `W/S`: raise/lower strike speed
 - `J/L`: apply left/right english

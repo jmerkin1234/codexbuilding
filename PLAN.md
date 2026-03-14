@@ -138,4 +138,4 @@ Scope:
 
 ## Current Focus
 
-Right now the repo is in step 14. The Godot adapter is rules-aware, training-aware, has predictive guide visuals, exposes the hardcoded table geometry as a toggleable overlay with per-layer visibility control, and passes Godot 4.6 Mono headless startup verification; the remaining backlog is broader presentation polish.
+Right now the repo is in step 14. The Godot adapter is rules-aware, training-aware, has predictive guide visuals, exposes the hardcoded table geometry as a toggleable overlay with per-layer visibility control, supports switchable inspection camera presets with zoom, and passes Godot 4.6 Mono headless startup verification; the remaining backlog is broader presentation polish.

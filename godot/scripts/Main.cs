@@ -10,6 +10,8 @@ namespace CodexBuilding.Billiards.Godot46;
 
 public partial class Main : Node3D
 {
+    private readonly record struct CameraPreset(string Name, Vector3 Offset);
+
     private enum RuleMode
     {
         EightBall,
@@ -57,6 +59,13 @@ public partial class Main : Node3D
     private readonly List<string> _recentRuleNotes = new(capacity: 4);
     private readonly List<SimulationReplayFrame> _capturedShotFrames = new(capacity: 1024);
     private readonly Dictionary<int, MeshInstance3D> _ballVisuals = new();
+    private readonly CameraPreset[] _cameraPresets =
+    [
+        new("Broadcast", new Vector3(-0.55f, 2.6f, 1.95f)),
+        new("TopDown", new Vector3(0.0f, 3.45f, 0.12f)),
+        new("FootRail", new Vector3(-2.35f, 1.38f, 0.0f)),
+        new("SideRail", new Vector3(0.0f, 1.82f, 2.35f))
+    ];
 
     private TableSpec _tableSpec = null!;
     private SimulationConfig _config = null!;
@@ -95,6 +104,8 @@ public partial class Main : Node3D
     private bool _overlayPocketVisible = true;
     private bool _overlaySpotVisible = true;
     private int _trainingSelectedBallNumber;
+    private int _cameraPresetIndex;
+    private float _cameraZoomScale = 1.0f;
     private float _aimAngleRadians;
     private float _strikeSpeedMetersPerSecond = 2.0f;
     private Vector2 _tipOffsetNormalized = Vector2.Zero;
@@ -142,6 +153,15 @@ public partial class Main : Node3D
                 return;
             case Key.H:
                 ToggleHardcodeOverlay();
+                return;
+            case Key.C:
+                CycleCameraPreset();
+                return;
+            case Key.Q:
+                AdjustCameraZoom(-0.1f);
+                return;
+            case Key.E:
+                AdjustCameraZoom(0.1f);
                 return;
             case Key.Key1:
                 ToggleOverlayLayer("Cloth", ref _overlayClothVisible);
@@ -235,9 +255,8 @@ public partial class Main : Node3D
     private void ConfigureCameraAndLighting()
     {
         _camera = EnsureNode<Camera3D>(this, "ViewCamera");
-        _camera.Position = new Vector3(-0.55f, 2.6f, 1.95f);
-        _camera.LookAt(Vector3.Zero, Vector3.Up);
         _camera.Current = true;
+        ApplyCameraPreset();
 
         var sunLight = EnsureNode<DirectionalLight3D>(this, "SunLight");
         sunLight.RotationDegrees = new Vector3(-58.0f, -32.0f, 0.0f);
@@ -512,6 +531,43 @@ public partial class Main : Node3D
             ? "Debug mode enabled."
             : "Debug mode disabled.");
         UpdateStatusLabel(Array.Empty<ShotEvent>());
+    }
+
+    private void CycleCameraPreset()
+    {
+        _cameraPresetIndex = (_cameraPresetIndex + 1) % _cameraPresets.Length;
+        ApplyCameraPreset();
+        _recentRuleNotes.Clear();
+        _recentRuleNotes.Add($"Camera preset: {GetActiveCameraPreset().Name}");
+        UpdateStatusLabel(Array.Empty<ShotEvent>());
+    }
+
+    private void AdjustCameraZoom(float delta)
+    {
+        _cameraZoomScale = Mathf.Clamp(_cameraZoomScale + delta, 0.65f, 1.85f);
+        ApplyCameraPreset();
+        _recentRuleNotes.Clear();
+        _recentRuleNotes.Add($"Camera zoom: {_cameraZoomScale:0.00}x");
+        UpdateStatusLabel(Array.Empty<ShotEvent>());
+    }
+
+    private void ApplyCameraPreset()
+    {
+        if (_camera == null)
+        {
+            return;
+        }
+
+        var preset = GetActiveCameraPreset();
+        var center = GetTableCenter3D();
+        var offset = preset.Offset * _cameraZoomScale;
+        _camera.Position = center + offset;
+        _camera.LookAt(center, Vector3.Up);
+    }
+
+    private CameraPreset GetActiveCameraPreset()
+    {
+        return _cameraPresets[_cameraPresetIndex];
     }
 
     private void SelectTrainingBall(int direction)
@@ -1093,7 +1149,8 @@ public partial class Main : Node3D
             $"{BuildModeStatusLine()}\n" +
             $"Phase: {_world.Phase}  SimTime: {_world.SimulationTimeSeconds:0.000}s  FixedSteps: {_world.TotalFixedStepsExecuted}\n" +
             $"CueBall: {cueBallStatus}  Aim: {Mathf.RadToDeg(_aimAngleRadians):0.0} deg  Speed: {_strikeSpeedMetersPerSecond:0.00} m/s  Tip: ({_tipOffsetNormalized.X:0.00}, {_tipOffsetNormalized.Y:0.00})  Overlay: {BuildOverlaySummary()}\n" +
-            "Controls: F1 debug  Tab mode  H hardcode overlay  1 cloth  2 cushions  3 jaws  4 pockets  5 spots  A/D aim  W/S speed  J/L side spin  I/K follow-draw  Arrow keys move selected placement ball  Z/X cycle practice ball  Space shoot  Backspace center tip  R reset\n" +
+            $"Camera: {GetActiveCameraPreset().Name}  Zoom: {_cameraZoomScale:0.00}x\n" +
+            "Controls: F1 debug  Tab mode  H hardcode overlay  1 cloth  2 cushions  3 jaws  4 pockets  5 spots  C camera preset  Q/E zoom  A/D aim  W/S speed  J/L side spin  I/K follow-draw  Arrow keys move selected placement ball  Z/X cycle practice ball  Space shoot  Backspace center tip  R reset\n" +
             $"Recent shot events:\n{recentEventText}\n" +
             $"Rules/training:\n{recentRuleText}";
 
@@ -1177,6 +1234,7 @@ public partial class Main : Node3D
             $"Config: dt={_config.FixedStepSeconds:0.000000} settle={_config.SettleSpeedThresholdMetersPerSecond:0.0000} slide={_config.SlidingFrictionAccelerationMetersPerSecondSquared:0.000} roll={_config.RollingFrictionAccelerationMetersPerSecondSquared:0.000}\n" +
             $"Config: spin_decay={_config.SpinDecayRpsPerSecond:0.000} ball_rest={_config.BallCollisionRestitution:0.00} rail_rest={_config.BoundaryRestitution:0.00} pair_iter={_config.MaxCollisionIterationsPerStep} rail_iter={_config.MaxBoundaryIterationsPerStep}\n" +
             $"World: phase={_world.Phase} sim_t={_world.SimulationTimeSeconds:0.000} acc={_world.AccumulatorSeconds:0.000000} steps={_world.TotalFixedStepsExecuted} capture={_shotCaptureActive} frames={_capturedShotFrames.Count}\n" +
+            $"Camera: preset={GetActiveCameraPreset().Name} zoom={_cameraZoomScale:0.00} pos=({_camera.Position.X:0.000},{_camera.Position.Y:0.000},{_camera.Position.Z:0.000})\n" +
             $"Rules: mode={GetRuleModeLabel()} debug_overlay_manual={_hardcodeOverlayVisible} debug_enabled={_debugModeEnabled}\n" +
             $"Cue: pos={FormatVector(cueBall.Position)} vel={FormatVector(cueBall.Velocity)} spin={FormatSpin(cueBall.Spin)} pocketed={cueBall.IsPocketed}\n" +
             $"Selected: {GetTrainingSelectionLabel()} pos={FormatVector(selectedBall.Position)} vel={FormatVector(selectedBall.Velocity)} spin={FormatSpin(selectedBall.Spin)} pocketed={selectedBall.IsPocketed}\n" +
@@ -1205,6 +1263,12 @@ public partial class Main : Node3D
     private static string FormatSpin(SpinState spin)
     {
         return $"({spin.SideSpinRps:0.000},{spin.ForwardSpinRps:0.000},{spin.VerticalSpinRps:0.000})";
+    }
+
+    private Vector3 GetTableCenter3D()
+    {
+        var center = (_tableSpec.ClothMin + _tableSpec.ClothMax) * 0.5f;
+        return new Vector3(center.X, 0.0f, center.Y);
     }
 
     private string BuildOverlaySummary()
