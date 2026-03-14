@@ -22,9 +22,13 @@ public static class ClothMotionIntegrator
             ? Vector2.Normalize(velocity)
             : Vector2.Zero;
 
-        var sideSpin = MoveTowardsZero(ball.Spin.SideSpinRps, config.SpinDecayRpsPerSecond * deltaTimeSeconds);
+        var movingSideSpinDecay = config.SpinDecayRpsPerSecond +
+                                  (speed * config.MovingSideSpinDecayRpsPerSecondPerMetersPerSecond);
+        var sideSpin = MoveTowardsZero(ball.Spin.SideSpinRps, movingSideSpinDecay * deltaTimeSeconds);
         var verticalSpin = MoveTowardsZero(ball.Spin.VerticalSpinRps, config.SpinDecayRpsPerSecond * deltaTimeSeconds);
         var forwardSpin = ball.Spin.ForwardSpinRps;
+        var averageSideSpin = (ball.Spin.SideSpinRps + sideSpin) * 0.5f;
+        var lateralVelocity = Vector2.Zero;
 
         if (speed <= config.SettleSpeedThresholdMetersPerSecond)
         {
@@ -54,6 +58,13 @@ public static class ClothMotionIntegrator
             var newSurfaceSpeed = surfaceSpeed + (slideSign * 2.5f * slideAcceleration * slideTime);
 
             position += direction * (((speed + newSpeed) * 0.5f) * slideTime);
+            ApplySideSpinCurve(
+                ref position,
+                ref lateralVelocity,
+                direction,
+                averageSideSpin,
+                config.SideSpinCurveAccelerationMetersPerSecondSquaredPerRps,
+                slideTime);
 
             speed = newSpeed;
             surfaceSpeed = newSurfaceSpeed;
@@ -74,6 +85,13 @@ public static class ClothMotionIntegrator
                 var newSpeed = MathF.Max(0.0f, speed - (rollingAcceleration * rollingTime));
 
                 position += direction * (((speed + newSpeed) * 0.5f) * rollingTime);
+                ApplySideSpinCurve(
+                    ref position,
+                    ref lateralVelocity,
+                    direction,
+                    averageSideSpin,
+                    config.SideSpinCurveAccelerationMetersPerSecondSquaredPerRps,
+                    rollingTime);
 
                 speed = newSpeed;
                 surfaceSpeed = speed;
@@ -82,6 +100,13 @@ public static class ClothMotionIntegrator
             else
             {
                 position += direction * (speed * remainingTimeSeconds);
+                ApplySideSpinCurve(
+                    ref position,
+                    ref lateralVelocity,
+                    direction,
+                    averageSideSpin,
+                    config.SideSpinCurveAccelerationMetersPerSecondSquaredPerRps,
+                    remainingTimeSeconds);
                 remainingTimeSeconds = 0.0f;
             }
         }
@@ -103,12 +128,41 @@ public static class ClothMotionIntegrator
             direction = Vector2.Zero;
         }
 
+        var finalVelocity = (direction * speed) + lateralVelocity;
+        if (finalVelocity.LengthSquared() <=
+            (config.SettleSpeedThresholdMetersPerSecond * config.SettleSpeedThresholdMetersPerSecond))
+        {
+            finalVelocity = Vector2.Zero;
+        }
+
         return ball with
         {
             Position = position,
-            Velocity = direction * speed,
+            Velocity = finalVelocity,
             Spin = new SpinState(sideSpin, forwardSpin, verticalSpin)
         };
+    }
+
+    private static void ApplySideSpinCurve(
+        ref Vector2 position,
+        ref Vector2 lateralVelocity,
+        Vector2 direction,
+        float averageSideSpinRps,
+        float curveAccelerationPerRps,
+        float deltaTimeSeconds)
+    {
+        if (deltaTimeSeconds <= 0.0f ||
+            direction.LengthSquared() <= float.Epsilon ||
+            MathF.Abs(averageSideSpinRps) <= float.Epsilon ||
+            curveAccelerationPerRps <= 0.0f)
+        {
+            return;
+        }
+
+        var curveDirection = new Vector2(direction.Y, -direction.X);
+        var curveAcceleration = curveDirection * (averageSideSpinRps * curveAccelerationPerRps);
+        position += curveAcceleration * (0.5f * deltaTimeSeconds * deltaTimeSeconds);
+        lateralVelocity += curveAcceleration * deltaTimeSeconds;
     }
 
     private static float ForwardSpinToSurfaceSpeed(float ballRadiusMeters, float forwardSpinRps)

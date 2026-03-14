@@ -17,6 +17,7 @@ Current behavior:
 - If that Blender asset is absent or cannot be loaded, the adapter renders a procedural fallback using the hardcoded table spec and Blender-derived source names.
 - The direct Blender import is now verified in this repo, and the imported asset material references were extracted under `godot/art/textures/` by Godot during the import process.
 - Ball motion is always driven by the portable core and mirrored into Godot transforms each frame.
+- The portable core now includes modest cloth side-spin drift/scrub, tangential spin transfer in ball-ball contact, and tangential rail response; Godot only mirrors the resulting state.
 - The adapter captures live shot traces and resolves them through the portable `Rules` layer.
 - `Tab` switches between `EightBall` versus computer and `FreePlay` inside the running adapter.
 - The HUD now shows mode, current player, group assignment, ball-in-hand, winner, and recent rules outcomes.
@@ -37,7 +38,7 @@ Current behavior:
 Verification on `2026-03-14`:
 
 - `dotnet build CodexBuilding.Billiards.Godot46.csproj --no-restore`
-- `dotnet test ../tests/CodexBuilding.Billiards.Tests/CodexBuilding.Billiards.Tests.csproj --no-restore` with `38/38` passing
+- `dotnet test ../tests/CodexBuilding.Billiards.Tests/CodexBuilding.Billiards.Tests.csproj --no-restore` with `41/41` passing
 - Godot 4.6 Mono `--build-solutions --quit`
 - Godot 4.6 Mono headless startup `--quit-after 10`
 - Verified direct import of `godot/art/customtable_9ft.blend`

@@ -186,15 +186,13 @@ public sealed class SimulationWorld
             _balls,
             TableSpec.Cushions,
             ballRadiusMeters,
-            Config.BoundaryRestitution,
-            Config.MaxBoundaryIterationsPerStep,
+            Config,
             onCollision: (ballNumber, segmentName) => boundaryHits.Add($"{ballNumber}:{segmentName}"));
         TableBoundaryResolver.Resolve(
             _balls,
             TableSpec.JawSegments,
             ballRadiusMeters,
-            Config.BoundaryRestitution,
-            Config.MaxBoundaryIterationsPerStep,
+            Config,
             onCollision: (ballNumber, segmentName) => boundaryHits.Add($"{ballNumber}:{segmentName}"));
         BallCollisionResolver.Resolve(
             _balls,
@@ -210,15 +208,13 @@ public sealed class SimulationWorld
             _balls,
             TableSpec.Cushions,
             ballRadiusMeters,
-            Config.BoundaryRestitution,
-            Config.MaxBoundaryIterationsPerStep,
+            Config,
             onCollision: (ballNumber, segmentName) => boundaryHits.Add($"{ballNumber}:{segmentName}"));
         TableBoundaryResolver.Resolve(
             _balls,
             TableSpec.JawSegments,
             ballRadiusMeters,
-            Config.BoundaryRestitution,
-            Config.MaxBoundaryIterationsPerStep,
+            Config,
             onCollision: (ballNumber, segmentName) => boundaryHits.Add($"{ballNumber}:{segmentName}"));
         PocketCaptureResolver.Resolve(
             _balls,

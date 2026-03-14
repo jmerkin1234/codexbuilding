@@ -12,11 +12,17 @@ public sealed class SimulationConfig
         slidingFrictionAccelerationMetersPerSecondSquared: 1.8f,
         rollingFrictionAccelerationMetersPerSecondSquared: 0.22f,
         spinDecayRpsPerSecond: 1.2f,
+        sideSpinCurveAccelerationMetersPerSecondSquaredPerRps: 0.015f,
+        movingSideSpinDecayRpsPerSecondPerMetersPerSecond: 0.35f,
         rollingMatchToleranceMetersPerSecond: 0.01f,
         spinSettleThresholdRps: 0.05f,
         ballCollisionRestitution: 0.96f,
+        ballCollisionTangentialTransferFactor: 0.35f,
+        ballCollisionSpinTransferFactor: 0.12f,
         maxCollisionIterationsPerStep: 4,
         boundaryRestitution: 0.9f,
+        boundaryTangentialFrictionFactor: 0.25f,
+        boundarySpinTransferFactor: 0.45f,
         maxBoundaryIterationsPerStep: 4);
 
     public SimulationConfig(
@@ -29,11 +35,17 @@ public sealed class SimulationConfig
         float slidingFrictionAccelerationMetersPerSecondSquared = 1.8f,
         float rollingFrictionAccelerationMetersPerSecondSquared = 0.22f,
         float spinDecayRpsPerSecond = 1.2f,
+        float sideSpinCurveAccelerationMetersPerSecondSquaredPerRps = 0.015f,
+        float movingSideSpinDecayRpsPerSecondPerMetersPerSecond = 0.35f,
         float rollingMatchToleranceMetersPerSecond = 0.01f,
         float spinSettleThresholdRps = 0.05f,
         float ballCollisionRestitution = 0.96f,
+        float ballCollisionTangentialTransferFactor = 0.35f,
+        float ballCollisionSpinTransferFactor = 0.12f,
         int maxCollisionIterationsPerStep = 4,
         float boundaryRestitution = 0.9f,
+        float boundaryTangentialFrictionFactor = 0.25f,
+        float boundarySpinTransferFactor = 0.45f,
         int maxBoundaryIterationsPerStep = 4)
     {
         if (fixedStepSeconds <= 0.0f)
@@ -89,6 +101,20 @@ public sealed class SimulationConfig
             throw new ArgumentOutOfRangeException(nameof(spinDecayRpsPerSecond), "Spin decay cannot be negative.");
         }
 
+        if (sideSpinCurveAccelerationMetersPerSecondSquaredPerRps < 0.0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(sideSpinCurveAccelerationMetersPerSecondSquaredPerRps),
+                "Side-spin curve acceleration cannot be negative.");
+        }
+
+        if (movingSideSpinDecayRpsPerSecondPerMetersPerSecond < 0.0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(movingSideSpinDecayRpsPerSecondPerMetersPerSecond),
+                "Moving side-spin decay cannot be negative.");
+        }
+
         if (rollingMatchToleranceMetersPerSecond < 0.0f)
         {
             throw new ArgumentOutOfRangeException(
@@ -110,6 +136,20 @@ public sealed class SimulationConfig
                 "Ball collision restitution must be between zero and one.");
         }
 
+        if (ballCollisionTangentialTransferFactor < 0.0f || ballCollisionTangentialTransferFactor > 1.0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(ballCollisionTangentialTransferFactor),
+                "Ball collision tangential transfer factor must be between zero and one.");
+        }
+
+        if (ballCollisionSpinTransferFactor < 0.0f || ballCollisionSpinTransferFactor > 1.0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(ballCollisionSpinTransferFactor),
+                "Ball collision spin transfer factor must be between zero and one.");
+        }
+
         if (maxCollisionIterationsPerStep <= 0)
         {
             throw new ArgumentOutOfRangeException(
@@ -122,6 +162,20 @@ public sealed class SimulationConfig
             throw new ArgumentOutOfRangeException(
                 nameof(boundaryRestitution),
                 "Boundary restitution must be between zero and one.");
+        }
+
+        if (boundaryTangentialFrictionFactor < 0.0f || boundaryTangentialFrictionFactor > 1.0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(boundaryTangentialFrictionFactor),
+                "Boundary tangential friction factor must be between zero and one.");
+        }
+
+        if (boundarySpinTransferFactor < 0.0f || boundarySpinTransferFactor > 1.0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(boundarySpinTransferFactor),
+                "Boundary spin transfer factor must be between zero and one.");
         }
 
         if (maxBoundaryIterationsPerStep <= 0)
@@ -140,11 +194,17 @@ public sealed class SimulationConfig
         SlidingFrictionAccelerationMetersPerSecondSquared = slidingFrictionAccelerationMetersPerSecondSquared;
         RollingFrictionAccelerationMetersPerSecondSquared = rollingFrictionAccelerationMetersPerSecondSquared;
         SpinDecayRpsPerSecond = spinDecayRpsPerSecond;
+        SideSpinCurveAccelerationMetersPerSecondSquaredPerRps = sideSpinCurveAccelerationMetersPerSecondSquaredPerRps;
+        MovingSideSpinDecayRpsPerSecondPerMetersPerSecond = movingSideSpinDecayRpsPerSecondPerMetersPerSecond;
         RollingMatchToleranceMetersPerSecond = rollingMatchToleranceMetersPerSecond;
         SpinSettleThresholdRps = spinSettleThresholdRps;
         BallCollisionRestitution = ballCollisionRestitution;
+        BallCollisionTangentialTransferFactor = ballCollisionTangentialTransferFactor;
+        BallCollisionSpinTransferFactor = ballCollisionSpinTransferFactor;
         MaxCollisionIterationsPerStep = maxCollisionIterationsPerStep;
         BoundaryRestitution = boundaryRestitution;
+        BoundaryTangentialFrictionFactor = boundaryTangentialFrictionFactor;
+        BoundarySpinTransferFactor = boundarySpinTransferFactor;
         MaxBoundaryIterationsPerStep = maxBoundaryIterationsPerStep;
     }
 
@@ -166,15 +226,27 @@ public sealed class SimulationConfig
 
     public float SpinDecayRpsPerSecond { get; }
 
+    public float SideSpinCurveAccelerationMetersPerSecondSquaredPerRps { get; }
+
+    public float MovingSideSpinDecayRpsPerSecondPerMetersPerSecond { get; }
+
     public float RollingMatchToleranceMetersPerSecond { get; }
 
     public float SpinSettleThresholdRps { get; }
 
     public float BallCollisionRestitution { get; }
 
+    public float BallCollisionTangentialTransferFactor { get; }
+
+    public float BallCollisionSpinTransferFactor { get; }
+
     public int MaxCollisionIterationsPerStep { get; }
 
     public float BoundaryRestitution { get; }
+
+    public float BoundaryTangentialFrictionFactor { get; }
+
+    public float BoundarySpinTransferFactor { get; }
 
     public int MaxBoundaryIterationsPerStep { get; }
 }

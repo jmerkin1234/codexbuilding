@@ -45,7 +45,7 @@ public static class BallCollisionResolver
                         continue;
                     }
 
-                    ResolvePair(ref firstBall, ref secondBall, ballDiameterMeters, config.BallCollisionRestitution);
+                    ResolvePair(ref firstBall, ref secondBall, ballDiameterMeters, config);
 
                     balls[firstIndex] = firstBall;
                     balls[secondIndex] = secondBall;
@@ -68,7 +68,7 @@ public static class BallCollisionResolver
         ref BallState firstBall,
         ref BallState secondBall,
         float ballDiameterMeters,
-        float restitution)
+        SimulationConfig config)
     {
         var separation = secondBall.Position - firstBall.Position;
         var distance = separation.Length();
@@ -89,11 +89,28 @@ public static class BallCollisionResolver
             return;
         }
 
-        var impulseMagnitude = -0.5f * (1.0f + restitution) * approachSpeed;
-        var impulse = normal * impulseMagnitude;
+        var normalImpulseMagnitude = -0.5f * (1.0f + config.BallCollisionRestitution) * approachSpeed;
+        var impulse = normal * normalImpulseMagnitude;
+        var tangent = new Vector2(-normal.Y, normal.X);
+        var contactTangentSpeed = ResolveContactTangentSpeed(firstBall, secondBall, tangent, ballDiameterMeters * 0.5f);
+        var desiredTangentImpulse = -0.5f * contactTangentSpeed * config.BallCollisionTangentialTransferFactor;
+        var maxTangentImpulse = MathF.Abs(normalImpulseMagnitude) * config.BallCollisionTangentialTransferFactor;
+        var tangentImpulseMagnitude = Math.Clamp(desiredTangentImpulse, -maxTangentImpulse, maxTangentImpulse);
+        var tangentImpulse = tangent * tangentImpulseMagnitude;
 
-        firstBall = firstBall with { Velocity = firstBall.Velocity - impulse };
-        secondBall = secondBall with { Velocity = secondBall.Velocity + impulse };
+        var sideSpinTransfer = SurfaceSpeedToSpinRps(ballDiameterMeters * 0.5f, tangentImpulseMagnitude) *
+                               config.BallCollisionSpinTransferFactor;
+
+        firstBall = firstBall with
+        {
+            Velocity = firstBall.Velocity - impulse - tangentImpulse,
+            Spin = firstBall.Spin with { SideSpinRps = firstBall.Spin.SideSpinRps - sideSpinTransfer }
+        };
+        secondBall = secondBall with
+        {
+            Velocity = secondBall.Velocity + impulse + tangentImpulse,
+            Spin = secondBall.Spin with { SideSpinRps = secondBall.Spin.SideSpinRps - sideSpinTransfer }
+        };
     }
 
     private static Vector2 ResolveCollisionNormal(
@@ -113,5 +130,32 @@ public static class BallCollisionResolver
         }
 
         return Vector2.UnitX;
+    }
+
+    private static float ResolveContactTangentSpeed(
+        BallState firstBall,
+        BallState secondBall,
+        Vector2 tangent,
+        float ballRadiusMeters)
+    {
+        var relativeVelocity = secondBall.Velocity - firstBall.Velocity;
+        var tangentialVelocity = Vector2.Dot(relativeVelocity, tangent);
+        var spinSurfaceSpeed = SpinToSurfaceSpeed(ballRadiusMeters, firstBall.Spin.SideSpinRps + secondBall.Spin.SideSpinRps);
+        return tangentialVelocity - spinSurfaceSpeed;
+    }
+
+    private static float SpinToSurfaceSpeed(float ballRadiusMeters, float spinRps)
+    {
+        return spinRps * 2.0f * MathF.PI * ballRadiusMeters;
+    }
+
+    private static float SurfaceSpeedToSpinRps(float ballRadiusMeters, float surfaceSpeedMetersPerSecond)
+    {
+        if (ballRadiusMeters <= 0.0f)
+        {
+            return 0.0f;
+        }
+
+        return surfaceSpeedMetersPerSecond / (2.0f * MathF.PI * ballRadiusMeters);
     }
 }

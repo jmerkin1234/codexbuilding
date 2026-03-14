@@ -20,13 +20,13 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - `Godot.NET.Sdk 4.6.0` is now resolving and the Godot adapter builds on this machine.
 - The fixed-step shell is now implemented with an accumulator, explicit phase tracking, and settle detection.
 - Cue strike input now resolves normalized aim, clamped tip offsets, initial cue-ball velocity, and initial spin seeds.
-- Cloth motion now handles sliding, rolling, skid-to-roll transition, and passive spin decay in straight-line travel.
-- Ball-ball collisions now resolve equal-mass contacts with restitution and overlap separation.
-- Cushion and pocket-jaw interactions now resolve against explicit hardcoded boundary segments derived from the Blender table reference.
+- Cloth motion now handles sliding, rolling, skid-to-roll transition, forward-spin matching, moving side-spin scrub, and a modest deterministic side-spin path bias.
+- Ball-ball collisions now resolve equal-mass contacts with restitution, overlap separation, capped tangential transfer, and side-spin exchange during contact.
+- Cushion and pocket-jaw interactions now resolve against explicit hardcoded boundary segments derived from the Blender table reference, including tangential rail friction and side-spin rail response.
 - Pocket capture now marks balls as pocketed, zeros their motion, and emits `Pocketed` or `Scratch` events.
 - Shot event expansion now covers first cue-ball contact, cushion/jaw contact, pocketed balls, scratch, and settled-shot events.
 - Deterministic replay now records per-step frames, cue-strike seeds, and shot events into a portable trace object.
-- Regression coverage now locks a canonical straight-shot SHA-256 fingerprint for deterministic replay validation.
+- Regression coverage now locks a canonical straight-shot SHA-256 fingerprint for deterministic replay validation and was updated on `2026-03-14` after the spin-response refinement pass.
 - The Godot 4.6 adapter now seeds a standard 8-ball rack from the portable core, mirrors core ball state into named visual nodes, exposes keyboard shot controls, directly instantiates `res://art/customtable_9ft.blend` as the render-only table when present, and falls back to a procedural table if that Blender asset is not available.
 - The checked-in Blender table now imports directly through Godot 4.6, which also extracted the referenced texture set into `godot/art/textures/` so the visual asset can load without a manual export step.
 - The Godot scene graph now preserves Blender-facing names where used: `GodotRoot`, `TableRoot`, `BallsRoot`, `CueRoot`, `CueStick`, `CueBall`, `Ball_01` through `Ball_15`, rail names, and pocket names.
@@ -45,7 +45,7 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - The Godot adapter now raises a transient shot-feedback banner for shot starts, first contact, pocketed balls, scratches, fouls, wins, and other key rule outcomes.
 - The status panel now gives the current mode, turn, winner, and ball-in-hand state a dedicated color-accented header so match flow is readable at a glance.
 - `F1` now enables a Godot debug panel that shows live portable-engine data, including table/config values, simulation counters, cue-ball state, selected-ball state, moving-ball counts, and preview status. Debug mode also forces the hardcoded-table overlay visible.
-- Validation on `2026-03-14` covers `38` passing standalone tests via `dotnet test`, a successful Godot adapter compile via `dotnet build`, a successful Godot 4.6 Mono `--build-solutions` pass, a clean headless startup pass via `--quit-after 10`, and a verified direct import of `godot/art/customtable_9ft.blend` through Godot’s Blender pipeline.
+- Validation on `2026-03-14` covers `41` passing standalone tests via `dotnet test`, a successful Godot adapter compile via `dotnet build`, a successful Godot 4.6 Mono `--build-solutions` pass, a clean headless startup pass via `--quit-after 10`, and a verified direct import of `godot/art/customtable_9ft.blend` through Godot’s Blender pipeline.
 
 ## Repository Layout
 
@@ -79,7 +79,7 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 11. Layer full 8-ball rules on top of physics.
 12. Wire rules and training-mode flow into the Godot adapter and HUD.
 13. Expand training layout tools and richer in-game presentation.
-14. Continue presentation polish.
+14. Continue presentation polish and tune previously simplified physics.
 
 ## First Hardcoded Facts
 
@@ -90,4 +90,4 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 
 ## Next Step
 
-The next implementation step is continued presentation polish on top of the working rules-aware adapter.
+The next implementation step is continued live tuning, stronger spin refinement, and broader presentation polish on top of the working rules-aware adapter.

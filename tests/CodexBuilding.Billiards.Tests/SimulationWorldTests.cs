@@ -183,6 +183,19 @@ public sealed class SimulationWorldTests
     }
 
     [Fact]
+    public void Advance_SideSpinAddsLateralDriftWhileBallTravels()
+    {
+        var world = CreateClothWorld(
+            velocity: new Vector2(1.0f, 0.0f),
+            spin: new SpinState(6.0f, 0.0f, 0.0f));
+
+        var result = world.Advance(0.2f);
+
+        Assert.True(result.Balls[0].Position.Y < -0.001f);
+        Assert.True(result.Balls[0].Velocity.Y < -0.01f);
+    }
+
+    [Fact]
     public void Advance_HeadOnCollisionTransfersVelocityToSecondBall()
     {
         var world = CreateCollisionWorld(
@@ -234,6 +247,32 @@ public sealed class SimulationWorldTests
         Assert.True(result.Balls[1].Velocity.Y > 0.0f);
         Assert.True(result.Balls[0].Velocity.X < 1.0f);
         Assert.True(result.Balls[0].Velocity.Y < 0.0f);
+    }
+
+    [Fact]
+    public void Advance_SpinningCueBallCollisionTransfersTangentialVelocityAndSpin()
+    {
+        var world = CreateCollisionWorld(
+            new BallState(
+                BallNumber: 0,
+                Kind: BallKind.Cue,
+                Position: new Vector2(-0.03f, 0.0f),
+                Velocity: new Vector2(1.0f, 0.0f),
+                Spin: new SpinState(6.0f, 0.0f, 0.0f),
+                IsPocketed: false),
+            new BallState(
+                BallNumber: 1,
+                Kind: BallKind.Solid,
+                Position: new Vector2(0.03f, 0.0f),
+                Velocity: Vector2.Zero,
+                Spin: new SpinState(0.0f, 0.0f, 0.0f),
+                IsPocketed: false));
+
+        var result = world.Advance(0.01f);
+
+        Assert.True(MathF.Abs(result.Balls[1].Velocity.Y) > 0.01f);
+        Assert.True(MathF.Abs(result.Balls[1].Spin.SideSpinRps) > 0.01f);
+        Assert.True(MathF.Abs(result.Balls[0].Spin.SideSpinRps) < 6.0f);
     }
 
     [Fact]
@@ -293,6 +332,29 @@ public sealed class SimulationWorldTests
         Assert.True(Vector2.Dot(correctedBall.Velocity, segment.InwardNormal) > 0.0f);
         Assert.True(signedDistance >= 0.028575f - 0.0001f);
         Assert.Contains(result.Events, evt => evt.EventType == ShotEventType.CushionContact && evt.Detail == segment.SourceName);
+    }
+
+    [Fact]
+    public void Advance_CushionCollisionUsesSideSpinToAlterTangentVelocity()
+    {
+        var table = CustomTable9FtSpec.Create();
+        var segment = table.Cushions[0];
+        var midpoint = (segment.Start + segment.End) * 0.5f;
+        var radius = 0.028575f;
+        var ball = new BallState(
+            BallNumber: 0,
+            Kind: BallKind.Cue,
+            Position: midpoint + (segment.InwardNormal * (radius - 0.002f)),
+            Velocity: -segment.InwardNormal,
+            Spin: new SpinState(5.0f, 0.0f, 0.0f),
+            IsPocketed: false);
+        var world = CreateBoundaryWorld(ball);
+
+        var result = world.Advance(0.01f);
+        var tangentVelocity = Vector2.Dot(result.Balls[0].Velocity, segment.Direction);
+
+        Assert.True(MathF.Abs(tangentVelocity) > 0.01f);
+        Assert.True(MathF.Abs(result.Balls[0].Spin.SideSpinRps) < 5.0f);
     }
 
     [Fact]
@@ -379,7 +441,7 @@ public sealed class SimulationWorldTests
         var fingerprintHash = SimulationFingerprintBuilder.BuildSha256(trace);
 
         Assert.True(trace.Completed);
-        Assert.Equal("5c7036c30799ce5a34ab8180889c2dfc663fa429cadd5a10d675eb1412ec663f", fingerprintHash);
+        Assert.Equal("d317d81f59530acc884987a9869805047203f4be969aa7034287c78a8e3eff6f", fingerprintHash);
     }
 
     private static SimulationWorld CreateShellWorld(Vector2 cueBallVelocity)

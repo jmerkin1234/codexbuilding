@@ -9,23 +9,12 @@ public static class TableBoundaryResolver
         List<BallState> balls,
         IReadOnlyList<CushionSegment> segments,
         float ballRadiusMeters,
-        float restitution,
-        int maxIterations)
-    {
-        return Resolve(balls, segments, ballRadiusMeters, restitution, maxIterations, onCollision: null);
-    }
-
-    public static int Resolve(
-        List<BallState> balls,
-        IReadOnlyList<CushionSegment> segments,
-        float ballRadiusMeters,
-        float restitution,
-        int maxIterations,
+        SimulationConfig config,
         Action<int, string>? onCollision)
     {
         var collisionCount = 0;
 
-        for (var iteration = 0; iteration < maxIterations; iteration++)
+        for (var iteration = 0; iteration < config.MaxBoundaryIterationsPerStep; iteration++)
         {
             var resolvedAnyCollision = false;
 
@@ -39,7 +28,7 @@ public static class TableBoundaryResolver
 
                 foreach (var segment in segments)
                 {
-                    if (!TryResolveSegmentCollision(ref ball, segment, ballRadiusMeters, restitution))
+                    if (!TryResolveSegmentCollision(ref ball, segment, ballRadiusMeters, config))
                     {
                         continue;
                     }
@@ -64,7 +53,7 @@ public static class TableBoundaryResolver
         ref BallState ball,
         CushionSegment segment,
         float ballRadiusMeters,
-        float restitution)
+        SimulationConfig config)
     {
         var closestPoint = ClosestPointOnSegment(ball.Position, segment.Start, segment.End);
         var delta = ball.Position - closestPoint;
@@ -88,13 +77,24 @@ public static class TableBoundaryResolver
         var inwardSpeed = Vector2.Dot(correctedVelocity, contactNormal);
         if (inwardSpeed < 0.0f)
         {
-            correctedVelocity -= (1.0f + restitution) * inwardSpeed * contactNormal;
+            correctedVelocity -= (1.0f + config.BoundaryRestitution) * inwardSpeed * contactNormal;
         }
+
+        var tangent = segment.Direction;
+        var contactTangentSpeed = Vector2.Dot(correctedVelocity, tangent) +
+                                  SpinToSurfaceSpeed(ballRadiusMeters, ball.Spin.SideSpinRps);
+        var tangentialVelocityDelta = -contactTangentSpeed * config.BoundaryTangentialFrictionFactor;
+        correctedVelocity += tangent * tangentialVelocityDelta;
+
+        var sideSpin = ball.Spin.SideSpinRps +
+                       (SurfaceSpeedToSpinRps(ballRadiusMeters, tangentialVelocityDelta) *
+                        config.BoundarySpinTransferFactor);
 
         ball = ball with
         {
             Position = correctedPosition,
-            Velocity = correctedVelocity
+            Velocity = correctedVelocity,
+            Spin = ball.Spin with { SideSpinRps = sideSpin }
         };
 
         return true;
@@ -112,5 +112,20 @@ public static class TableBoundaryResolver
         var t = Vector2.Dot(point - start, segment) / lengthSquared;
         t = Math.Clamp(t, 0.0f, 1.0f);
         return start + (segment * t);
+    }
+
+    private static float SpinToSurfaceSpeed(float ballRadiusMeters, float spinRps)
+    {
+        return spinRps * 2.0f * MathF.PI * ballRadiusMeters;
+    }
+
+    private static float SurfaceSpeedToSpinRps(float ballRadiusMeters, float surfaceSpeedMetersPerSecond)
+    {
+        if (ballRadiusMeters <= 0.0f)
+        {
+            return 0.0f;
+        }
+
+        return surfaceSpeedMetersPerSecond / (2.0f * MathF.PI * ballRadiusMeters);
     }
 }
