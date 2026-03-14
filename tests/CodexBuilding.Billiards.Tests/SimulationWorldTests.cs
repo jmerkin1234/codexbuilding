@@ -259,6 +259,50 @@ public sealed class SimulationWorldTests
         Assert.True(Vector2.Distance(result.Balls[0].Position, result.Balls[1].Position) >= 0.05714f);
     }
 
+    [Fact]
+    public void Advance_CushionCollisionReflectsBallBackIntoTable()
+    {
+        var table = CustomTable9FtSpec.Create();
+        var segment = table.Cushions[0];
+        var ball = CreateBallAgainstSegment(segment, incomingSpeed: 1.0f);
+        var world = CreateBoundaryWorld(ball);
+
+        var result = world.Advance(0.01f);
+        var correctedBall = result.Balls[0];
+        var signedDistance = Vector2.Dot(correctedBall.Position - segment.Start, segment.InwardNormal);
+
+        Assert.True(Vector2.Dot(correctedBall.Velocity, segment.InwardNormal) > 0.0f);
+        Assert.True(signedDistance >= 0.028575f - 0.0001f);
+    }
+
+    [Fact]
+    public void Advance_JawCollisionReflectsBallBackIntoTable()
+    {
+        var table = CustomTable9FtSpec.Create();
+        var segment = table.JawSegments[8];
+        var ball = CreateBallAgainstSegment(segment, incomingSpeed: 1.0f);
+        var world = CreateBoundaryWorld(ball);
+
+        var result = world.Advance(0.01f);
+        var correctedBall = result.Balls[0];
+        var closestPoint = ClosestPointOnSegment(correctedBall.Position, segment.Start, segment.End);
+        var signedDistance = Vector2.Dot(correctedBall.Position - closestPoint, segment.InwardNormal);
+
+        Assert.True(Vector2.Dot(correctedBall.Velocity, segment.InwardNormal) > 0.0f);
+        Assert.True(signedDistance >= 0.028575f - 0.0001f);
+    }
+
+    [Fact]
+    public void Advance_TableSpecProvidesJawSegmentsWithInwardNormals()
+    {
+        var table = CustomTable9FtSpec.Create();
+
+        Assert.All(table.JawSegments, segment =>
+        {
+            Assert.InRange(segment.InwardNormal.Length(), 0.999f, 1.001f);
+        });
+    }
+
     private static SimulationWorld CreateShellWorld(Vector2 cueBallVelocity)
     {
         var table = CustomTable9FtSpec.Create();
@@ -311,10 +355,35 @@ public sealed class SimulationWorldTests
             rollingMatchToleranceMetersPerSecond: 0.01f,
             spinSettleThresholdRps: 0.05f,
             ballCollisionRestitution: 1.0f,
-            maxCollisionIterationsPerStep: 4);
+            maxCollisionIterationsPerStep: 4,
+            boundaryRestitution: 1.0f,
+            maxBoundaryIterationsPerStep: 4);
 
         var table = CustomTable9FtSpec.Create();
         return new SimulationWorld(table, config, new[] { firstBall, secondBall });
+    }
+
+    private static SimulationWorld CreateBoundaryWorld(BallState ball)
+    {
+        var config = new SimulationConfig(
+            fixedStepSeconds: 0.01f,
+            settleSpeedThresholdMetersPerSecond: 0.0001f,
+            maxFixedStepsPerAdvance: 64,
+            maxSideSpinRps: 12.0f,
+            maxFollowSpinRps: 10.0f,
+            maxDrawSpinRps: 11.0f,
+            slidingFrictionAccelerationMetersPerSecondSquared: 0.0f,
+            rollingFrictionAccelerationMetersPerSecondSquared: 0.0f,
+            spinDecayRpsPerSecond: 0.0f,
+            rollingMatchToleranceMetersPerSecond: 0.01f,
+            spinSettleThresholdRps: 0.05f,
+            ballCollisionRestitution: 1.0f,
+            maxCollisionIterationsPerStep: 4,
+            boundaryRestitution: 1.0f,
+            maxBoundaryIterationsPerStep: 4);
+
+        var table = CustomTable9FtSpec.Create();
+        return new SimulationWorld(table, config, new[] { ball });
     }
 
     private static SimulationWorld CreateWorld(Vector2 cueBallVelocity, SpinState spin, SimulationConfig config)
@@ -340,6 +409,36 @@ public sealed class SimulationWorldTests
     private static float ToSurfaceSpeed(float forwardSpinRps)
     {
         return forwardSpinRps * 2.0f * MathF.PI * 0.028575f;
+    }
+
+    private static BallState CreateBallAgainstSegment(CushionSegment segment, float incomingSpeed)
+    {
+        var midpoint = (segment.Start + segment.End) * 0.5f;
+        var radius = 0.028575f;
+        var position = midpoint + (segment.InwardNormal * (radius - 0.002f));
+        var velocity = -segment.InwardNormal * incomingSpeed;
+
+        return new BallState(
+            BallNumber: 0,
+            Kind: BallKind.Cue,
+            Position: position,
+            Velocity: velocity,
+            Spin: new SpinState(0.0f, 0.0f, 0.0f),
+            IsPocketed: false);
+    }
+
+    private static Vector2 ClosestPointOnSegment(Vector2 point, Vector2 start, Vector2 end)
+    {
+        var segment = end - start;
+        var lengthSquared = segment.LengthSquared();
+        if (lengthSquared <= float.Epsilon)
+        {
+            return start;
+        }
+
+        var t = Vector2.Dot(point - start, segment) / lengthSquared;
+        t = Math.Clamp(t, 0.0f, 1.0f);
+        return start + (segment * t);
     }
 
     private sealed class Vector2Comparer : IEqualityComparer<Vector2>

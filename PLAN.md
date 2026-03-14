@@ -63,7 +63,12 @@ Scope:
 - iterative pair solving
 
 7. Cushion and pocket-jaw interactions
-Status: pending
+Status: complete
+Scope:
+- hardcoded jaw segment derivation from rail/pocket seeds
+- boundary reflection against cushions
+- boundary reflection against jaws
+- overlap correction against table boundaries
 
 8. Pocket capture and shot event expansion
 Status: pending
@@ -79,4 +84,4 @@ Status: pending
 
 ## Current Focus
 
-Right now the repo is moving from step 6 to step 7. Ball-ball collisions are in; the next increment is cushion and pocket-jaw interaction.
+Right now the repo is moving from step 7 to step 8. Table boundaries are in; the next increment is pocket capture and shot event expansion.

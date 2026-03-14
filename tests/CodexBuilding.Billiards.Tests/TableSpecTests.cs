@@ -21,6 +21,14 @@ public sealed class TableSpecTests
     }
 
     [Fact]
+    public void CustomTable9FtSpec_UsesTwelveJawSegments()
+    {
+        var table = CustomTable9FtSpec.Create();
+
+        Assert.Equal(12, table.JawSegments.Count);
+    }
+
+    [Fact]
     public void CustomTable9FtSpec_UsesStandardPoolBallDiameter()
     {
         var table = CustomTable9FtSpec.Create();

@@ -15,7 +15,9 @@ public sealed class SimulationConfig
         rollingMatchToleranceMetersPerSecond: 0.01f,
         spinSettleThresholdRps: 0.05f,
         ballCollisionRestitution: 0.96f,
-        maxCollisionIterationsPerStep: 4);
+        maxCollisionIterationsPerStep: 4,
+        boundaryRestitution: 0.9f,
+        maxBoundaryIterationsPerStep: 4);
 
     public SimulationConfig(
         float fixedStepSeconds,
@@ -30,7 +32,9 @@ public sealed class SimulationConfig
         float rollingMatchToleranceMetersPerSecond = 0.01f,
         float spinSettleThresholdRps = 0.05f,
         float ballCollisionRestitution = 0.96f,
-        int maxCollisionIterationsPerStep = 4)
+        int maxCollisionIterationsPerStep = 4,
+        float boundaryRestitution = 0.9f,
+        int maxBoundaryIterationsPerStep = 4)
     {
         if (fixedStepSeconds <= 0.0f)
         {
@@ -113,6 +117,20 @@ public sealed class SimulationConfig
                 "Max collision iterations per step must be positive.");
         }
 
+        if (boundaryRestitution < 0.0f || boundaryRestitution > 1.0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(boundaryRestitution),
+                "Boundary restitution must be between zero and one.");
+        }
+
+        if (maxBoundaryIterationsPerStep <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(maxBoundaryIterationsPerStep),
+                "Max boundary iterations per step must be positive.");
+        }
+
         FixedStepSeconds = fixedStepSeconds;
         SettleSpeedThresholdMetersPerSecond = settleSpeedThresholdMetersPerSecond;
         MaxFixedStepsPerAdvance = maxFixedStepsPerAdvance;
@@ -126,6 +144,8 @@ public sealed class SimulationConfig
         SpinSettleThresholdRps = spinSettleThresholdRps;
         BallCollisionRestitution = ballCollisionRestitution;
         MaxCollisionIterationsPerStep = maxCollisionIterationsPerStep;
+        BoundaryRestitution = boundaryRestitution;
+        MaxBoundaryIterationsPerStep = maxBoundaryIterationsPerStep;
     }
 
     public float FixedStepSeconds { get; }
@@ -153,4 +173,8 @@ public sealed class SimulationConfig
     public float BallCollisionRestitution { get; }
 
     public int MaxCollisionIterationsPerStep { get; }
+
+    public float BoundaryRestitution { get; }
+
+    public int MaxBoundaryIterationsPerStep { get; }
 }

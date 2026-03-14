@@ -69,6 +69,37 @@ This file tracks the compile-time geometry and seed constants that the portable 
   center: `(0.0000029, 0.66556805)`
   capture radius seed: `0.0614`
 
+## Hardcoded Jaw Derivation
+
+Jaw segments are now part of the compile-time table spec.
+
+- Corner jaw apex offset toward cloth center: `0.03`
+- Side jaw apex offset toward cloth center: `0.031`
+- Total derived jaw segments: `12`
+
+Derived jaw names:
+
+- `pocket_BR4_jaw_vertical`
+- `pocket_BR4_jaw_horizontal`
+- `pocket_BL2_jaw_vertical`
+- `pocket_BL2_jaw_horizontal`
+- `Pocket_TR5_jaw_vertical`
+- `Pocket_TR5_jaw_horizontal`
+- `pockett_TL1_jaw_vertical`
+- `pockett_TL1_jaw_horizontal`
+- `pocket_BM3_jaw_left`
+- `pocket_BM3_jaw_right`
+- `Pocket_TM6_jaw_left`
+- `Pocket_TM6_jaw_right`
+
+Each jaw segment is derived from:
+
+- one adjacent hardcoded rail endpoint
+- the matching hardcoded pocket center
+- an inward offset from pocket center toward cloth center
+
+The resulting derived segments are compiled into `TableSpec.JawSegments`.
+
 ## Rules
 
 - This file changes only when a code-facing seed value changes.

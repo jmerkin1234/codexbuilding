@@ -13,6 +13,7 @@ public sealed class TableSpec
         Vector2 cueBallSpawn,
         Vector2 rackApexSpot,
         IReadOnlyList<CushionSegment> cushions,
+        IReadOnlyList<CushionSegment> jawSegments,
         IReadOnlyList<PocketSpec> pockets)
     {
         Name = name;
@@ -23,6 +24,7 @@ public sealed class TableSpec
         CueBallSpawn = cueBallSpawn;
         RackApexSpot = rackApexSpot;
         Cushions = cushions;
+        JawSegments = jawSegments;
         Pockets = pockets;
     }
 
@@ -41,6 +43,8 @@ public sealed class TableSpec
     public Vector2 RackApexSpot { get; }
 
     public IReadOnlyList<CushionSegment> Cushions { get; }
+
+    public IReadOnlyList<CushionSegment> JawSegments { get; }
 
     public IReadOnlyList<PocketSpec> Pockets { get; }
 }

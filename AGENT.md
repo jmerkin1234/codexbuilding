@@ -40,4 +40,4 @@ Build a portable custom billiards physics engine in pure C# that can run standal
 
 ## Current Scope
 
-The repository now has a working portable core scaffold, a fixed-step simulation shell with explicit shot phases, cue-strike input seeding for velocity and spin, a cloth-motion layer for straight-line travel, equal-mass ball-ball collision resolution, a passing standalone test scaffold, and a Godot 4.6 adapter that restores and builds with `Godot.NET.Sdk 4.6.0`. Table interactions and pockets still need to be layered in next.
+The repository now has a working portable core scaffold, a fixed-step simulation shell with explicit shot phases, cue-strike input seeding for velocity and spin, a cloth-motion layer for straight-line travel, equal-mass ball-ball collision resolution, hardcoded cushion and pocket-jaw boundary interaction, a passing standalone test scaffold, and a Godot 4.6 adapter that restores and builds with `Godot.NET.Sdk 4.6.0`. Pocket capture and shot-event expansion still need to be layered in next.

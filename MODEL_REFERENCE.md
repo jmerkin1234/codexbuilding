@@ -117,6 +117,14 @@ Pocket centers are currently seeded from the Blender object origins.
 - `Pocket_TR5`: `(-1.2508456, 0.6167392)`
 - `Pocket_TM6`: `(0.0000029, 0.6655681)`
 
+### Derived Jaw Layout
+
+Jaw collision does not come from mesh data at runtime. It is derived from the Blender-backed rail and pocket seeds.
+
+- Corner jaws are built from the adjacent rail endpoint and a point `0.03m` inward from the pocket center toward the cloth center.
+- Side jaws are built from the adjacent rail endpoint and a point `0.031m` inward from the pocket center toward the cloth center.
+- The current compile-time layout produces `12` jaw segments total.
+
 ## Notes
 
 - `pockett_TL1` contains a double `t` in the source name. That typo is preserved intentionally.

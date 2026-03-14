@@ -175,7 +175,31 @@ public sealed class SimulationWorld
             _balls[index] = ClothMotionIntegrator.Advance(ball, ballRadiusMeters, Config, fixedStepSeconds);
         }
 
+        TableBoundaryResolver.Resolve(
+            _balls,
+            TableSpec.Cushions,
+            ballRadiusMeters,
+            Config.BoundaryRestitution,
+            Config.MaxBoundaryIterationsPerStep);
+        TableBoundaryResolver.Resolve(
+            _balls,
+            TableSpec.JawSegments,
+            ballRadiusMeters,
+            Config.BoundaryRestitution,
+            Config.MaxBoundaryIterationsPerStep);
         BallCollisionResolver.Resolve(_balls, TableSpec.BallDiameterMeters, Config);
+        TableBoundaryResolver.Resolve(
+            _balls,
+            TableSpec.Cushions,
+            ballRadiusMeters,
+            Config.BoundaryRestitution,
+            Config.MaxBoundaryIterationsPerStep);
+        TableBoundaryResolver.Resolve(
+            _balls,
+            TableSpec.JawSegments,
+            ballRadiusMeters,
+            Config.BoundaryRestitution,
+            Config.MaxBoundaryIterationsPerStep);
 
         SimulationTimeSeconds += fixedStepSeconds;
     }
