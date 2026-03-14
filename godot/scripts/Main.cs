@@ -156,8 +156,13 @@ public partial class Main : Node3D
 	private ColorRect _aimTipIndicator = null!;
 	private Window _tuningWindow = null!;
 	private Label _tuningWindowHeaderLabel = null!;
+	private Button _tuningInfoToggleButton = null!;
 	private Label _tuningWindowInfoLabel = null!;
 	private OptionButton _tuningFieldSelector = null!;
+	private PanelContainer _tuningObjectDetailsPanel = null!;
+	private Label _tuningObjectDetailsLabel = null!;
+	private GridContainer _tuningObjectMiniPanelGrid = null!;
+	private readonly List<TuningMiniPanel> _tuningMiniPanels = new();
 	private ScrollContainer _tuningScrollContainer = null!;
 	private VBoxContainer _tuningFieldsContainer = null!;
 	private readonly List<TuningFieldRow> _tuningFieldRows = new();
@@ -191,6 +196,7 @@ public partial class Main : Node3D
 	private bool _aimPreviewDirty = true;
 	private AimPreviewResult? _cachedAimPreview;
 	private bool _debugModeEnabled;
+	private bool _tuningInfoVisible = true;
 	private bool _hardcodeOverlayVisible = true;
 	private bool _overlayClothVisible = true;
 	private bool _overlayCushionVisible = true;
@@ -206,6 +212,7 @@ public partial class Main : Node3D
 	private int _trainingSelectedBallNumber;
 	private bool _syncingTuningControls;
 	private string _selectedCalibrationObjectKey = string.Empty;
+	private string _selectedMiniPanelObjectKey = string.Empty;
 	private bool _draggingAimPanel;
 	private Vector2 _aimPanelDragOffset = Vector2.Zero;
 	private int _cameraPresetIndex = 1;
@@ -833,10 +840,19 @@ public partial class Main : Node3D
 		tuningRoot.Size = new Vector2(DefaultTuningWindowSize.X - 32.0f, DefaultTuningWindowSize.Y - 32.0f);
 		tuningRoot.AddThemeConstantOverride("separation", 10);
 
-		_tuningWindowHeaderLabel = EnsureNode<Label>(tuningRoot, "TuningWindowHeaderLabel");
+		var tuningHeaderRow = EnsureNode<HBoxContainer>(tuningRoot, "TuningHeaderRow");
+		tuningHeaderRow.AddThemeConstantOverride("separation", 10);
+
+		_tuningWindowHeaderLabel = EnsureNode<Label>(tuningHeaderRow, "TuningWindowHeaderLabel");
 		_tuningWindowHeaderLabel.Text = "Table Tuning";
+		_tuningWindowHeaderLabel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
 		_tuningWindowHeaderLabel.AddThemeFontSizeOverride("font_size", 24);
 		_tuningWindowHeaderLabel.Modulate = new Color(0.98f, 0.92f, 0.74f);
+
+		_tuningInfoToggleButton = EnsureNode<Button>(tuningHeaderRow, "TuningInfoToggleButton");
+		_tuningInfoToggleButton.Text = "Hide Info";
+		_tuningInfoToggleButton.AddThemeFontSizeOverride("font_size", 14);
+		_tuningInfoToggleButton.Pressed += ToggleTuningInfoVisibility;
 
 		_tuningWindowInfoLabel = EnsureNode<Label>(tuningRoot, "TuningWindowInfoLabel");
 		_tuningWindowInfoLabel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
@@ -848,8 +864,32 @@ public partial class Main : Node3D
 		_tuningFieldSelector.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
 		_tuningFieldSelector.ItemSelected += OnTuningFieldSelected;
 
+		_tuningObjectDetailsPanel = EnsureNode<PanelContainer>(tuningRoot, "TuningObjectDetailsPanel");
+		_tuningObjectDetailsPanel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		_tuningObjectDetailsPanel.AddThemeStyleboxOverride(
+			"panel",
+			CreateHudPanelStyle(
+				new Color(0.08f, 0.08f, 0.11f, 0.94f),
+				new Color(0.93f, 0.73f, 0.34f, 0.95f)));
+
+		var tuningObjectDetailsBox = EnsureNode<VBoxContainer>(_tuningObjectDetailsPanel, "TuningObjectDetailsBox");
+		tuningObjectDetailsBox.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		tuningObjectDetailsBox.AddThemeConstantOverride("separation", 8);
+
+		_tuningObjectDetailsLabel = EnsureNode<Label>(tuningObjectDetailsBox, "TuningObjectDetailsLabel");
+		_tuningObjectDetailsLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		_tuningObjectDetailsLabel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		_tuningObjectDetailsLabel.AddThemeFontSizeOverride("font_size", 15);
+		_tuningObjectDetailsLabel.Modulate = new Color(0.98f, 0.95f, 0.84f);
+
+		_tuningObjectMiniPanelGrid = EnsureNode<GridContainer>(tuningObjectDetailsBox, "TuningObjectMiniPanelGrid");
+		_tuningObjectMiniPanelGrid.Columns = 2;
+		_tuningObjectMiniPanelGrid.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		_tuningObjectMiniPanelGrid.AddThemeConstantOverride("h_separation", 10);
+		_tuningObjectMiniPanelGrid.AddThemeConstantOverride("v_separation", 10);
+
 		_tuningScrollContainer = EnsureNode<ScrollContainer>(tuningRoot, "TuningScrollContainer");
-		_tuningScrollContainer.CustomMinimumSize = new Vector2(0.0f, 640.0f);
+		_tuningScrollContainer.CustomMinimumSize = new Vector2(0.0f, 520.0f);
 		_tuningScrollContainer.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
 		_tuningScrollContainer.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
 
@@ -1317,6 +1357,15 @@ public partial class Main : Node3D
 		UpdateHudVisibility();
 		_recentRuleNotes.Clear();
 		_recentRuleNotes.Add(_hudVisible ? "Gameplay HUD visible." : "Gameplay HUD hidden.");
+		UpdateStatusLabel(Array.Empty<ShotEvent>());
+	}
+
+	private void ToggleTuningInfoVisibility()
+	{
+		_tuningInfoVisible = !_tuningInfoVisible;
+		SyncCalibrationControls();
+		_recentRuleNotes.Clear();
+		_recentRuleNotes.Add(_tuningInfoVisible ? "Tuning window info visible." : "Tuning window info hidden.");
 		UpdateStatusLabel(Array.Empty<ShotEvent>());
 	}
 
@@ -3250,10 +3299,11 @@ public partial class Main : Node3D
 	private void UpdateHudVisibility()
 	{
 		var gameplayHudVisible = _hudVisible && !_menuVisible;
-		_statusPanel.Visible = gameplayHudVisible;
-		_summaryPanel.Visible = gameplayHudVisible;
-		_aimPanel.Visible = gameplayHudVisible;
-		_shotBannerPanel.Visible = gameplayHudVisible && _shotBannerSecondsRemaining > 0.0f;
+		var tuningModeVisible = _ruleMode == RuleMode.Calibration;
+		_statusPanel.Visible = gameplayHudVisible && !tuningModeVisible;
+		_summaryPanel.Visible = gameplayHudVisible && !tuningModeVisible;
+		_aimPanel.Visible = gameplayHudVisible && !tuningModeVisible;
+		_shotBannerPanel.Visible = gameplayHudVisible && !tuningModeVisible && _shotBannerSecondsRemaining > 0.0f;
 		_shotBannerLabel.Visible = _shotBannerPanel.Visible;
 		UpdateAuxiliaryPanelVisibility();
 	}
@@ -3262,11 +3312,11 @@ public partial class Main : Node3D
 	{
 		var gameplayHudVisible = _hudVisible && !_menuVisible;
 		_debugWindow.Visible = _debugModeEnabled;
-		_tuningWindow.Visible = gameplayHudVisible && _ruleMode == RuleMode.Calibration;
+		_tuningWindow.Visible = !_menuVisible && _ruleMode == RuleMode.Calibration;
 		_debugPanel.Visible = _debugModeEnabled;
 		_debugHeaderLabel.Visible = _debugModeEnabled;
 		_debugLabel.Visible = _debugModeEnabled;
-		_helpPanel.Visible = gameplayHudVisible && _helpPanelVisible;
+		_helpPanel.Visible = gameplayHudVisible && _helpPanelVisible && _ruleMode != RuleMode.Calibration;
 		_helpHeaderLabel.Visible = _helpPanel.Visible;
 		_helpLabel.Visible = _helpPanel.Visible;
 	}
@@ -3627,12 +3677,95 @@ public partial class Main : Node3D
 		}
 	}
 
+	private void RebuildSelectedCalibrationMiniPanels(IReadOnlyList<CalibrationField> objectFields)
+	{
+		if (_tuningObjectMiniPanelGrid == null)
+		{
+			return;
+		}
+
+		_tuningMiniPanels.Clear();
+		ClearChildren(_tuningObjectMiniPanelGrid);
+		for (var objectFieldIndex = 0; objectFieldIndex < objectFields.Count; objectFieldIndex++)
+		{
+			var field = objectFields[objectFieldIndex];
+			var panel = new PanelContainer
+			{
+				Name = $"TuningMiniPanel_{field.ObjectKey}_{objectFieldIndex}",
+				SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+				CustomMinimumSize = new Vector2(0.0f, 92.0f)
+			};
+			panel.AddThemeStyleboxOverride(
+				"panel",
+				CreateHudPanelStyle(
+					new Color(0.11f, 0.11f, 0.14f, 0.96f),
+					new Color(0.96f, 0.76f, 0.38f, 0.95f)));
+			_tuningObjectMiniPanelGrid.AddChild(panel);
+
+			var box = new VBoxContainer
+			{
+				SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+			};
+			box.AddThemeConstantOverride("separation", 6);
+			panel.AddChild(box);
+
+			var label = new Label
+			{
+				AutowrapMode = TextServer.AutowrapMode.WordSmart,
+				SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+			};
+			label.AddThemeFontSizeOverride("font_size", 14);
+			label.Modulate = new Color(0.99f, 0.95f, 0.82f);
+			box.AddChild(label);
+
+			var sliderRow = new HBoxContainer();
+			sliderRow.AddThemeConstantOverride("separation", 8);
+			box.AddChild(sliderRow);
+
+			var slider = new HSlider
+			{
+				SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+			};
+			var capturedFieldIndex = _calibrationFields.IndexOf(field);
+			slider.ValueChanged += value => OnTuningRowValueChanged(capturedFieldIndex, value);
+			sliderRow.AddChild(slider);
+
+			var valueLabel = new Label
+			{
+				CustomMinimumSize = new Vector2(96.0f, 24.0f),
+				HorizontalAlignment = HorizontalAlignment.Right
+			};
+			valueLabel.AddThemeFontSizeOverride("font_size", 13);
+			valueLabel.Modulate = new Color(0.99f, 0.95f, 0.82f);
+			sliderRow.AddChild(valueLabel);
+
+			_tuningMiniPanels.Add(new TuningMiniPanel(capturedFieldIndex, panel, label, slider, valueLabel));
+		}
+
+		_selectedMiniPanelObjectKey = _selectedCalibrationObjectKey;
+	}
+
+	private static string GetMiniPanelFieldLabel(CalibrationField field)
+	{
+		var label = field.Label;
+		if (label.StartsWith(field.ObjectLabel + " ", StringComparison.Ordinal))
+		{
+			label = label[(field.ObjectLabel.Length + 1)..];
+		}
+
+		return label;
+	}
+
 	private void SyncCalibrationControls()
 	{
 		if (_tuningFieldSelector == null ||
 			_tuningWindow == null ||
 			_tuningWindowHeaderLabel == null ||
+			_tuningInfoToggleButton == null ||
 			_tuningWindowInfoLabel == null ||
+			_tuningObjectDetailsPanel == null ||
+			_tuningObjectDetailsLabel == null ||
+			_tuningObjectMiniPanelGrid == null ||
 			_tuningScrollContainer == null ||
 			_tuningFieldsContainer == null ||
 			_tuningOverlayLabel == null ||
@@ -3647,7 +3780,7 @@ public partial class Main : Node3D
 		}
 
 		var calibrationVisible = _ruleMode == RuleMode.Calibration;
-		_tuningWindow.Visible = calibrationVisible && _hudVisible && !_menuVisible;
+		_tuningWindow.Visible = calibrationVisible && !_menuVisible;
 		_aimSpeedTrack.Visible = !calibrationVisible;
 		_aimTipPad.Visible = !calibrationVisible;
 
@@ -3662,13 +3795,36 @@ public partial class Main : Node3D
 		}
 
 		var selectedObjectLabel = GetSelectedCalibrationObjectLabel();
+		var objectFields = GetSelectedCalibrationObjectFields();
+		if (_selectedMiniPanelObjectKey != _selectedCalibrationObjectKey || _tuningMiniPanels.Count != objectFields.Count)
+		{
+			RebuildSelectedCalibrationMiniPanels(objectFields);
+		}
+
 		_syncingTuningControls = true;
 		var selectedObjectIndex = _calibrationObjects.FindIndex(entry => entry.Key == _selectedCalibrationObjectKey);
 		_tuningFieldSelector.Select(Mathf.Clamp(selectedObjectIndex, 0, _calibrationObjects.Count - 1));
 		_tuningWindowHeaderLabel.Text = $"Table Tuning | {selectedObjectLabel}";
+		_tuningInfoToggleButton.Text = _tuningInfoVisible ? "Hide Info" : "Show Info";
 		_tuningWindowInfoLabel.Text =
-			"All tuning rows stay visible. The dropdown jumps to one object and highlights its rows.\n" +
-			"Every rail, jaw, pocket, and spot is editable with its own slider set.";
+			"Use the mini-panels for the selected object when you want direct X/Y/Angle-style control.\n" +
+			"The flat list below stays visible for full-table context.";
+		_tuningWindowInfoLabel.Visible = _tuningInfoVisible;
+		_tuningObjectDetailsLabel.Text =
+			$"Selected object: {selectedObjectLabel}\n" +
+			$"Literal controls: {objectFields.Count}  Jump selector only changes which object these mini-panels target.";
+		_tuningObjectDetailsLabel.Visible = _tuningInfoVisible;
+		for (var miniPanelIndex = 0; miniPanelIndex < _tuningMiniPanels.Count; miniPanelIndex++)
+		{
+			var miniPanel = _tuningMiniPanels[miniPanelIndex];
+			var field = _calibrationFields[miniPanel.FieldIndex];
+			miniPanel.Label.Text = GetMiniPanelFieldLabel(field);
+			miniPanel.Slider.MinValue = field.Minimum;
+			miniPanel.Slider.MaxValue = field.Maximum;
+			miniPanel.Slider.Step = field.FineStep;
+			miniPanel.Slider.Value = field.GetValue();
+			miniPanel.ValueLabel.Text = field.GetFormattedValue(_tableCalibrationProfile);
+		}
 		for (var rowIndex = 0; rowIndex < _tuningFieldRows.Count; rowIndex++)
 		{
 			var row = _tuningFieldRows[rowIndex];
@@ -4816,6 +4972,33 @@ public partial class Main : Node3D
 		public PanelContainer Panel { get; }
 
 		public Label RowLabel { get; }
+
+		public HSlider Slider { get; }
+
+		public Label ValueLabel { get; }
+	}
+
+	private sealed class TuningMiniPanel
+	{
+		public TuningMiniPanel(
+			int fieldIndex,
+			PanelContainer panel,
+			Label label,
+			HSlider slider,
+			Label valueLabel)
+		{
+			FieldIndex = fieldIndex;
+			Panel = panel;
+			Label = label;
+			Slider = slider;
+			ValueLabel = valueLabel;
+		}
+
+		public int FieldIndex { get; }
+
+		public PanelContainer Panel { get; }
+
+		public Label Label { get; }
 
 		public HSlider Slider { get; }
 

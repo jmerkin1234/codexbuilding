@@ -22,7 +22,7 @@ Current behavior:
 - The Godot project copy of `customtable_9ft.blend` now has `Tableslate` custom normals cleared and `Tableslate`, `Tableframe`, `CueStick`, and `rail_upper_right` triangulated so Godot can generate tangents and preserve the imported shading more faithfully.
 - Godot now imports the ball textures lossless with mipmaps disabled, and the project render settings now keep 3D at native scale with TAA and screen-space AA disabled plus `MSAA 3D` enabled for a sharper standalone desktop result.
 - The render setup now preserves the imported Blender light and layers in a procedural sky plus fill/rim lighting, so chrome and glossy ball materials have stronger reflections than the earlier flat fallback lighting.
-- The adapter now has a separate `Tuning` mode for table calibration. It is not tied to the debug window and instead persists calibration offsets in `user://table_calibration.json`, rebuilds the hardcoded `TableSpec`, keeps the overlay visible, highlights the active calibration target, and opens a separate movable play-mode tuning window instead of trying to cram calibration into the main HUD.
+- The adapter now has a separate `Tuning` mode for table calibration. It is not tied to the debug window and instead persists calibration offsets in `user://table_calibration.json`, rebuilds the hardcoded `TableSpec`, keeps the overlay visible, highlights the active calibration target, hides the main gameplay HUD cards while tuning, and opens a separate movable play-mode tuning window instead of trying to cram calibration into the main HUD.
 - The portable core now includes modest cloth side-spin drift/scrub, tangential spin transfer in ball-ball contact, controlled follow/draw carry-through after object contact, angle-aware rail rebound tuning, and a separate rail-english transfer term for stronger cushion spin response; Godot only mirrors the resulting state.
 - The portable core now also uses a mouth/drop-based pocket model derived from hardcoded jaw geometry, with an added slow-speed lip-hang rule so edge-hangers can stay up while center-line rollers still fall.
 - The adapter captures live shot traces and resolves them through the portable `Rules` layer.
@@ -39,7 +39,7 @@ Current behavior:
 - Mouse wheel now provides fine aim nudging, and `Ctrl + mouse wheel` in debug mode adjusts the hardcoded overlay thickness live.
 - The HUD now also keeps a dedicated last-shot summary panel for completed eight-ball and training/freeplay shots.
 - The HUD now also has a dedicated shot-setup panel for aim/speed/tip information and a separate controls/help panel, so the main status card stays concise.
-- `F7` now toggles the gameplay HUD cards and shot banner without affecting the menu overlay, so the table can be viewed with the HUD fully cleared.
+- `F7` now toggles the gameplay HUD cards and shot banner without affecting the menu overlay or the separate tuning window, so the table can be viewed cleanly while calibration controls stay available.
 - The playable Godot window now starts at `1920x1080` by default, while headless verification still runs at the CLI as before.
 - Shot speed now uses a split feel-tuned envelope in the adapter: regular play clamps to `0.3-5.0 m/s`, eight-ball break shots clamp to `0.3-8.0 m/s`, and the shot-setup/debug readouts show the currently active cap.
 - The adapter now opens on a proper menu/start overlay with button-based `EightBall`, `FreePlay`, and `Tuning` selection, and `Esc` reopens that menu later for resume/reset/return-to-start actions.
@@ -51,7 +51,7 @@ Current behavior:
 - `F1` toggles a detached debug window with live portable-engine data such as `SimulationConfig` values, world counters, cue-ball state, selected-ball state, moving-ball counts, preview lengths, and active debug-tuning state. That separate play-mode window can be moved to another monitor, and debug mode still forces the hardcoded-table overlay visible.
 - The project now disables embedded subwindows so the debug view can become a native OS window; if you still use Godot editor embedded play, the editor itself can still keep the whole game trapped inside the editor pane.
 - Debug mode now supports live tuning of key portable-physics constants, including ball follow/draw carry, glancing rail restitution, tangential rail retention, and rail-english transfer, and immediately rebuilds `SimulationWorld` with the current ball layout after each change. Table-geometry calibration is handled separately in `Tuning` mode.
-- `Tuning` mode now uses a separate movable tuning window with a flat scrollable row list, one slider row per tunable field, a dropdown that jumps to and highlights one object, an overlay-thickness slider, and Save/Reload/Reset buttons.
+- `Tuning` mode now uses a separate movable tuning window with direct selected-object mini-panels for literal X/Y/Angle-style edits, a flat scrollable row list with one slider row per tunable field, a dropdown that jumps to and highlights one object, an overlay-thickness slider, and Save/Reload/Reset buttons.
 - Cushion and jaw calibration rows now include both endpoint coordinates and direct segment-angle controls, so rails and jaws can be aligned either by moving endpoints or by rotating the segment around its current midpoint.
 
 Verification on `2026-03-14`:
@@ -70,7 +70,7 @@ Keyboard controls:
 - `F4/F5`: decrease or increase the selected tuning value
 - `Shift` + `F4/F5`: coarse debug tuning adjustments
 - `F6`: show or hide the controls/help panel
-- `F7`: show or hide the gameplay HUD cards and shot banner
+- `F7`: show or hide the gameplay HUD cards and shot banner without hiding the separate tuning window
 - `Esc`: open or close the start/pause menu
 - `H`: show or hide the hardcoded-table overlay
 - `1`: toggle cloth overlay lines
@@ -96,6 +96,7 @@ Keyboard controls:
 Tuning UI:
 
 - Object jump dropdown: jump to and highlight one cloth/spot/cushion/jaw/pocket object in the flat row list
+- Selected-object mini-panels: direct X/Y/Angle-style sliders for the currently selected object
 - Flat tuning rows: one slider row per tunable field, with the object name shown on each row
 - Overlay slider: adjust hardcoded overlay thickness
 - Save / Reload / Reset buttons: persist or restore `user://table_calibration.json`
