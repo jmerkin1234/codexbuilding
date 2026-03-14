@@ -19,6 +19,7 @@ public sealed class SimulationConfig
         ballCollisionRestitution: 0.96f,
         ballCollisionTangentialTransferFactor: 0.35f,
         ballCollisionSpinTransferFactor: 0.12f,
+        ballCollisionForwardSpinCarryFactor: 0.28f,
         maxCollisionIterationsPerStep: 4,
         boundaryRestitution: 0.9f,
         boundaryTangentialFrictionFactor: 0.25f,
@@ -45,6 +46,7 @@ public sealed class SimulationConfig
         float ballCollisionRestitution = 0.96f,
         float ballCollisionTangentialTransferFactor = 0.35f,
         float ballCollisionSpinTransferFactor = 0.12f,
+        float ballCollisionForwardSpinCarryFactor = 0.28f,
         int maxCollisionIterationsPerStep = 4,
         float boundaryRestitution = 0.9f,
         float boundaryTangentialFrictionFactor = 0.25f,
@@ -156,6 +158,13 @@ public sealed class SimulationConfig
                 "Ball collision spin transfer factor must be between zero and one.");
         }
 
+        if (ballCollisionForwardSpinCarryFactor < 0.0f || ballCollisionForwardSpinCarryFactor > 1.0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(ballCollisionForwardSpinCarryFactor),
+                "Ball collision forward-spin carry factor must be between zero and one.");
+        }
+
         if (maxCollisionIterationsPerStep <= 0)
         {
             throw new ArgumentOutOfRangeException(
@@ -228,6 +237,7 @@ public sealed class SimulationConfig
         BallCollisionRestitution = ballCollisionRestitution;
         BallCollisionTangentialTransferFactor = ballCollisionTangentialTransferFactor;
         BallCollisionSpinTransferFactor = ballCollisionSpinTransferFactor;
+        BallCollisionForwardSpinCarryFactor = ballCollisionForwardSpinCarryFactor;
         MaxCollisionIterationsPerStep = maxCollisionIterationsPerStep;
         BoundaryRestitution = boundaryRestitution;
         BoundaryTangentialFrictionFactor = boundaryTangentialFrictionFactor;
@@ -269,6 +279,8 @@ public sealed class SimulationConfig
     public float BallCollisionTangentialTransferFactor { get; }
 
     public float BallCollisionSpinTransferFactor { get; }
+
+    public float BallCollisionForwardSpinCarryFactor { get; }
 
     public int MaxCollisionIterationsPerStep { get; }
 

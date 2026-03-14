@@ -70,7 +70,7 @@ public static class ClothMotionIntegrator
             surfaceSpeed = newSurfaceSpeed;
             remainingTimeSeconds -= slideTime;
         }
-        else
+        else if (MathF.Abs(slipSpeed) <= config.RollingMatchToleranceMetersPerSecond)
         {
             surfaceSpeed = speed;
         }

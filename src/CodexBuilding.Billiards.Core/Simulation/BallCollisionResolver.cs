@@ -100,16 +100,34 @@ public static class BallCollisionResolver
 
         var sideSpinTransfer = SurfaceSpeedToSpinRps(ballDiameterMeters * 0.5f, tangentImpulseMagnitude) *
                                config.BallCollisionSpinTransferFactor;
+        var firstForwardCarryRps = ResolveForwardSpinCarryRps(
+            firstBall,
+            normal,
+            config.BallCollisionForwardSpinCarryFactor);
+        var secondForwardCarryRps = ResolveForwardSpinCarryRps(
+            secondBall,
+            -normal,
+            config.BallCollisionForwardSpinCarryFactor);
+        var firstForwardCarryVelocity = normal * ForwardSpinToSurfaceSpeed(ballDiameterMeters * 0.5f, firstForwardCarryRps);
+        var secondForwardCarryVelocity = -normal * ForwardSpinToSurfaceSpeed(ballDiameterMeters * 0.5f, secondForwardCarryRps);
 
         firstBall = firstBall with
         {
-            Velocity = firstBall.Velocity - impulse - tangentImpulse,
-            Spin = firstBall.Spin with { SideSpinRps = firstBall.Spin.SideSpinRps - sideSpinTransfer }
+            Velocity = firstBall.Velocity - impulse - tangentImpulse + firstForwardCarryVelocity,
+            Spin = firstBall.Spin with
+            {
+                SideSpinRps = firstBall.Spin.SideSpinRps - sideSpinTransfer,
+                ForwardSpinRps = firstBall.Spin.ForwardSpinRps - firstForwardCarryRps
+            }
         };
         secondBall = secondBall with
         {
-            Velocity = secondBall.Velocity + impulse + tangentImpulse,
-            Spin = secondBall.Spin with { SideSpinRps = secondBall.Spin.SideSpinRps - sideSpinTransfer }
+            Velocity = secondBall.Velocity + impulse + tangentImpulse + secondForwardCarryVelocity,
+            Spin = secondBall.Spin with
+            {
+                SideSpinRps = secondBall.Spin.SideSpinRps - sideSpinTransfer,
+                ForwardSpinRps = secondBall.Spin.ForwardSpinRps - secondForwardCarryRps
+            }
         };
     }
 
@@ -144,9 +162,33 @@ public static class BallCollisionResolver
         return tangentialVelocity - spinSurfaceSpeed;
     }
 
+    private static float ResolveForwardSpinCarryRps(
+        BallState ball,
+        Vector2 directionTowardContact,
+        float carryFactor)
+    {
+        if (carryFactor <= 0.0f || ball.Velocity.LengthSquared() <= float.Epsilon || ball.Spin.ForwardSpinRps == 0.0f)
+        {
+            return 0.0f;
+        }
+
+        var alignment = MathF.Max(0.0f, Vector2.Dot(Vector2.Normalize(ball.Velocity), directionTowardContact));
+        if (alignment <= float.Epsilon)
+        {
+            return 0.0f;
+        }
+
+        return ball.Spin.ForwardSpinRps * alignment * carryFactor;
+    }
+
     private static float SpinToSurfaceSpeed(float ballRadiusMeters, float spinRps)
     {
         return spinRps * 2.0f * MathF.PI * ballRadiusMeters;
+    }
+
+    private static float ForwardSpinToSurfaceSpeed(float ballRadiusMeters, float forwardSpinRps)
+    {
+        return forwardSpinRps * 2.0f * MathF.PI * ballRadiusMeters;
     }
 
     private static float SurfaceSpeedToSpinRps(float ballRadiusMeters, float surfaceSpeedMetersPerSecond)

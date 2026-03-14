@@ -276,6 +276,58 @@ public sealed class SimulationWorldTests
     }
 
     [Fact]
+    public void Advance_FollowSpinCollisionKeepsCueBallMovingForward()
+    {
+        var world = CreateCollisionWorld(
+            new BallState(
+                BallNumber: 0,
+                Kind: BallKind.Cue,
+                Position: new Vector2(-0.03f, 0.0f),
+                Velocity: new Vector2(1.0f, 0.0f),
+                Spin: new SpinState(0.0f, ToForwardSpinRps(1.0f), 0.0f),
+                IsPocketed: false),
+            new BallState(
+                BallNumber: 1,
+                Kind: BallKind.Solid,
+                Position: new Vector2(0.03f, 0.0f),
+                Velocity: Vector2.Zero,
+                Spin: new SpinState(0.0f, 0.0f, 0.0f),
+                IsPocketed: false));
+
+        var result = world.Advance(0.01f);
+
+        Assert.True(result.Balls[0].Velocity.X > 0.10f);
+        Assert.True(result.Balls[1].Velocity.X > 0.70f);
+        Assert.True(result.Balls[0].Spin.ForwardSpinRps < ToForwardSpinRps(1.0f));
+    }
+
+    [Fact]
+    public void Advance_DrawSpinCollisionPullsCueBallBackward()
+    {
+        var world = CreateCollisionWorld(
+            new BallState(
+                BallNumber: 0,
+                Kind: BallKind.Cue,
+                Position: new Vector2(-0.03f, 0.0f),
+                Velocity: new Vector2(1.0f, 0.0f),
+                Spin: new SpinState(0.0f, -ToForwardSpinRps(1.0f), 0.0f),
+                IsPocketed: false),
+            new BallState(
+                BallNumber: 1,
+                Kind: BallKind.Solid,
+                Position: new Vector2(0.03f, 0.0f),
+                Velocity: Vector2.Zero,
+                Spin: new SpinState(0.0f, 0.0f, 0.0f),
+                IsPocketed: false));
+
+        var result = world.Advance(0.01f);
+
+        Assert.True(result.Balls[0].Velocity.X < -0.10f);
+        Assert.True(result.Balls[1].Velocity.X > 0.70f);
+        Assert.True(result.Balls[0].Spin.ForwardSpinRps > -ToForwardSpinRps(1.0f));
+    }
+
+    [Fact]
     public void Advance_SeparatesBallsThatStartOverlapped()
     {
         var world = CreateCollisionWorld(
@@ -557,7 +609,7 @@ public sealed class SimulationWorldTests
         var fingerprintHash = SimulationFingerprintBuilder.BuildSha256(trace);
 
         Assert.True(trace.Completed);
-        Assert.Equal("eefdb8c9320f16e02ca261af596cc6910d2487f324b508363a3b11433107e9a3", fingerprintHash);
+        Assert.Equal("3472b836de60b73f322915a02f66dad115f7c47c4331ca3811e362ad63538d0f", fingerprintHash);
     }
 
     private static SimulationWorld CreateShellWorld(Vector2 cueBallVelocity)

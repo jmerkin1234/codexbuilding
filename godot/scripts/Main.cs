@@ -22,6 +22,7 @@ public partial class Main : Node3D
         BallRestitution,
         BallTangentialTransfer,
         BallSpinTransfer,
+        BallForwardSpinCarry,
         RailRestitution,
         RailGlancingRestitution,
         RailTangentialRetention,
@@ -1106,6 +1107,12 @@ public partial class Main : Node3D
             DebugTuningField.BallSpinTransfer => CreateAdjustedConfig(
                 ballCollisionSpinTransferFactor: AdjustFloat(
                     _config.BallCollisionSpinTransferFactor,
+                    0.02f * stepScale * direction,
+                    0.0f,
+                    1.0f)),
+            DebugTuningField.BallForwardSpinCarry => CreateAdjustedConfig(
+                ballCollisionForwardSpinCarryFactor: AdjustFloat(
+                    _config.BallCollisionForwardSpinCarryFactor,
                     0.02f * stepScale * direction,
                     0.0f,
                     1.0f)),
@@ -2632,7 +2639,7 @@ public partial class Main : Node3D
             $"Geometry: cushions={_tableSpec.Cushions.Count} jaws={_tableSpec.JawSegments.Count} pockets={_tableSpec.Pockets.Count} overlay={BuildOverlaySummary()}\n" +
             $"Config: dt={_config.FixedStepSeconds:0.000000} settle={_config.SettleSpeedThresholdMetersPerSecond:0.0000} slide={_config.SlidingFrictionAccelerationMetersPerSecondSquared:0.000} roll={_config.RollingFrictionAccelerationMetersPerSecondSquared:0.000}\n" +
             $"Config: spin_decay={_config.SpinDecayRpsPerSecond:0.000} side_curve={_config.SideSpinCurveAccelerationMetersPerSecondSquaredPerRps:0.0000} move_side_decay={_config.MovingSideSpinDecayRpsPerSecondPerMetersPerSecond:0.000}\n" +
-            $"Config: ball_rest={_config.BallCollisionRestitution:0.00} ball_tangent={_config.BallCollisionTangentialTransferFactor:0.00} ball_spin={_config.BallCollisionSpinTransferFactor:0.00}\n" +
+            $"Config: ball_rest={_config.BallCollisionRestitution:0.00} ball_tangent={_config.BallCollisionTangentialTransferFactor:0.00} ball_spin={_config.BallCollisionSpinTransferFactor:0.00} ball_follow={_config.BallCollisionForwardSpinCarryFactor:0.00}\n" +
             $"Config: rail_rest={_config.BoundaryRestitution:0.00} rail_glance={_config.BoundaryGlancingRestitution:0.00} rail_keep={_config.BoundaryTangentialVelocityRetention:0.00} rail_friction={_config.BoundaryTangentialFrictionFactor:0.00} rail_english={_config.BoundaryEnglishTransferFactor:0.00} rail_spin={_config.BoundarySpinTransferFactor:0.00} pair_iter={_config.MaxCollisionIterationsPerStep} rail_iter={_config.MaxBoundaryIterationsPerStep}\n" +
             $"Tuning: selected={GetTuningFieldLabel(_selectedTuningField)} value={GetSelectedTuningValueText()} controls=F2/F3 select, F4/F5 adjust, Shift=coarse\n" +
             $"World: phase={_world.Phase} sim_t={_world.SimulationTimeSeconds:0.000} acc={_world.AccumulatorSeconds:0.000000} steps={_world.TotalFixedStepsExecuted} capture={_shotCaptureActive} frames={_capturedShotFrames.Count}\n" +
@@ -2664,6 +2671,7 @@ public partial class Main : Node3D
         float? ballCollisionRestitution = null,
         float? ballCollisionTangentialTransferFactor = null,
         float? ballCollisionSpinTransferFactor = null,
+        float? ballCollisionForwardSpinCarryFactor = null,
         int? maxCollisionIterationsPerStep = null,
         float? boundaryRestitution = null,
         float? boundaryGlancingRestitution = null,
@@ -2690,6 +2698,7 @@ public partial class Main : Node3D
             ballCollisionRestitution: ballCollisionRestitution ?? _config.BallCollisionRestitution,
             ballCollisionTangentialTransferFactor: ballCollisionTangentialTransferFactor ?? _config.BallCollisionTangentialTransferFactor,
             ballCollisionSpinTransferFactor: ballCollisionSpinTransferFactor ?? _config.BallCollisionSpinTransferFactor,
+            ballCollisionForwardSpinCarryFactor: ballCollisionForwardSpinCarryFactor ?? _config.BallCollisionForwardSpinCarryFactor,
             maxCollisionIterationsPerStep: maxCollisionIterationsPerStep ?? _config.MaxCollisionIterationsPerStep,
             boundaryRestitution: boundaryRestitution ?? _config.BoundaryRestitution,
             boundaryGlancingRestitution: boundaryGlancingRestitution ?? _config.BoundaryGlancingRestitution,
@@ -2712,6 +2721,7 @@ public partial class Main : Node3D
             DebugTuningField.BallRestitution => $"{_config.BallCollisionRestitution:0.000}",
             DebugTuningField.BallTangentialTransfer => $"{_config.BallCollisionTangentialTransferFactor:0.000}",
             DebugTuningField.BallSpinTransfer => $"{_config.BallCollisionSpinTransferFactor:0.000}",
+            DebugTuningField.BallForwardSpinCarry => $"{_config.BallCollisionForwardSpinCarryFactor:0.000}",
             DebugTuningField.RailRestitution => $"{_config.BoundaryRestitution:0.000}",
             DebugTuningField.RailGlancingRestitution => $"{_config.BoundaryGlancingRestitution:0.000}",
             DebugTuningField.RailTangentialRetention => $"{_config.BoundaryTangentialVelocityRetention:0.000}",
@@ -2737,6 +2747,7 @@ public partial class Main : Node3D
             DebugTuningField.BallRestitution => "Ball Restitution",
             DebugTuningField.BallTangentialTransfer => "Ball Tangential Transfer",
             DebugTuningField.BallSpinTransfer => "Ball Spin Transfer",
+            DebugTuningField.BallForwardSpinCarry => "Ball Follow/Draw Carry",
             DebugTuningField.RailRestitution => "Rail Restitution",
             DebugTuningField.RailGlancingRestitution => "Rail Glancing Restitution",
             DebugTuningField.RailTangentialRetention => "Rail Tangential Retention",
@@ -2768,6 +2779,7 @@ public partial class Main : Node3D
                left.BallCollisionRestitution == right.BallCollisionRestitution &&
                left.BallCollisionTangentialTransferFactor == right.BallCollisionTangentialTransferFactor &&
                left.BallCollisionSpinTransferFactor == right.BallCollisionSpinTransferFactor &&
+               left.BallCollisionForwardSpinCarryFactor == right.BallCollisionForwardSpinCarryFactor &&
                left.MaxCollisionIterationsPerStep == right.MaxCollisionIterationsPerStep &&
                left.BoundaryRestitution == right.BoundaryRestitution &&
                left.BoundaryGlancingRestitution == right.BoundaryGlancingRestitution &&
