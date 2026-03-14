@@ -112,7 +112,7 @@ Pocket centers are currently seeded from the Blender object origins.
 
 - `pocket_TL1`: `(1.2491170, 0.6178464)`
 - `pocket_BL2`: `(1.2508553, -0.6167401)`
-- `pocket_BM3`: `(0.0000029, -0.6660219)`
+- `pocket_BM3`: `(0.0000029, -0.6614339)`
 - `pocket_BR4`: `(-1.2508456, -0.6167401)`
 - `Pocket_TR5`: `(-1.2508456, 0.6167392)`
 - `Pocket_TM6`: `(0.0000029, 0.6655681)`

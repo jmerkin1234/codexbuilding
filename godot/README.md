@@ -13,10 +13,13 @@ Current behavior:
 
 - `Main.cs` creates a live `SimulationWorld` from the portable core and seeds it with `StandardEightBallRack`.
 - Runtime node names preserve the Blender-facing names where they are used: `GodotRoot`, `TableRoot`, `BallsRoot`, `CueRoot`, `CueStick`, `CueBall`, `Ball_01` through `Ball_15`, rail names, and pocket names.
-- If `res://art/customtable_9ft.blend` exists, it is instantiated under `TableRoot` as the render-only table source.
-- If that Blender asset is absent or cannot be loaded, the adapter renders a procedural fallback using the hardcoded table spec and Blender-derived source names.
+- `Main.tscn` now instances `res://art/customtable_9ft.blend` directly as `ImportedTableSource`, and the adapter binds to its imported `GodotRoot`, `TableRoot`, `BallsRoot`, and `CueRoot` nodes.
+- If that Blender asset is absent or cannot be loaded, the adapter can still render a procedural fallback table from the hardcoded spec, but gameplay now requires the authored Blender `CueBall` and `Ball_01` through `Ball_15` meshes instead of spawning fallback spheres.
 - The direct Blender import is now verified in this repo, and the imported asset material references were extracted under `godot/art/textures/` by Godot during the import process.
 - Ball motion is always driven by the portable core and mirrored into Godot transforms each frame.
+- Godot now also accumulates visible roll from mirrored ball travel plus side-spin yaw, so the authored Blender balls rotate instead of visually sliding.
+- The authored Blender cue stick is now used during shot setup instead of hiding it behind the old placeholder cue mesh.
+- The Godot project copy of `customtable_9ft.blend` now has `Tableslate` custom normals cleared and `Tableslate`, `Tableframe`, `CueStick`, and `rail_upper_right` triangulated so Godot can generate tangents and preserve the imported shading more faithfully.
 - The portable core now includes modest cloth side-spin drift/scrub, tangential spin transfer in ball-ball contact, controlled follow/draw carry-through after object contact, angle-aware rail rebound tuning, and a separate rail-english transfer term for stronger cushion spin response; Godot only mirrors the resulting state.
 - The portable core now also uses a mouth/drop-based pocket model derived from hardcoded jaw geometry, with an added slow-speed lip-hang rule so edge-hangers can stay up while center-line rollers still fall.
 - The adapter captures live shot traces and resolves them through the portable `Rules` layer.
@@ -31,6 +34,8 @@ Current behavior:
 - The HUD now uses dedicated framed status and debug panels instead of raw overlay labels.
 - The HUD now also keeps a dedicated last-shot summary panel for completed eight-ball and training/freeplay shots.
 - The HUD now also has a dedicated shot-setup panel for aim/speed/tip information and a separate controls/help panel, so the main status card stays concise.
+- `F7` now toggles the gameplay HUD cards and shot banner without affecting the menu overlay, so the table can be viewed with the HUD fully cleared.
+- The playable Godot window now starts at `1920x1080` by default, while headless verification still runs at the CLI as before.
 - Shot speed now uses a split feel-tuned envelope in the adapter: regular play clamps to `0.3-5.0 m/s`, eight-ball break shots clamp to `0.3-8.0 m/s`, and the shot-setup/debug readouts show the currently active cap.
 - The adapter now opens on a proper menu/start overlay with button-based `EightBall` and `FreePlay` selection, and `Esc` reopens that menu later for resume/reset/return-to-start actions.
 - Training/freeplay now marks the selected layout ball with a pulsing in-world ring instead of only a subtle scale change.
@@ -46,8 +51,8 @@ Verification on `2026-03-14`:
 - `dotnet build CodexBuilding.Billiards.Godot46.csproj --no-restore`
 - `dotnet test ../tests/CodexBuilding.Billiards.Tests/CodexBuilding.Billiards.Tests.csproj --no-restore` with `56/56` passing
 - Godot 4.6 Mono `--build-solutions --quit`
-- Godot 4.6 Mono headless startup `--quit-after 10`
-- Verified direct import of `godot/art/customtable_9ft.blend`
+- Godot 4.6 Mono headless startup `--quit-after 5`
+- Verified direct import and reimport of `godot/art/customtable_9ft.blend`
 
 Keyboard controls:
 
@@ -57,6 +62,7 @@ Keyboard controls:
 - `F4/F5`: decrease or increase the selected tuning value
 - `Shift` + `F4/F5`: coarse debug tuning adjustments
 - `F6`: show or hide the controls/help panel
+- `F7`: show or hide the gameplay HUD cards and shot banner
 - `Esc`: open or close the start/pause menu
 - `H`: show or hide the hardcoded-table overlay
 - `1`: toggle cloth overlay lines

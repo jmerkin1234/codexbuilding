@@ -37,6 +37,9 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - The Godot 4.6 adapter now seeds a standard 8-ball rack from the portable core, mirrors core ball state into named visual nodes, exposes keyboard shot controls, directly instantiates `res://art/customtable_9ft.blend` as the render-only table when present, and falls back to a procedural table if that Blender asset is not available.
 - The checked-in Blender table now imports directly through Godot 4.6, which also extracted the referenced texture set into `godot/art/textures/` so the visual asset can load without a manual export step.
 - The Godot scene graph now preserves Blender-facing names where used: `GodotRoot`, `TableRoot`, `BallsRoot`, `CueRoot`, `CueStick`, `CueBall`, `Ball_01` through `Ball_15`, rail names, and pocket names.
+- The Godot adapter now binds directly to the imported Blender `BallsRoot` and `CueRoot`, so play mode uses the authored Blender balls and cue stick instead of procedural fallback ball meshes.
+- Godot ball visuals now accumulate visible roll from mirrored core motion plus side-spin yaw, so the imported balls no longer read like sliding decals during play.
+- The Godot project copy of `customtable_9ft.blend` now has `Tableslate` custom normals cleared and `Tableslate`, `Tableframe`, `CueStick`, and `rail_upper_right` triangulated so Godot can import tangents cleanly and stay closer to the Blender shading.
 - A portable rules layer now resolves 8-ball turns from replay traces, including break legality, open-table group assignment, foul detection, ball-in-hand, legal 8-ball win/loss, and configurable 8-ball-on-break handling.
 - Training mode now exists as a separate portable rules path with free cue-ball repositioning and optional 8-ball respot flow for freeplay layouts.
 - The Godot adapter now records live shot traces, resolves them through the portable rules layer, supports `Tab` switching between 8-ball versus computer and freeplay, exposes cue-ball-in-hand placement with arrow keys, and shows mode/rules state directly in the HUD.
@@ -56,8 +59,10 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - The Godot adapter now uses a split shot-speed envelope tuned for feel: regular shots clamp to `0.3-5.0 m/s`, eight-ball break shots clamp to `0.3-8.0 m/s`, the default player speed remains `2.2 m/s`, and the computer opponent now samples a separate harder break-speed set instead of using regular-shot speeds for every turn.
 - If the computer planner fails to produce a shot, the Godot adapter now fails the turn forward instead of soft-locking on Player 2 forever: the turn is forfeited and the opponent receives ball in hand.
 - The Godot HUD now has a dedicated shot-setup card with speed, tip-offset, and tuning readouts, plus a separate controls/help card toggled with `F6`, so the main status panel no longer has to carry the full control map as raw text.
+- `F7` now toggles the gameplay HUD cards and shot banner on or off without affecting the start/pause menu, so the table can be viewed cleanly during play.
+- The Godot adapter now opens its playable window at `1920x1080` by default, while headless validation remains unchanged.
 - The Godot adapter now opens on a proper start/menu overlay with button-based `EightBall` and `FreePlay` selection, and `Esc` reopens that menu later for resume/reset/return-to-start actions.
-- Validation on `2026-03-14` covers `56` passing standalone tests via `dotnet test`, a successful Godot adapter compile via `dotnet build`, a successful Godot 4.6 Mono `--build-solutions` pass, a clean headless startup pass via `--quit-after 10`, and a verified direct import of `godot/art/customtable_9ft.blend` through Godot’s Blender pipeline.
+- Validation on `2026-03-14` covers `56` passing standalone tests via `dotnet test`, a successful Godot adapter compile via `dotnet build`, repeated successful Godot 4.6 Mono `--build-solutions` passes, a clean headless startup pass via `--quit-after 5`, and a verified direct import plus reimport of `godot/art/customtable_9ft.blend` through Godot’s Blender pipeline.
 
 ## Repository Layout
 

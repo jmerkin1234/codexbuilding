@@ -54,8 +54,8 @@ public static class CustomTable9FtSpec
             CreateCornerJaw("Pocket_TR5_jaw_horizontal", new Vector2(-1.2068906f, 0.5953581f), new Vector2(-1.2508456f, 0.61673915f), tableCenter),
             CreateCornerJaw("pocket_TL1_jaw_vertical", new Vector2(1.2258036f, 0.5702276f), new Vector2(1.249117f, 0.61784637f), tableCenter),
             CreateCornerJaw("pocket_TL1_jaw_horizontal", new Vector2(1.2068999f, 0.5953247f), new Vector2(1.249117f, 0.61784637f), tableCenter),
-            CreateSideJaw("pocket_BM3_jaw_left", new Vector2(-0.050392687f, -0.59292513f), new Vector2(0.0000029f, -0.66602194f), tableCenter),
-            CreateSideJaw("pocket_BM3_jaw_right", new Vector2(0.050399005f, -0.59292495f), new Vector2(0.0000029f, -0.66602194f), tableCenter),
+            CreateSideJaw("pocket_BM3_jaw_left", new Vector2(-0.050392687f, -0.59292513f), new Vector2(0.0000029f, -0.66143388f), tableCenter),
+            CreateSideJaw("pocket_BM3_jaw_right", new Vector2(0.050399005f, -0.59292495f), new Vector2(0.0000029f, -0.66143388f), tableCenter),
             CreateSideJaw("Pocket_TM6_jaw_left", new Vector2(-0.050392687f, 0.5953581f), new Vector2(0.0000029f, 0.66556805f), tableCenter),
             CreateSideJaw("Pocket_TM6_jaw_right", new Vector2(0.050398767f, 0.5953247f), new Vector2(0.0000029f, 0.66556805f), tableCenter)
         };
@@ -83,7 +83,7 @@ public static class CustomTable9FtSpec
             CreatePocketFromJawStarts(
                 "pocket_BM3",
                 PocketKind.Side,
-                new Vector2(0.0000029f, -0.66602194f),
+                new Vector2(0.0000029f, -0.66143388f),
                 0.0614f,
                 FindSegment("pocket_BM3_jaw_left", jaws),
                 FindSegment("pocket_BM3_jaw_right", jaws),

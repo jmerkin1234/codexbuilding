@@ -62,7 +62,7 @@ This file tracks the compile-time geometry and seed constants that the portable 
   max entry speed: `1.15`
 - `pocket_BM3`
   kind: `Side`
-  center: `(0.0000029, -0.66602194)`
+  center: `(0.0000029, -0.66143388)`
   capture radius seed: `0.0614`
   mouth center: `(0.00000316, -0.59292504)`
   mouth half-width: `0.05039585`

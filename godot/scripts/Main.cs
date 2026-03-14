@@ -10,6 +10,8 @@ namespace CodexBuilding.Billiards.Godot46;
 
 public partial class Main : Node3D
 {
+    private static readonly Vector2I DefaultWindowSize = new(1920, 1080);
+    private const string ImportedTableSourceNodeName = "ImportedTableSource";
     private readonly record struct CameraPreset(string Name, Vector3 Offset, bool UseOrthographic, float ViewSize, float FieldOfView);
     private readonly record struct ShotBannerStyle(Color BackgroundColor, Color BorderColor, Color TextColor);
     private enum DebugTuningField
@@ -71,6 +73,8 @@ public partial class Main : Node3D
     private const float MaximumRegularStrikeSpeedMetersPerSecond = 5.0f;
     private const float MaximumBreakStrikeSpeedMetersPerSecond = 8.0f;
     private const float DefaultStrikeSpeedMetersPerSecond = 2.2f;
+    private const float BallVisualTeleportResetMeters = 0.4f;
+    private const float CueStickPowerPullbackMeters = 0.18f;
     private const int AimPreviewPostInteractionFrames = 18;
     private const int AimPreviewMaxSteps = 240;
 
@@ -91,6 +95,8 @@ public partial class Main : Node3D
     private readonly List<string> _recentRuleNotes = new(capacity: 4);
     private readonly List<SimulationReplayFrame> _capturedShotFrames = new(capacity: 1024);
     private readonly Dictionary<int, MeshInstance3D> _ballVisuals = new();
+    private readonly Dictionary<int, Quaternion> _ballVisualBaseRotations = new();
+    private readonly Dictionary<int, Vector3> _ballVisualLastPositions = new();
     private readonly float[] _computerRegularStrikeSpeeds = [1.4f, 2.1f, 2.9f, 3.8f, 4.8f];
     private readonly float[] _computerBreakStrikeSpeeds = [5.4f, 6.4f, 7.4f];
     private readonly CameraPreset[] _cameraPresets =
@@ -116,6 +122,7 @@ public partial class Main : Node3D
     private Node3D _overlayJawRoot = null!;
     private Node3D _overlayPocketRoot = null!;
     private Node3D _overlaySpotRoot = null!;
+    private Node3D? _importedCueStick;
     private Camera3D _camera = null!;
     private Panel _shotBannerPanel = null!;
     private Label _shotBannerLabel = null!;
@@ -171,6 +178,7 @@ public partial class Main : Node3D
     private bool _overlayPocketVisible = true;
     private bool _overlaySpotVisible = true;
     private bool _helpPanelVisible = true;
+    private bool _hudVisible = true;
     private bool _menuVisible = true;
     private bool _sessionStarted;
     private DebugTuningField _selectedTuningField = DebugTuningField.SlidingFriction;
@@ -181,11 +189,15 @@ public partial class Main : Node3D
     private float _computerTurnThinkSeconds;
     private float _trainingSelectionPulseSeconds;
     private float _aimAngleRadians;
+    private float _cueStickBaseOffsetMeters = 0.8f;
+    private float _cueStickHeightMeters = 0.066f;
+    private Quaternion _cueStickLookCorrection;
     private float _strikeSpeedMetersPerSecond = DefaultStrikeSpeedMetersPerSecond;
     private Vector2 _tipOffsetNormalized = Vector2.Zero;
 
     public override void _Ready()
     {
+        ConfigureWindowDefaults();
         _tableSpec = CustomTable9FtSpec.Create();
         _config = SimulationConfig.Default;
         _world = new SimulationWorld(_tableSpec, _config, StandardEightBallRack.Create(_tableSpec));
@@ -197,6 +209,16 @@ public partial class Main : Node3D
         BuildBallVisuals();
         ResetSessionForCurrentMode();
         ReturnToStartMenu();
+    }
+
+    private static void ConfigureWindowDefaults()
+    {
+        if (DisplayServer.GetName() == "headless")
+        {
+            return;
+        }
+
+        DisplayServer.WindowSetSize(DefaultWindowSize);
     }
 
     public override void _Process(double delta)
@@ -244,6 +266,9 @@ public partial class Main : Node3D
                 return;
             case Key.F6:
                 ToggleHelpPanel();
+                return;
+            case Key.F7:
+                ToggleHudVisibility();
                 return;
             case Key.H:
                 ToggleHardcodeOverlay();
@@ -351,17 +376,72 @@ public partial class Main : Node3D
 
     private void ConfigureSceneGraph()
     {
-        _godotRoot = EnsureNode<Node3D>(this, "GodotRoot");
+        var importedTableSource = GetNodeOrNull<Node>(ImportedTableSourceNodeName);
+        if (importedTableSource?.GetNodeOrNull<Node3D>("GodotRoot") is { } importedGodotRoot)
+        {
+            _godotRoot = importedGodotRoot;
+
+            if (importedTableSource.GetNodeOrNull<Camera3D>("Camera") is { } importedCamera)
+            {
+                importedCamera.Current = false;
+                importedCamera.Visible = false;
+            }
+
+            if (importedTableSource.GetNodeOrNull<Light3D>("Light") is { } importedLight)
+            {
+                importedLight.Visible = false;
+            }
+        }
+        else
+        {
+            _godotRoot = EnsureNode<Node3D>(this, "GodotRoot");
+        }
+
         _tableRoot = EnsureNode<Node3D>(_godotRoot, "TableRoot");
         _ballsRoot = EnsureNode<Node3D>(_godotRoot, "BallsRoot");
         _cueRoot = EnsureNode<Node3D>(_godotRoot, "CueRoot");
         _guideRoot = EnsureNode<Node3D>(_godotRoot, "GuideRoot");
         _hardcodeOverlayRoot = EnsureNode<Node3D>(_godotRoot, "HardcodeOverlayRoot");
 
-        _cueGuide = EnsureNode<MeshInstance3D>(_cueRoot, "CueStick");
+        _cueGuide = EnsureNode<MeshInstance3D>(_guideRoot, "CueGuide");
         _cueGuide.Mesh = new BoxMesh();
         _cueGuide.MaterialOverride = CreateMaterial(new Color(0.92f, 0.84f, 0.58f), roughness: 0.65f);
         _cueGuide.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+
+        _importedCueStick = _cueRoot.GetNodeOrNull<Node3D>("CueStick");
+        if (_importedCueStick != null)
+        {
+            _importedCueStick.Visible = true;
+            _cueStickHeightMeters = _importedCueStick.Position.Y;
+            var originalCueRotation = _importedCueStick.Quaternion;
+
+            if (_ballsRoot.GetNodeOrNull<Node3D>("CueBall") is { } importedCueBall)
+            {
+                var cueToBall = new Vector3(
+                    importedCueBall.Position.X - _importedCueStick.Position.X,
+                    0.0f,
+                    importedCueBall.Position.Z - _importedCueStick.Position.Z);
+
+                if (cueToBall.LengthSquared() > 0.000001f)
+                {
+                    _cueStickBaseOffsetMeters = cueToBall.Length();
+                    var lookProbe = new Node3D();
+                    _cueRoot.AddChild(lookProbe);
+                    lookProbe.Position = _importedCueStick.Position;
+                    lookProbe.LookAt(lookProbe.Position + cueToBall.Normalized(), Vector3.Up);
+                    _cueStickLookCorrection = lookProbe.Quaternion.Inverse() * originalCueRotation;
+                    lookProbe.QueueFree();
+                }
+                else
+                {
+                    _cueStickLookCorrection = originalCueRotation;
+                }
+            }
+            else
+            {
+                _cueStickLookCorrection = originalCueRotation;
+            }
+        }
 
         _aimPrimaryGuide = EnsureNode<MeshInstance3D>(_guideRoot, "AimPrimaryGuide");
         _aimPrimaryGuide.Mesh = new BoxMesh();
@@ -645,7 +725,7 @@ public partial class Main : Node3D
         _debugLabel.AddThemeFontSizeOverride("font_size", 14);
         _debugLabel.Visible = false;
 
-        UpdateAuxiliaryPanelVisibility();
+        UpdateHudVisibility();
     }
 
     private void ConfigureCameraAndLighting()
@@ -670,6 +750,11 @@ public partial class Main : Node3D
 
     private void BuildTableVisual()
     {
+        if (_tableRoot.GetChildCount() > 0)
+        {
+            return;
+        }
+
         if (_tableRoot.GetNodeOrNull<Node>("ImportedTable") != null)
         {
             return;
@@ -756,30 +841,31 @@ public partial class Main : Node3D
 
     private void BuildBallVisuals()
     {
-        ClearChildren(_ballsRoot);
         _ballVisuals.Clear();
-
-        var ballRadiusMeters = _tableSpec.BallDiameterMeters * 0.5f;
+        _ballVisualBaseRotations.Clear();
+        _ballVisualLastPositions.Clear();
+        var missingBallNodes = new List<string>();
 
         foreach (var ball in _world.Balls.OrderBy(ball => ball.BallNumber))
         {
-            var ballNode = new MeshInstance3D
+            if (_ballsRoot.GetNodeOrNull<MeshInstance3D>(GetBallNodeName(ball)) is { } existingBallNode)
             {
-                Name = GetBallNodeName(ball),
-                Mesh = new SphereMesh
-                {
-                    Radius = ballRadiusMeters,
-                    Height = _tableSpec.BallDiameterMeters,
-                    RadialSegments = 24,
-                    Rings = 12
-                },
-                MaterialOverride = CreateMaterial(GetBallColor(ball), roughness: 0.25f),
-                CastShadow = GeometryInstance3D.ShadowCastingSetting.On
-            };
+                _ballVisuals.Add(ball.BallNumber, existingBallNode);
+                _ballVisualBaseRotations[ball.BallNumber] = existingBallNode.Quaternion;
+                _ballVisualLastPositions[ball.BallNumber] = existingBallNode.Position;
+                continue;
+            }
 
-            _ballsRoot.AddChild(ballNode);
-            _ballVisuals.Add(ball.BallNumber, ballNode);
+            missingBallNodes.Add(GetBallNodeName(ball));
         }
+
+        if (missingBallNodes.Count == 0)
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"Imported Blender ball visuals are required. Missing nodes under BallsRoot: {string.Join(", ", missingBallNodes)}");
     }
 
     private void BuildHardcodeOverlay()
@@ -967,6 +1053,7 @@ public partial class Main : Node3D
     {
         _menuOverlay.Visible = _menuVisible;
         _menuPanel.Visible = _menuVisible;
+        UpdateHudVisibility();
 
         if (!_menuVisible)
         {
@@ -1028,6 +1115,15 @@ public partial class Main : Node3D
         UpdateAuxiliaryPanelVisibility();
         _recentRuleNotes.Clear();
         _recentRuleNotes.Add(_helpPanelVisible ? "Controls panel visible." : "Controls panel hidden.");
+        UpdateStatusLabel(Array.Empty<ShotEvent>());
+    }
+
+    private void ToggleHudVisibility()
+    {
+        _hudVisible = !_hudVisible;
+        UpdateHudVisibility();
+        _recentRuleNotes.Clear();
+        _recentRuleNotes.Add(_hudVisible ? "Gameplay HUD visible." : "Gameplay HUD hidden.");
         UpdateStatusLabel(Array.Empty<ShotEvent>());
     }
 
@@ -2237,7 +2333,7 @@ public partial class Main : Node3D
         }
     }
 
-    private void SyncBallVisuals(IReadOnlyList<BallState> balls)
+    private void SyncBallVisuals(IReadOnlyList<BallState> balls, float deltaSeconds = 0.0f)
     {
         var ballRadiusMeters = _tableSpec.BallDiameterMeters * 0.5f;
         BallState? selectedTrainingBall = null;
@@ -2249,14 +2345,36 @@ public partial class Main : Node3D
                 continue;
             }
 
+            var wasVisible = ballNode.Visible;
             ballNode.Visible = !ball.IsPocketed;
             if (ball.IsPocketed)
             {
                 continue;
             }
 
-            ballNode.Position = ToGodotPoint(ball.Position, ballRadiusMeters);
+            var targetPosition = ToGodotPoint(ball.Position, ballRadiusMeters);
+            if (!_ballVisualLastPositions.TryGetValue(ball.BallNumber, out var previousPosition))
+            {
+                previousPosition = targetPosition;
+            }
+
+            var motion = targetPosition - previousPosition;
+            var motionDistance = motion.Length();
+            if (!wasVisible || motionDistance >= BallVisualTeleportResetMeters)
+            {
+                if (_ballVisualBaseRotations.TryGetValue(ball.BallNumber, out var baseRotation))
+                {
+                    ballNode.Quaternion = baseRotation;
+                }
+            }
+            else
+            {
+                ApplyBallVisualRotation(ballNode, ball, motion, motionDistance, ballRadiusMeters, deltaSeconds);
+            }
+
+            ballNode.Position = targetPosition;
             ballNode.Scale = Vector3.One;
+            _ballVisualLastPositions[ball.BallNumber] = targetPosition;
 
             if (_ruleMode == RuleMode.Training && ball.BallNumber == _trainingSelectedBallNumber)
             {
@@ -2267,11 +2385,43 @@ public partial class Main : Node3D
         UpdateTrainingSelectionHighlight(selectedTrainingBall, ballRadiusMeters);
     }
 
+    private static void ApplyBallVisualRotation(
+        Node3D ballNode,
+        BallState ball,
+        Vector3 motion,
+        float motionDistance,
+        float ballRadiusMeters,
+        float deltaSeconds)
+    {
+        if (motionDistance > 0.00001f && ballRadiusMeters > 0.00001f)
+        {
+            var motionDirection = motion / motionDistance;
+            var rollAxis = Vector3.Up.Cross(motionDirection);
+            if (rollAxis.LengthSquared() > 0.000001f)
+            {
+                var rollRotation = new Quaternion(rollAxis.Normalized(), motionDistance / ballRadiusMeters);
+                ballNode.Quaternion = rollRotation * ballNode.Quaternion;
+            }
+        }
+
+        if (deltaSeconds <= 0.0f || Mathf.Abs(ball.Spin.SideSpinRps) <= 0.0001f)
+        {
+            return;
+        }
+
+        var sideSpinRotation = new Quaternion(Vector3.Up, ball.Spin.SideSpinRps * Mathf.Tau * deltaSeconds);
+        ballNode.Quaternion = sideSpinRotation * ballNode.Quaternion;
+    }
+
     private void UpdateCueGuide()
     {
         if (!CanEditShot())
         {
             _cueGuide.Visible = false;
+            if (_importedCueStick != null)
+            {
+                _importedCueStick.Visible = false;
+            }
             HideAimPreviewGuides();
             return;
         }
@@ -2287,10 +2437,23 @@ public partial class Main : Node3D
         var end = start + (aimDirection * guideLength);
         var midpoint = (start + end) * 0.5f;
 
-        _cueGuide.Visible = true;
-        _cueGuide.Position = midpoint;
-        ((BoxMesh)_cueGuide.Mesh!).Size = new Vector3(CueGuideThicknessMeters, CueGuideHeightMeters, guideLength);
-        _cueGuide.LookAt(midpoint + aimDirection, Vector3.Up);
+        if (_importedCueStick != null)
+        {
+            var cueBallLookPoint = new Vector3(start.X, _cueStickHeightMeters, start.Z);
+            var cueStickPosition = cueBallLookPoint - (aimDirection * (_cueStickBaseOffsetMeters + (speedNormalized * CueStickPowerPullbackMeters)));
+            _importedCueStick.Visible = true;
+            _importedCueStick.Position = cueStickPosition;
+            _importedCueStick.LookAt(cueBallLookPoint, Vector3.Up);
+            _importedCueStick.Quaternion *= _cueStickLookCorrection;
+            _cueGuide.Visible = false;
+        }
+        else
+        {
+            _cueGuide.Visible = true;
+            _cueGuide.Position = midpoint;
+            ((BoxMesh)_cueGuide.Mesh!).Size = new Vector3(CueGuideThicknessMeters, CueGuideHeightMeters, guideLength);
+            _cueGuide.LookAt(midpoint + aimDirection, Vector3.Up);
+        }
 
         UpdateAimPreviewGuides();
     }
@@ -2361,7 +2524,7 @@ public partial class Main : Node3D
         _helpLabel.Text =
             "Shot: Space shoot  A/D aim  W/S speed  J/L side spin  I/K follow-draw  Backspace center tip\n" +
             "View: C camera preset  Q/E zoom  H hardcode overlay  1-5 overlay layers\n" +
-            "Modes: Esc menu  Tab quick-switch mode  R reset rack/layout  F1 debug  F6 help\n" +
+            "Modes: Esc menu  Tab quick-switch mode  R reset rack/layout  F1 debug  F6 help  F7 HUD\n" +
             "Placement: Arrow keys move selected ball when placement is active  Z/X cycle freeplay ball\n" +
             "Debug tune: F2/F3 choose value  F4/F5 adjust  Shift+F4/F5 coarse";
     }
@@ -2649,11 +2812,23 @@ public partial class Main : Node3D
         _overlaySpotRoot.Visible = _overlaySpotVisible;
     }
 
+    private void UpdateHudVisibility()
+    {
+        var gameplayHudVisible = _hudVisible && !_menuVisible;
+        _statusPanel.Visible = gameplayHudVisible;
+        _summaryPanel.Visible = gameplayHudVisible;
+        _aimPanel.Visible = gameplayHudVisible;
+        _shotBannerPanel.Visible = gameplayHudVisible && _shotBannerSecondsRemaining > 0.0f;
+        _shotBannerLabel.Visible = _shotBannerPanel.Visible;
+        UpdateAuxiliaryPanelVisibility();
+    }
+
     private void UpdateAuxiliaryPanelVisibility()
     {
-        _debugPanel.Visible = _debugModeEnabled;
-        _debugLabel.Visible = _debugModeEnabled;
-        _helpPanel.Visible = _helpPanelVisible && !_debugModeEnabled;
+        var gameplayHudVisible = _hudVisible && !_menuVisible;
+        _debugPanel.Visible = gameplayHudVisible && _debugModeEnabled;
+        _debugLabel.Visible = _debugPanel.Visible;
+        _helpPanel.Visible = gameplayHudVisible && _helpPanelVisible && !_debugModeEnabled;
         _helpHeaderLabel.Visible = _helpPanel.Visible;
         _helpLabel.Visible = _helpPanel.Visible;
     }
@@ -2908,13 +3083,12 @@ public partial class Main : Node3D
     private void ShowShotBanner(string text, ShotBannerStyle style, float durationSeconds)
     {
         _shotBannerSecondsRemaining = Mathf.Max(durationSeconds, 0.2f);
-        _shotBannerPanel.Visible = true;
-        _shotBannerLabel.Visible = true;
         _shotBannerLabel.Text = text;
         _shotBannerLabel.Modulate = style.TextColor;
         _shotBannerPanel.AddThemeStyleboxOverride(
             "panel",
             CreateHudPanelStyle(style.BackgroundColor, style.BorderColor));
+        UpdateHudVisibility();
     }
 
     private Vector3 GetTableCenter3D()
