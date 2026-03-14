@@ -35,7 +35,16 @@ Not included:
 - pocket capture
 
 4. Cue strike and spin input model
-Status: pending
+Status: complete
+Scope:
+- cue-ball selection
+- aim normalization
+- tip-offset clamping
+- initial velocity seeding
+- initial spin seeding
+Not included:
+- cloth response to spin
+- collision-side spin transfer
 
 5. Cloth motion model
 Status: pending
@@ -65,4 +74,4 @@ Status: pending
 
 ## Current Focus
 
-Right now the repo is moving from step 3 to step 4. The fixed-step shell is complete and verified; the next increment is cue strike and spin input flowing into that shell.
+Right now the repo is moving from step 4 to step 5. Cue strike input is seeded into the shell; the next increment is cloth motion and spin decay.

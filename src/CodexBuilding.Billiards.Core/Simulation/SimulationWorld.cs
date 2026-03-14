@@ -45,13 +45,39 @@ public sealed class SimulationWorld
         TotalFixedStepsExecuted = 0;
     }
 
-    public void RecordCueStrike(ShotInput shotInput)
+    public ResolvedCueStrike ApplyCueStrike(ShotInput shotInput)
     {
+        if (Phase == SimulationPhase.Running && HasActiveMotion())
+        {
+            throw new InvalidOperationException("Cannot apply a cue strike while the simulation is already running.");
+        }
+
+        var cueBallIndex = FindCueBallIndex();
+        if (cueBallIndex < 0)
+        {
+            throw new InvalidOperationException("A cue strike requires an active cue ball.");
+        }
+
+        var resolvedCueStrike = CueStrikeResolver.Resolve(shotInput, Config);
+        var cueBall = _balls[cueBallIndex];
+        _balls[cueBallIndex] = cueBall with
+        {
+            Velocity = resolvedCueStrike.InitialVelocity,
+            Spin = resolvedCueStrike.InitialSpin
+        };
+
+        AccumulatorSeconds = 0.0f;
         PublishEvent(new ShotEvent(
             ShotEventType.CueStrike,
-            ballNumber: 0,
-            detail: $"speed={shotInput.StrikeSpeedMetersPerSecond:0.###} tip=({shotInput.TipOffsetNormalized.X:0.###},{shotInput.TipOffsetNormalized.Y:0.###})"));
+            ballNumber: cueBall.BallNumber,
+            detail:
+            $"aim=({resolvedCueStrike.AimDirection.X:0.###},{resolvedCueStrike.AimDirection.Y:0.###}) " +
+            $"speed={resolvedCueStrike.StrikeSpeedMetersPerSecond:0.###} " +
+            $"tip=({resolvedCueStrike.TipOffsetNormalized.X:0.###},{resolvedCueStrike.TipOffsetNormalized.Y:0.###}) " +
+            $"spin=({resolvedCueStrike.InitialSpin.SideSpinRps:0.###},{resolvedCueStrike.InitialSpin.ForwardSpinRps:0.###},{resolvedCueStrike.InitialSpin.VerticalSpinRps:0.###})"));
         Phase = SimulationPhase.Running;
+
+        return resolvedCueStrike;
     }
 
     public ShotResult Advance(float deltaTimeSeconds)
@@ -107,6 +133,20 @@ public sealed class SimulationWorld
     public ShotResult Step(float deltaTimeSeconds)
     {
         return Advance(deltaTimeSeconds);
+    }
+
+    private int FindCueBallIndex()
+    {
+        for (var index = 0; index < _balls.Count; index++)
+        {
+            var ball = _balls[index];
+            if (ball.Kind == BallKind.Cue && !ball.IsPocketed)
+            {
+                return index;
+            }
+        }
+
+        return -1;
     }
 
     private ShotResult CreateResult(IReadOnlyList<ShotEvent> eventsThisAdvance, int fixedStepsExecuted)

@@ -19,8 +19,9 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - Initial hardcoded table spec seeded from the live Blender scene at `/home/justin/Desktop/customtable_9ft.blend`.
 - `Godot.NET.Sdk 4.6.0` is now resolving and the Godot adapter builds on this machine.
 - The fixed-step shell is now implemented with an accumulator, explicit phase tracking, and settle detection.
+- Cue strike input now resolves normalized aim, clamped tip offsets, initial cue-ball velocity, and initial spin seeds.
 - Current motion is intentionally minimal: constant-velocity integration only. Cloth friction, spin, collisions, and pockets are not implemented yet.
-- Standalone verification currently covers `7` passing tests.
+- Standalone verification currently covers `12` passing tests across the fixed-step shell, table spec, and cue-strike seeding.
 
 ## Repository Layout
 
@@ -62,4 +63,4 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 
 ## Next Step
 
-The next implementation step is cue strike and spin input feeding into the fixed-step shell inside `CodexBuilding.Billiards.Core`.
+The next implementation step is the cloth motion model: sliding, rolling, skid-to-roll transition, and spin decay.
