@@ -89,8 +89,13 @@ public static class TableBoundaryResolver
 
             var tangentSpeed = Vector2.Dot(correctedVelocity, tangent) *
                                config.BoundaryTangentialVelocityRetention;
-            var slipSpeed = tangentSpeed + SpinToSurfaceSpeed(ballRadiusMeters, sideSpin);
-            var tangentialVelocityDelta = -slipSpeed * config.BoundaryTangentialFrictionFactor;
+            var spinSurfaceSpeed = SpinToSurfaceSpeed(ballRadiusMeters, sideSpin);
+            var baseTangentialDelta = -tangentSpeed * config.BoundaryTangentialFrictionFactor;
+            var englishResponseScale = 0.35f + (0.65f * impactRatio);
+            var englishTransferDelta = -spinSurfaceSpeed *
+                                       config.BoundaryEnglishTransferFactor *
+                                       englishResponseScale;
+            var tangentialVelocityDelta = baseTangentialDelta + englishTransferDelta;
             var correctedTangentSpeed = tangentSpeed + tangentialVelocityDelta;
             var correctedNormalSpeed = -inwardSpeed * effectiveRestitution;
 

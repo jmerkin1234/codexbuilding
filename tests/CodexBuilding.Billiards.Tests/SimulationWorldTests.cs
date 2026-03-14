@@ -353,8 +353,49 @@ public sealed class SimulationWorldTests
         var result = world.Advance(0.01f);
         var tangentVelocity = Vector2.Dot(result.Balls[0].Velocity, segment.Direction);
 
-        Assert.True(MathF.Abs(tangentVelocity) > 0.01f);
+        Assert.True(MathF.Abs(tangentVelocity) > 0.15f);
         Assert.True(MathF.Abs(result.Balls[0].Spin.SideSpinRps) < 5.0f);
+    }
+
+    [Fact]
+    public void Advance_CushionCollisionOppositeEnglishProducesOppositeRailThrow()
+    {
+        var table = CustomTable9FtSpec.Create();
+        var segment = table.Cushions[0];
+        var positiveEnglishWorld = CreateBoundaryWorld(
+            CreateBallAgainstSegment(segment, incomingSpeed: 1.0f, spin: new SpinState(5.0f, 0.0f, 0.0f)));
+        var negativeEnglishWorld = CreateBoundaryWorld(
+            CreateBallAgainstSegment(segment, incomingSpeed: 1.0f, spin: new SpinState(-5.0f, 0.0f, 0.0f)));
+
+        var positiveResult = positiveEnglishWorld.Advance(0.01f);
+        var negativeResult = negativeEnglishWorld.Advance(0.01f);
+        var positiveTangent = Vector2.Dot(positiveResult.Balls[0].Velocity, segment.Direction);
+        var negativeTangent = Vector2.Dot(negativeResult.Balls[0].Velocity, segment.Direction);
+
+        Assert.True(positiveTangent < -0.15f);
+        Assert.True(negativeTangent > 0.15f);
+        Assert.True(negativeTangent - positiveTangent > 0.35f);
+        Assert.True(MathF.Abs(positiveResult.Balls[0].Spin.SideSpinRps) < 5.0f);
+        Assert.True(MathF.Abs(negativeResult.Balls[0].Spin.SideSpinRps) < 5.0f);
+    }
+
+    [Fact]
+    public void Advance_GlancingBankRunningAndCheckEnglishDiverge()
+    {
+        var table = CustomTable9FtSpec.Create();
+        var segment = table.Cushions[0];
+        var runningWorld = CreateBoundaryWorld(
+            CreateBallAgainstSegment(segment, incomingSpeed: 0.9f, tangentSpeed: 0.85f, spin: new SpinState(-4.0f, 0.0f, 0.0f)));
+        var checkWorld = CreateBoundaryWorld(
+            CreateBallAgainstSegment(segment, incomingSpeed: 0.9f, tangentSpeed: 0.85f, spin: new SpinState(4.0f, 0.0f, 0.0f)));
+
+        var runningResult = runningWorld.Advance(0.01f);
+        var checkResult = checkWorld.Advance(0.01f);
+        var runningTangent = Vector2.Dot(runningResult.Balls[0].Velocity, segment.Direction);
+        var checkTangent = Vector2.Dot(checkResult.Balls[0].Velocity, segment.Direction);
+
+        Assert.True(runningTangent > checkTangent);
+        Assert.True(runningTangent - checkTangent > 0.35f);
     }
 
     [Fact]

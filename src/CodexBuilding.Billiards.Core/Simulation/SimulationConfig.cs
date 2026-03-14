@@ -25,7 +25,8 @@ public sealed class SimulationConfig
         boundarySpinTransferFactor: 0.45f,
         maxBoundaryIterationsPerStep: 4,
         boundaryGlancingRestitution: 0.78f,
-        boundaryTangentialVelocityRetention: 0.97f);
+        boundaryTangentialVelocityRetention: 0.97f,
+        boundaryEnglishTransferFactor: 0.55f);
 
     public SimulationConfig(
         float fixedStepSeconds,
@@ -50,7 +51,8 @@ public sealed class SimulationConfig
         float boundarySpinTransferFactor = 0.45f,
         int maxBoundaryIterationsPerStep = 4,
         float boundaryGlancingRestitution = 0.78f,
-        float boundaryTangentialVelocityRetention = 0.97f)
+        float boundaryTangentialVelocityRetention = 0.97f,
+        float boundaryEnglishTransferFactor = 0.55f)
     {
         if (fixedStepSeconds <= 0.0f)
         {
@@ -196,6 +198,13 @@ public sealed class SimulationConfig
                 "Boundary tangential velocity retention must be between zero and one.");
         }
 
+        if (boundaryEnglishTransferFactor < 0.0f || boundaryEnglishTransferFactor > 2.0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(boundaryEnglishTransferFactor),
+                "Boundary english transfer factor must be between zero and two.");
+        }
+
         if (maxBoundaryIterationsPerStep <= 0)
         {
             throw new ArgumentOutOfRangeException(
@@ -226,6 +235,7 @@ public sealed class SimulationConfig
         MaxBoundaryIterationsPerStep = maxBoundaryIterationsPerStep;
         BoundaryGlancingRestitution = boundaryGlancingRestitution;
         BoundaryTangentialVelocityRetention = boundaryTangentialVelocityRetention;
+        BoundaryEnglishTransferFactor = boundaryEnglishTransferFactor;
     }
 
     public float FixedStepSeconds { get; }
@@ -273,4 +283,6 @@ public sealed class SimulationConfig
     public float BoundaryGlancingRestitution { get; }
 
     public float BoundaryTangentialVelocityRetention { get; }
+
+    public float BoundaryEnglishTransferFactor { get; }
 }

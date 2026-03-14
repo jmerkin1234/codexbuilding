@@ -25,6 +25,7 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - Cushion and pocket-jaw interactions now resolve against explicit hardcoded boundary segments derived from the Blender table reference, including tangential rail friction and side-spin rail response.
 - Pocket capture now uses a hardcoded pocket-mouth/drop model derived from jaw geometry, so pocket acceptance depends on entry lane and speed instead of a single radius check.
 - Rail rebound tuning now distinguishes glancing versus head-on cushion impacts, preserves most tangential bank travel through a separate retention term, and no longer applies fake rail scrub when a ball is only being pushed out of overlap.
+- Rail english is now driven by a separate transfer term, so opposite side spin produces meaningfully different rail throw instead of only a small tangential nudge.
 - Shot event expansion now covers first cue-ball contact, cushion/jaw contact, pocketed balls, scratch, and settled-shot events.
 - Deterministic replay now records per-step frames, cue-strike seeds, and shot events into a portable trace object.
 - Regression coverage now locks a canonical straight-shot SHA-256 fingerprint for deterministic replay validation and was updated on `2026-03-14` after the rail-rebound tuning pass.
@@ -46,10 +47,10 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - The Godot adapter now raises a transient shot-feedback banner for shot starts, first contact, pocketed balls, scratches, fouls, wins, and other key rule outcomes.
 - The status panel now gives the current mode, turn, winner, and ball-in-hand state a dedicated color-accented header so match flow is readable at a glance.
 - `F1` now enables a Godot debug panel that shows live portable-engine data, including table/config values, simulation counters, cue-ball state, selected-ball state, moving-ball counts, preview status, and live tuning state. Debug mode also forces the hardcoded-table overlay visible.
-- The Godot adapter now supports runtime debug tuning of core-physics constants such as cloth friction, spin decay, side-spin drift, ball/rail restitution, glancing rail restitution, tangential rail retention, tangential transfer, and solver iteration counts, while preserving the current ball layout between changes.
+- The Godot adapter now supports runtime debug tuning of core-physics constants such as cloth friction, spin decay, side-spin drift, ball/rail restitution, glancing rail restitution, tangential rail retention, rail english transfer, tangential transfer, and solver iteration counts, while preserving the current ball layout between changes.
 - The Godot HUD now has a dedicated shot-setup card with speed, tip-offset, and tuning readouts, plus a separate controls/help card toggled with `F6`, so the main status panel no longer has to carry the full control map as raw text.
 - The Godot adapter now opens on a proper start/menu overlay with button-based `EightBall` and `FreePlay` selection, and `Esc` reopens that menu later for resume/reset/return-to-start actions.
-- Validation on `2026-03-14` covers `48` passing standalone tests via `dotnet test`, a successful Godot adapter compile via `dotnet build`, a successful Godot 4.6 Mono `--build-solutions` pass, a clean headless startup pass via `--quit-after 10`, and a verified direct import of `godot/art/customtable_9ft.blend` through Godot’s Blender pipeline.
+- Validation on `2026-03-14` covers `50` passing standalone tests via `dotnet test`, a successful Godot adapter compile via `dotnet build`, a successful Godot 4.6 Mono `--build-solutions` pass, a clean headless startup pass via `--quit-after 10`, and a verified direct import of `godot/art/customtable_9ft.blend` through Godot’s Blender pipeline.
 
 ## Repository Layout
 
@@ -94,4 +95,4 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 
 ## Next Step
 
-The next implementation step is stronger english on rails, now that pocket-mouth behavior and base rail rebound tuning are both in place.
+The next implementation step is refining follow/draw carry-through after object-ball contact, now that pocket-mouth behavior, base rail rebound tuning, and stronger rail english are all in place.

@@ -17,7 +17,7 @@ Current behavior:
 - If that Blender asset is absent or cannot be loaded, the adapter renders a procedural fallback using the hardcoded table spec and Blender-derived source names.
 - The direct Blender import is now verified in this repo, and the imported asset material references were extracted under `godot/art/textures/` by Godot during the import process.
 - Ball motion is always driven by the portable core and mirrored into Godot transforms each frame.
-- The portable core now includes modest cloth side-spin drift/scrub, tangential spin transfer in ball-ball contact, angle-aware rail rebound tuning, and tangential rail response; Godot only mirrors the resulting state.
+- The portable core now includes modest cloth side-spin drift/scrub, tangential spin transfer in ball-ball contact, angle-aware rail rebound tuning, and a separate rail-english transfer term for stronger cushion spin response; Godot only mirrors the resulting state.
 - The portable core now also uses a mouth/drop-based pocket model derived from hardcoded jaw geometry, so pocketing depends on entry lane and speed instead of a single capture circle.
 - The adapter captures live shot traces and resolves them through the portable `Rules` layer.
 - `Tab` switches between `EightBall` versus computer and `FreePlay` inside the running adapter.
@@ -37,12 +37,12 @@ Current behavior:
 - A transient banner now surfaces shot starts, contact, pocketing, scratch, foul, win, and turn/result feedback in the running adapter.
 - The status panel now has a color-accented header for current mode and turn state.
 - `F1` toggles a debug panel with live portable-engine data such as `SimulationConfig` values, world counters, cue-ball state, selected-ball state, moving-ball counts, and preview lengths. Debug mode also forces the hardcoded-table overlay visible.
-- Debug mode now supports live tuning of key portable-physics constants, including glancing rail restitution and tangential rail retention, and immediately rebuilds `SimulationWorld` with the current ball layout after each change.
+- Debug mode now supports live tuning of key portable-physics constants, including glancing rail restitution, tangential rail retention, and rail-english transfer, and immediately rebuilds `SimulationWorld` with the current ball layout after each change.
 
 Verification on `2026-03-14`:
 
 - `dotnet build CodexBuilding.Billiards.Godot46.csproj --no-restore`
-- `dotnet test ../tests/CodexBuilding.Billiards.Tests/CodexBuilding.Billiards.Tests.csproj --no-restore` with `48/48` passing
+- `dotnet test ../tests/CodexBuilding.Billiards.Tests/CodexBuilding.Billiards.Tests.csproj --no-restore` with `50/50` passing
 - Godot 4.6 Mono `--build-solutions --quit`
 - Godot 4.6 Mono headless startup `--quit-after 10`
 - Verified direct import of `godot/art/customtable_9ft.blend`
