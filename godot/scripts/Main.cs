@@ -13,6 +13,7 @@ public partial class Main : Node3D
 {
 	private static readonly Vector2I DefaultWindowSize = new(1920, 1080);
 	private static readonly Vector2I DefaultDebugWindowSize = new(640, 860);
+	private static readonly Vector2I DefaultTuningWindowSize = new(860, 980);
 	private const string ImportedTableSourceNodeName = "ImportedTableSource";
 	private readonly record struct CameraPreset(string Name, Vector3 Offset, bool UseOrthographic, float ViewSize, float FieldOfView);
 	private readonly record struct ShotBannerStyle(Color BackgroundColor, Color BorderColor, Color TextColor);
@@ -97,6 +98,7 @@ public partial class Main : Node3D
 	private readonly Dictionary<int, MeshInstance3D> _ballVisuals = new();
 	private readonly Dictionary<int, Quaternion> _ballVisualBaseRotations = new();
 	private readonly Dictionary<int, Vector3> _ballVisualLastPositions = new();
+	private readonly List<CalibrationObjectEntry> _calibrationObjects = new();
 	private readonly float[] _computerRegularStrikeSpeeds = [1.4f, 2.1f, 2.9f, 3.8f, 4.8f];
 	private readonly float[] _computerBreakStrikeSpeeds = [5.4f, 6.4f, 7.4f];
 	private readonly CameraPreset[] _cameraPresets =
@@ -152,9 +154,13 @@ public partial class Main : Node3D
 	private ColorRect _aimTipHorizontal = null!;
 	private ColorRect _aimTipVertical = null!;
 	private ColorRect _aimTipIndicator = null!;
+	private Window _tuningWindow = null!;
+	private Label _tuningWindowHeaderLabel = null!;
+	private Label _tuningWindowInfoLabel = null!;
 	private OptionButton _tuningFieldSelector = null!;
-	private Label _tuningSliderLabel = null!;
-	private HSlider _tuningValueSlider = null!;
+	private ScrollContainer _tuningScrollContainer = null!;
+	private VBoxContainer _tuningFieldsContainer = null!;
+	private readonly List<TuningFieldRow> _tuningFieldRows = new();
 	private Label _tuningOverlayLabel = null!;
 	private HSlider _tuningOverlaySlider = null!;
 	private Button _tuningSaveButton = null!;
@@ -199,6 +205,9 @@ public partial class Main : Node3D
 	private int _selectedCalibrationFieldIndex;
 	private int _trainingSelectedBallNumber;
 	private bool _syncingTuningControls;
+	private string _selectedCalibrationObjectKey = string.Empty;
+	private bool _draggingAimPanel;
+	private Vector2 _aimPanelDragOffset = Vector2.Zero;
 	private int _cameraPresetIndex = 1;
 	private float _cameraZoomScale = 1.0f;
 	private float _overlayLineThicknessMeters = OverlayLineThicknessMeters;
@@ -266,6 +275,27 @@ public partial class Main : Node3D
 
 	public override void _UnhandledInput(InputEvent @event)
 	{
+		if (_draggingAimPanel)
+		{
+			if (@event is InputEventMouseMotion)
+			{
+				var viewportSize = GetViewport().GetVisibleRect().Size;
+				var desiredPosition = GetViewport().GetMousePosition() + _aimPanelDragOffset;
+				_aimPanel.Position = new Vector2(
+					Mathf.Clamp(desiredPosition.X, 0.0f, Mathf.Max(0.0f, viewportSize.X - _aimPanel.Size.X)),
+					Mathf.Clamp(desiredPosition.Y, 0.0f, Mathf.Max(0.0f, viewportSize.Y - _aimPanel.Size.Y)));
+				return;
+			}
+
+			if (@event is InputEventMouseButton dragButtonEvent &&
+				dragButtonEvent.ButtonIndex == MouseButton.Left &&
+				!dragButtonEvent.Pressed)
+			{
+				_draggingAimPanel = false;
+				return;
+			}
+		}
+
 		if (@event is InputEventMouseButton mouseButtonEvent && mouseButtonEvent.Pressed)
 		{
 			HandleMouseButtonInput(mouseButtonEvent);
@@ -659,7 +689,7 @@ public partial class Main : Node3D
 
 		_aimPanel = EnsureNode<Panel>(hud, "AimPanel");
 		_aimPanel.Position = new Vector2(896.0f, 18.0f);
-		_aimPanel.Size = new Vector2(440.0f, 220.0f);
+		_aimPanel.Size = new Vector2(440.0f, 398.0f);
 		_aimPanel.MouseFilter = Control.MouseFilterEnum.Pass;
 		_aimPanel.AddThemeStyleboxOverride(
 			"panel",
@@ -672,10 +702,12 @@ public partial class Main : Node3D
 		_aimHeaderLabel.Size = new Vector2(408.0f, 30.0f);
 		_aimHeaderLabel.AddThemeFontSizeOverride("font_size", 20);
 		_aimHeaderLabel.Modulate = new Color(0.92f, 0.97f, 1.0f);
+		_aimHeaderLabel.MouseFilter = Control.MouseFilterEnum.Stop;
+		_aimHeaderLabel.GuiInput += OnAimHeaderGuiInput;
 
 		_aimMetricsLabel = EnsureNode<Label>(_aimPanel, "AimMetricsLabel");
 		_aimMetricsLabel.Position = new Vector2(16.0f, 46.0f);
-		_aimMetricsLabel.Size = new Vector2(220.0f, 154.0f);
+		_aimMetricsLabel.Size = new Vector2(220.0f, 312.0f);
 		_aimMetricsLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
 		_aimMetricsLabel.VerticalAlignment = VerticalAlignment.Top;
 		_aimMetricsLabel.AddThemeFontSizeOverride("font_size", 15);
@@ -715,70 +747,8 @@ public partial class Main : Node3D
 		_aimTipIndicator.Size = new Vector2(12.0f, 12.0f);
 		_aimTipIndicator.Color = new Color(0.99f, 0.79f, 0.28f, 0.98f);
 
-		_tuningFieldSelector = EnsureNode<OptionButton>(_aimPanel, "TuningFieldSelector");
-		_tuningFieldSelector.Position = new Vector2(16.0f, 46.0f);
-		_tuningFieldSelector.Size = new Vector2(392.0f, 28.0f);
-		_tuningFieldSelector.Visible = false;
-		_tuningFieldSelector.ItemSelected += OnTuningFieldSelected;
-
-		_tuningSliderLabel = EnsureNode<Label>(_aimPanel, "TuningSliderLabel");
-		_tuningSliderLabel.Position = new Vector2(16.0f, 82.0f);
-		_tuningSliderLabel.Size = new Vector2(392.0f, 22.0f);
-		_tuningSliderLabel.AddThemeFontSizeOverride("font_size", 14);
-		_tuningSliderLabel.Modulate = new Color(0.89f, 0.95f, 1.0f);
-		_tuningSliderLabel.Visible = false;
-
-		_tuningValueSlider = EnsureNode<HSlider>(_aimPanel, "TuningValueSlider");
-		_tuningValueSlider.Position = new Vector2(16.0f, 108.0f);
-		_tuningValueSlider.Size = new Vector2(392.0f, 24.0f);
-		_tuningValueSlider.MinValue = -0.4;
-		_tuningValueSlider.MaxValue = 0.4;
-		_tuningValueSlider.Step = 0.0005;
-		_tuningValueSlider.Visible = false;
-		_tuningValueSlider.ValueChanged += OnTuningValueChanged;
-
-		_tuningOverlayLabel = EnsureNode<Label>(_aimPanel, "TuningOverlayLabel");
-		_tuningOverlayLabel.Position = new Vector2(16.0f, 140.0f);
-		_tuningOverlayLabel.Size = new Vector2(392.0f, 22.0f);
-		_tuningOverlayLabel.AddThemeFontSizeOverride("font_size", 14);
-		_tuningOverlayLabel.Modulate = new Color(0.89f, 0.95f, 1.0f);
-		_tuningOverlayLabel.Visible = false;
-
-		_tuningOverlaySlider = EnsureNode<HSlider>(_aimPanel, "TuningOverlaySlider");
-		_tuningOverlaySlider.Position = new Vector2(16.0f, 166.0f);
-		_tuningOverlaySlider.Size = new Vector2(392.0f, 24.0f);
-		_tuningOverlaySlider.MinValue = 0.002;
-		_tuningOverlaySlider.MaxValue = 0.04;
-		_tuningOverlaySlider.Step = 0.0005;
-		_tuningOverlaySlider.Visible = false;
-		_tuningOverlaySlider.ValueChanged += OnTuningOverlayThicknessChanged;
-
-		_tuningSaveButton = EnsureNode<Button>(_aimPanel, "TuningSaveButton");
-		_tuningSaveButton.Text = "Save";
-		_tuningSaveButton.Position = new Vector2(16.0f, 194.0f);
-		_tuningSaveButton.Size = new Vector2(122.0f, 22.0f);
-		_tuningSaveButton.AddThemeFontSizeOverride("font_size", 14);
-		_tuningSaveButton.Visible = false;
-		_tuningSaveButton.Pressed += SaveCalibrationProfile;
-
-		_tuningReloadButton = EnsureNode<Button>(_aimPanel, "TuningReloadButton");
-		_tuningReloadButton.Text = "Reload";
-		_tuningReloadButton.Position = new Vector2(151.0f, 194.0f);
-		_tuningReloadButton.Size = new Vector2(122.0f, 22.0f);
-		_tuningReloadButton.AddThemeFontSizeOverride("font_size", 14);
-		_tuningReloadButton.Visible = false;
-		_tuningReloadButton.Pressed += ReloadCalibrationProfile;
-
-		_tuningResetButton = EnsureNode<Button>(_aimPanel, "TuningResetButton");
-		_tuningResetButton.Text = "Reset";
-		_tuningResetButton.Position = new Vector2(286.0f, 194.0f);
-		_tuningResetButton.Size = new Vector2(122.0f, 22.0f);
-		_tuningResetButton.AddThemeFontSizeOverride("font_size", 14);
-		_tuningResetButton.Visible = false;
-		_tuningResetButton.Pressed += ResetCalibrationProfile;
-
 		_helpPanel = EnsureNode<Panel>(hud, "HelpPanel");
-		_helpPanel.Position = new Vector2(896.0f, 256.0f);
+		_helpPanel.Position = new Vector2(896.0f, 434.0f);
 		_helpPanel.Size = new Vector2(440.0f, 234.0f);
 		_helpPanel.MouseFilter = Control.MouseFilterEnum.Ignore;
 		_helpPanel.AddThemeStyleboxOverride(
@@ -846,6 +816,79 @@ public partial class Main : Node3D
 		_debugLabel.AddThemeFontSizeOverride("font_size", 14);
 		_debugLabel.AddThemeColorOverride("font_color", new Color(0.84f, 0.98f, 0.89f));
 		_debugLabel.Visible = false;
+
+		_tuningWindow = EnsureNode<Window>(this, "TuningWindow");
+		_tuningWindow.Title = "CodexBuilding Tuning";
+		_tuningWindow.InitialPosition = Window.WindowInitialPosition.CenterPrimaryScreen;
+		_tuningWindow.Size = DefaultTuningWindowSize;
+		_tuningWindow.MinSize = new Vector2I(700, 720);
+		_tuningWindow.Unresizable = false;
+		_tuningWindow.WrapControls = true;
+		_tuningWindow.Exclusive = false;
+		_tuningWindow.Transient = false;
+		_tuningWindow.Visible = false;
+
+		var tuningRoot = EnsureNode<VBoxContainer>(_tuningWindow, "TuningRoot");
+		tuningRoot.Position = new Vector2(16.0f, 16.0f);
+		tuningRoot.Size = new Vector2(DefaultTuningWindowSize.X - 32.0f, DefaultTuningWindowSize.Y - 32.0f);
+		tuningRoot.AddThemeConstantOverride("separation", 10);
+
+		_tuningWindowHeaderLabel = EnsureNode<Label>(tuningRoot, "TuningWindowHeaderLabel");
+		_tuningWindowHeaderLabel.Text = "Table Tuning";
+		_tuningWindowHeaderLabel.AddThemeFontSizeOverride("font_size", 24);
+		_tuningWindowHeaderLabel.Modulate = new Color(0.98f, 0.92f, 0.74f);
+
+		_tuningWindowInfoLabel = EnsureNode<Label>(tuningRoot, "TuningWindowInfoLabel");
+		_tuningWindowInfoLabel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		_tuningWindowInfoLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		_tuningWindowInfoLabel.AddThemeFontSizeOverride("font_size", 14);
+		_tuningWindowInfoLabel.Modulate = new Color(0.9f, 0.95f, 0.98f);
+
+		_tuningFieldSelector = EnsureNode<OptionButton>(tuningRoot, "TuningObjectSelector");
+		_tuningFieldSelector.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		_tuningFieldSelector.ItemSelected += OnTuningFieldSelected;
+
+		_tuningScrollContainer = EnsureNode<ScrollContainer>(tuningRoot, "TuningScrollContainer");
+		_tuningScrollContainer.CustomMinimumSize = new Vector2(0.0f, 640.0f);
+		_tuningScrollContainer.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		_tuningScrollContainer.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+
+		_tuningFieldsContainer = EnsureNode<VBoxContainer>(_tuningScrollContainer, "TuningFieldsContainer");
+		_tuningFieldsContainer.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		_tuningFieldsContainer.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
+		_tuningFieldsContainer.AddThemeConstantOverride("separation", 8);
+
+		_tuningOverlayLabel = EnsureNode<Label>(tuningRoot, "TuningOverlayLabel");
+		_tuningOverlayLabel.AddThemeFontSizeOverride("font_size", 14);
+		_tuningOverlayLabel.Modulate = new Color(0.89f, 0.95f, 1.0f);
+
+		_tuningOverlaySlider = EnsureNode<HSlider>(tuningRoot, "TuningOverlaySlider");
+		_tuningOverlaySlider.MinValue = 0.002;
+		_tuningOverlaySlider.MaxValue = 0.04;
+		_tuningOverlaySlider.Step = 0.0005;
+		_tuningOverlaySlider.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		_tuningOverlaySlider.ValueChanged += OnTuningOverlayThicknessChanged;
+
+		var tuningButtonRow = EnsureNode<HBoxContainer>(tuningRoot, "TuningButtonRow");
+		tuningButtonRow.AddThemeConstantOverride("separation", 10);
+
+		_tuningSaveButton = EnsureNode<Button>(tuningButtonRow, "TuningSaveButton");
+		_tuningSaveButton.Text = "Save";
+		_tuningSaveButton.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		_tuningSaveButton.AddThemeFontSizeOverride("font_size", 14);
+		_tuningSaveButton.Pressed += SaveCalibrationProfile;
+
+		_tuningReloadButton = EnsureNode<Button>(tuningButtonRow, "TuningReloadButton");
+		_tuningReloadButton.Text = "Reload";
+		_tuningReloadButton.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		_tuningReloadButton.AddThemeFontSizeOverride("font_size", 14);
+		_tuningReloadButton.Pressed += ReloadCalibrationProfile;
+
+		_tuningResetButton = EnsureNode<Button>(tuningButtonRow, "TuningResetButton");
+		_tuningResetButton.Text = "Reset";
+		_tuningResetButton.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+		_tuningResetButton.AddThemeFontSizeOverride("font_size", 14);
+		_tuningResetButton.Pressed += ResetCalibrationProfile;
 
 		PopulateCalibrationFieldSelector();
 		SyncCalibrationControls();
@@ -1275,6 +1318,25 @@ public partial class Main : Node3D
 		_recentRuleNotes.Clear();
 		_recentRuleNotes.Add(_hudVisible ? "Gameplay HUD visible." : "Gameplay HUD hidden.");
 		UpdateStatusLabel(Array.Empty<ShotEvent>());
+	}
+
+	private void OnAimHeaderGuiInput(InputEvent @event)
+	{
+		if (_ruleMode != RuleMode.Calibration)
+		{
+			return;
+		}
+
+		if (@event is InputEventMouseButton mouseButtonEvent && mouseButtonEvent.ButtonIndex == MouseButton.Left)
+		{
+			_draggingAimPanel = mouseButtonEvent.Pressed;
+			if (_draggingAimPanel)
+			{
+				_aimPanelDragOffset = _aimPanel.Position - GetViewport().GetMousePosition();
+			}
+
+			GetViewport().SetInputAsHandled();
+		}
 	}
 
 	private void HandleMouseButtonInput(InputEventMouseButton mouseButtonEvent)
@@ -2767,20 +2829,19 @@ public partial class Main : Node3D
 	{
 		if (_ruleMode == RuleMode.Calibration)
 		{
-			var selectedField = GetSelectedCalibrationField();
 			SyncCalibrationControls();
 			_aimHeaderLabel.Text = "Tuning Mode";
 			_aimMetricsLabel.Text =
-				"FIELD\n" +
-				$"  Selected: {selectedField.Label}\n" +
-				$"  Value: {selectedField.GetFormattedValue(_tableCalibrationProfile)}\n" +
-				$"  Range: {selectedField.Minimum:0.0000} to {selectedField.Maximum:0.0000}\n" +
-				"  Use the dropdown and slider on the right to change it.\n\n" +
+				"WINDOW\n" +
+				"  Use the separate Tuning window.\n" +
+				$"  Jump target: {GetSelectedCalibrationObjectLabel()}\n" +
+				$"  Total rows: {_calibrationFields.Count}\n\n" +
 				"PROFILE\n" +
 				$"  Path: {CalibrationProfilePath}\n" +
 				$"  Overlay thickness: {_overlayLineThicknessMeters:0.0000} m\n" +
-				"  Use the lower slider for overlay thickness.\n\n" +
+				"  Adjust this in the Tuning window.\n\n" +
 				"QUICK ACTIONS\n" +
+				"  Drag the Tuning window to another monitor.\n" +
 				"  Buttons: Save / Reload / Reset";
 			_aimSpeedFill.Size = new Vector2(220.0f, _aimSpeedFill.Size.Y);
 			_aimSpeedFill.Color = new Color(0.96f, 0.74f, 0.32f, 0.98f);
@@ -2824,17 +2885,19 @@ public partial class Main : Node3D
 			_helpHeaderLabel.Text = "Controls | Tuning";
 			_helpLabel.Text =
 				"TUNING UI\n" +
-				"  Use the dropdown to pick a field.\n" +
-				"  Use the top slider to adjust that field.\n" +
-				"  Use the lower slider to adjust overlay thickness.\n" +
-				"  Use Save / Reload / Reset for the profile.\n\n" +
+				"  Use the separate Tuning window.\n" +
+				"  All tunable rows stay visible in one flat list.\n" +
+				"  The dropdown jumps to one object and highlights it.\n" +
+				"  Endpoints, angles, pocket values, and spot positions each get their own row.\n" +
+				"  Use Save / Reload / Reset in the window.\n\n" +
 				"VIEW\n" +
 				"  C camera preset   Q/E zoom\n" +
 				"  H hardcode overlay   1-5 overlay layers\n\n" +
 				"SHOT / MODE\n" +
 				"  A/D aim   Mouse wheel fine aim\n" +
 				"  W/S speed   J/L side spin   I/K follow-draw   Space shoot\n" +
-				"  Esc menu   Tab quick-switch   R reset mode   F1 debug window   F6 help   F7 HUD\n\n" +
+				"  Esc menu   Tab quick-switch   R reset mode   F1 debug window   F6 help   F7 HUD\n" +
+				"  Drag the Tuning window where you want it.\n\n" +
 				"OPTIONAL SHORTCUTS\n" +
 				"  P save   O reload   U reset profile";
 			return;
@@ -2884,10 +2947,9 @@ public partial class Main : Node3D
 	{
 		if (_ruleMode == RuleMode.Calibration)
 		{
-			var selectedField = GetSelectedCalibrationField();
 			SetShotSummary(
 				"Tuning Mode | Table Calibration",
-				$"Selected field: {selectedField.Label}\nCurrent value: {selectedField.GetFormattedValue(_tableCalibrationProfile)}\nUse ,/. to select fields, -/= to adjust, P to save, O to reload, and U to reset the profile.",
+				$"Jump target: {GetSelectedCalibrationObjectLabel()}\nUse the separate Tuning window for the full flat list of rows.\nEach row edits one endpoint, angle, pocket value, or spot position.",
 				new Color(0.98f, 0.82f, 0.36f, 0.98f));
 			return;
 		}
@@ -3032,10 +3094,9 @@ public partial class Main : Node3D
 	{
 		if (_ruleMode == RuleMode.Calibration)
 		{
-			var selectedField = GetSelectedCalibrationField();
 			return
-				$"Tuning field: {selectedField.Label} ({_selectedCalibrationFieldIndex + 1}/{_calibrationFields.Count})  " +
-				$"Value: {selectedField.GetFormattedValue(_tableCalibrationProfile)}  Overlay thickness: {_overlayLineThicknessMeters:0.0000} m";
+				$"Tuning target: {GetSelectedCalibrationObjectLabel()}  " +
+				$"Visible rows: {_calibrationFields.Count}  Overlay thickness: {_overlayLineThicknessMeters:0.0000} m";
 		}
 
 		if (_ruleMode == RuleMode.Training)
@@ -3064,7 +3125,7 @@ public partial class Main : Node3D
 
 		if (_ruleMode == RuleMode.Calibration)
 		{
-			return $"Tuning | {GetSelectedCalibrationField().Label}";
+			return $"Tuning | {GetSelectedCalibrationObjectLabel()}";
 		}
 
 		if (_ruleMode == RuleMode.Training)
@@ -3201,6 +3262,7 @@ public partial class Main : Node3D
 	{
 		var gameplayHudVisible = _hudVisible && !_menuVisible;
 		_debugWindow.Visible = _debugModeEnabled;
+		_tuningWindow.Visible = gameplayHudVisible && _ruleMode == RuleMode.Calibration;
 		_debugPanel.Visible = _debugModeEnabled;
 		_debugHeaderLabel.Visible = _debugModeEnabled;
 		_debugLabel.Visible = _debugModeEnabled;
@@ -3356,48 +3418,48 @@ public partial class Main : Node3D
 	{
 		_calibrationFields.Clear();
 
-		AddCalibrationField("Cloth", "Cloth Min X", "OverlayClothLeft", -0.4f, 0.4f, 0.0005f, 0.005f,
+		AddCalibrationField("Cloth", "ClothBounds", "Cloth Bounds", "Cloth Min X", "OverlayClothLeft", -0.4f, 0.4f, 0.0005f, 0.005f,
 			() => _tableCalibrationProfile.ClothMinOffset.X,
 			value => _tableCalibrationProfile.ClothMinOffset.X = value);
-		AddCalibrationField("Cloth", "Cloth Min Y", "OverlayClothTop", -0.4f, 0.4f, 0.0005f, 0.005f,
+		AddCalibrationField("Cloth", "ClothBounds", "Cloth Bounds", "Cloth Min Y", "OverlayClothTop", -0.4f, 0.4f, 0.0005f, 0.005f,
 			() => _tableCalibrationProfile.ClothMinOffset.Y,
 			value => _tableCalibrationProfile.ClothMinOffset.Y = value);
-		AddCalibrationField("Cloth", "Cloth Max X", "OverlayClothRight", -0.4f, 0.4f, 0.0005f, 0.005f,
+		AddCalibrationField("Cloth", "ClothBounds", "Cloth Bounds", "Cloth Max X", "OverlayClothRight", -0.4f, 0.4f, 0.0005f, 0.005f,
 			() => _tableCalibrationProfile.ClothMaxOffset.X,
 			value => _tableCalibrationProfile.ClothMaxOffset.X = value);
-		AddCalibrationField("Cloth", "Cloth Max Y", "OverlayClothBottom", -0.4f, 0.4f, 0.0005f, 0.005f,
+		AddCalibrationField("Cloth", "ClothBounds", "Cloth Bounds", "Cloth Max Y", "OverlayClothBottom", -0.4f, 0.4f, 0.0005f, 0.005f,
 			() => _tableCalibrationProfile.ClothMaxOffset.Y,
 			value => _tableCalibrationProfile.ClothMaxOffset.Y = value);
 
-		AddCalibrationField("Spots", "Cue Ball Spawn X", "OverlayCueBallSpawn", -0.4f, 0.4f, 0.0005f, 0.005f,
+		AddCalibrationField("Spots", "CueBallSpawn", "Cue Ball Spawn", "Cue Ball Spawn X", "OverlayCueBallSpawn", -0.4f, 0.4f, 0.0005f, 0.005f,
 			() => _tableCalibrationProfile.CueBallSpawnOffset.X,
 			value => _tableCalibrationProfile.CueBallSpawnOffset.X = value);
-		AddCalibrationField("Spots", "Cue Ball Spawn Y", "OverlayCueBallSpawn", -0.4f, 0.4f, 0.0005f, 0.005f,
+		AddCalibrationField("Spots", "CueBallSpawn", "Cue Ball Spawn", "Cue Ball Spawn Y", "OverlayCueBallSpawn", -0.4f, 0.4f, 0.0005f, 0.005f,
 			() => _tableCalibrationProfile.CueBallSpawnOffset.Y,
 			value => _tableCalibrationProfile.CueBallSpawnOffset.Y = value);
-		AddCalibrationField("Spots", "Rack Apex X", "OverlayRackApexSpot", -0.4f, 0.4f, 0.0005f, 0.005f,
+		AddCalibrationField("Spots", "RackApexSpot", "Rack Apex Spot", "Rack Apex X", "OverlayRackApexSpot", -0.4f, 0.4f, 0.0005f, 0.005f,
 			() => _tableCalibrationProfile.RackApexSpotOffset.X,
 			value => _tableCalibrationProfile.RackApexSpotOffset.X = value);
-		AddCalibrationField("Spots", "Rack Apex Y", "OverlayRackApexSpot", -0.4f, 0.4f, 0.0005f, 0.005f,
+		AddCalibrationField("Spots", "RackApexSpot", "Rack Apex Spot", "Rack Apex Y", "OverlayRackApexSpot", -0.4f, 0.4f, 0.0005f, 0.005f,
 			() => _tableCalibrationProfile.RackApexSpotOffset.Y,
 			value => _tableCalibrationProfile.RackApexSpotOffset.Y = value);
 
 		foreach (var cushion in _baseTableSpec.Cushions)
 		{
 			var sourceName = cushion.SourceName;
-			AddCalibrationField("Cushions", $"{sourceName} Start X", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
+			AddCalibrationField("Cushions", sourceName, sourceName, $"{sourceName} Start X", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
 				() => _tableCalibrationProfile.Cushions[sourceName].StartOffset.X,
 				value => _tableCalibrationProfile.Cushions[sourceName].StartOffset.X = value);
-			AddCalibrationField("Cushions", $"{sourceName} Start Y", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
+			AddCalibrationField("Cushions", sourceName, sourceName, $"{sourceName} Start Y", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
 				() => _tableCalibrationProfile.Cushions[sourceName].StartOffset.Y,
 				value => _tableCalibrationProfile.Cushions[sourceName].StartOffset.Y = value);
-			AddCalibrationField("Cushions", $"{sourceName} End X", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
+			AddCalibrationField("Cushions", sourceName, sourceName, $"{sourceName} End X", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
 				() => _tableCalibrationProfile.Cushions[sourceName].EndOffset.X,
 				value => _tableCalibrationProfile.Cushions[sourceName].EndOffset.X = value);
-			AddCalibrationField("Cushions", $"{sourceName} End Y", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
+			AddCalibrationField("Cushions", sourceName, sourceName, $"{sourceName} End Y", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
 				() => _tableCalibrationProfile.Cushions[sourceName].EndOffset.Y,
 				value => _tableCalibrationProfile.Cushions[sourceName].EndOffset.Y = value);
-			AddCalibrationField("Cushions", $"{sourceName} Angle", $"Overlay_{sourceName}", -180.0f, 180.0f, 0.1f, 1.0f,
+			AddCalibrationField("Cushions", sourceName, sourceName, $"{sourceName} Angle", $"Overlay_{sourceName}", -180.0f, 180.0f, 0.1f, 1.0f,
 				() => GetAdjustedSegmentAngleDegrees(_baseTableSpec.Cushions, _tableCalibrationProfile.Cushions, sourceName),
 				value => SetAdjustedSegmentAngleDegrees(_baseTableSpec.Cushions, _tableCalibrationProfile.Cushions, sourceName, value));
 		}
@@ -3405,19 +3467,19 @@ public partial class Main : Node3D
 		foreach (var jaw in _baseTableSpec.JawSegments)
 		{
 			var sourceName = jaw.SourceName;
-			AddCalibrationField("Jaws", $"{sourceName} Start X", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
+			AddCalibrationField("Jaws", sourceName, sourceName, $"{sourceName} Start X", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
 				() => _tableCalibrationProfile.Jaws[sourceName].StartOffset.X,
 				value => _tableCalibrationProfile.Jaws[sourceName].StartOffset.X = value);
-			AddCalibrationField("Jaws", $"{sourceName} Start Y", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
+			AddCalibrationField("Jaws", sourceName, sourceName, $"{sourceName} Start Y", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
 				() => _tableCalibrationProfile.Jaws[sourceName].StartOffset.Y,
 				value => _tableCalibrationProfile.Jaws[sourceName].StartOffset.Y = value);
-			AddCalibrationField("Jaws", $"{sourceName} End X", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
+			AddCalibrationField("Jaws", sourceName, sourceName, $"{sourceName} End X", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
 				() => _tableCalibrationProfile.Jaws[sourceName].EndOffset.X,
 				value => _tableCalibrationProfile.Jaws[sourceName].EndOffset.X = value);
-			AddCalibrationField("Jaws", $"{sourceName} End Y", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
+			AddCalibrationField("Jaws", sourceName, sourceName, $"{sourceName} End Y", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
 				() => _tableCalibrationProfile.Jaws[sourceName].EndOffset.Y,
 				value => _tableCalibrationProfile.Jaws[sourceName].EndOffset.Y = value);
-			AddCalibrationField("Jaws", $"{sourceName} Angle", $"Overlay_{sourceName}", -180.0f, 180.0f, 0.1f, 1.0f,
+			AddCalibrationField("Jaws", sourceName, sourceName, $"{sourceName} Angle", $"Overlay_{sourceName}", -180.0f, 180.0f, 0.1f, 1.0f,
 				() => GetAdjustedSegmentAngleDegrees(_baseTableSpec.JawSegments, _tableCalibrationProfile.Jaws, sourceName),
 				value => SetAdjustedSegmentAngleDegrees(_baseTableSpec.JawSegments, _tableCalibrationProfile.Jaws, sourceName, value));
 		}
@@ -3425,16 +3487,16 @@ public partial class Main : Node3D
 		foreach (var pocket in _baseTableSpec.Pockets)
 		{
 			var sourceName = pocket.SourceName;
-			AddCalibrationField("Pockets", $"{sourceName} Center X", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
+			AddCalibrationField("Pockets", sourceName, sourceName, $"{sourceName} Center X", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
 				() => _tableCalibrationProfile.Pockets[sourceName].CenterOffset.X,
 				value => _tableCalibrationProfile.Pockets[sourceName].CenterOffset.X = value);
-			AddCalibrationField("Pockets", $"{sourceName} Center Y", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
+			AddCalibrationField("Pockets", sourceName, sourceName, $"{sourceName} Center Y", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
 				() => _tableCalibrationProfile.Pockets[sourceName].CenterOffset.Y,
 				value => _tableCalibrationProfile.Pockets[sourceName].CenterOffset.Y = value);
-			AddCalibrationField("Pockets", $"{sourceName} Capture Radius", $"Overlay_{sourceName}", -0.05f, 0.05f, 0.0005f, 0.003f,
+			AddCalibrationField("Pockets", sourceName, sourceName, $"{sourceName} Capture Radius", $"Overlay_{sourceName}", -0.05f, 0.05f, 0.0005f, 0.003f,
 				() => _tableCalibrationProfile.Pockets[sourceName].CaptureRadiusOffset,
 				value => _tableCalibrationProfile.Pockets[sourceName].CaptureRadiusOffset = value);
-			AddCalibrationField("Pockets", $"{sourceName} Drop Radius", $"Overlay_{sourceName}", -0.05f, 0.05f, 0.0005f, 0.003f,
+			AddCalibrationField("Pockets", sourceName, sourceName, $"{sourceName} Drop Radius", $"Overlay_{sourceName}", -0.05f, 0.05f, 0.0005f, 0.003f,
 				() => _tableCalibrationProfile.Pockets[sourceName].DropRadiusOffset,
 				value => _tableCalibrationProfile.Pockets[sourceName].DropRadiusOffset = value);
 		}
@@ -3444,11 +3506,26 @@ public partial class Main : Node3D
 			throw new InvalidOperationException("Calibration mode requires at least one calibration field.");
 		}
 
+		_calibrationObjects.Clear();
+		_calibrationObjects.AddRange(_calibrationFields
+			.GroupBy(field => field.ObjectKey, StringComparer.Ordinal)
+			.Select(group => new CalibrationObjectEntry(group.Key, group.First().ObjectLabel))
+			.OrderBy(entry => entry.Label, StringComparer.Ordinal));
+
+		if (string.IsNullOrWhiteSpace(_selectedCalibrationObjectKey) ||
+			!_calibrationObjects.Any(entry => entry.Key == _selectedCalibrationObjectKey))
+		{
+			_selectedCalibrationObjectKey = _calibrationObjects[0].Key;
+		}
+
+		_selectedCalibrationFieldIndex = _calibrationFields.FindIndex(field => field.ObjectKey == _selectedCalibrationObjectKey);
 		_selectedCalibrationFieldIndex = Mathf.Clamp(_selectedCalibrationFieldIndex, 0, _calibrationFields.Count - 1);
 	}
 
 	private void AddCalibrationField(
 		string section,
+		string objectKey,
+		string objectLabel,
 		string label,
 		string overlayTarget,
 		float minimum,
@@ -3458,7 +3535,7 @@ public partial class Main : Node3D
 		Func<float> getter,
 		Action<float> setter)
 	{
-		_calibrationFields.Add(new CalibrationField(section, label, overlayTarget, minimum, maximum, fineStep, coarseStep, getter, setter));
+		_calibrationFields.Add(new CalibrationField(section, objectKey, objectLabel, label, overlayTarget, minimum, maximum, fineStep, coarseStep, getter, setter));
 	}
 
 	private void PopulateCalibrationFieldSelector()
@@ -3470,25 +3547,94 @@ public partial class Main : Node3D
 
 		_syncingTuningControls = true;
 		_tuningFieldSelector.Clear();
-		for (var index = 0; index < _calibrationFields.Count; index++)
+		for (var index = 0; index < _calibrationObjects.Count; index++)
 		{
-			var field = _calibrationFields[index];
-			_tuningFieldSelector.AddItem($"{field.Section} | {field.Label}", index);
+			var calibrationObject = _calibrationObjects[index];
+			_tuningFieldSelector.AddItem(calibrationObject.Label, index);
 		}
 
-		if (_calibrationFields.Count > 0)
+		if (_calibrationObjects.Count > 0)
 		{
-			_tuningFieldSelector.Select(Mathf.Clamp(_selectedCalibrationFieldIndex, 0, _calibrationFields.Count - 1));
+			var selectedObjectIndex = _calibrationObjects.FindIndex(entry => entry.Key == _selectedCalibrationObjectKey);
+			_tuningFieldSelector.Select(Mathf.Clamp(selectedObjectIndex, 0, _calibrationObjects.Count - 1));
 		}
 
 		_syncingTuningControls = false;
 	}
 
+	private void RebuildTuningFieldRows()
+	{
+		if (_tuningFieldsContainer == null)
+		{
+			return;
+		}
+
+		_tuningFieldRows.Clear();
+		ClearChildren(_tuningFieldsContainer);
+		for (var fieldIndex = 0; fieldIndex < _calibrationFields.Count; fieldIndex++)
+		{
+			var field = _calibrationFields[fieldIndex];
+			var rowPanel = new PanelContainer
+			{
+				Name = $"TuningFieldRow_{fieldIndex}",
+				SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+				CustomMinimumSize = new Vector2(0.0f, 74.0f)
+			};
+			rowPanel.AddThemeStyleboxOverride(
+				"panel",
+				CreateHudPanelStyle(
+					new Color(0.06f, 0.08f, 0.12f, 0.92f),
+					new Color(0.22f, 0.33f, 0.44f, 0.95f)));
+			_tuningFieldsContainer.AddChild(rowPanel);
+
+			var rowBox = new VBoxContainer
+			{
+				SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+			};
+			rowBox.AddThemeConstantOverride("separation", 6);
+			rowPanel.AddChild(rowBox);
+
+			var rowLabel = new Label
+			{
+				AutowrapMode = TextServer.AutowrapMode.WordSmart,
+				SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+			};
+			rowLabel.AddThemeFontSizeOverride("font_size", 14);
+			rowBox.AddChild(rowLabel);
+
+			var sliderRow = new HBoxContainer();
+			sliderRow.AddThemeConstantOverride("separation", 8);
+			rowBox.AddChild(sliderRow);
+
+			var slider = new HSlider
+			{
+				SizeFlagsHorizontal = Control.SizeFlags.ExpandFill
+			};
+			var capturedFieldIndex = fieldIndex;
+			slider.ValueChanged += value => OnTuningRowValueChanged(capturedFieldIndex, value);
+			sliderRow.AddChild(slider);
+
+			var valueLabel = new Label
+			{
+				Size = new Vector2(110.0f, 24.0f),
+				CustomMinimumSize = new Vector2(110.0f, 24.0f),
+				HorizontalAlignment = HorizontalAlignment.Right
+			};
+			valueLabel.AddThemeFontSizeOverride("font_size", 13);
+			sliderRow.AddChild(valueLabel);
+
+			_tuningFieldRows.Add(new TuningFieldRow(fieldIndex, rowPanel, rowLabel, slider, valueLabel));
+		}
+	}
+
 	private void SyncCalibrationControls()
 	{
 		if (_tuningFieldSelector == null ||
-			_tuningSliderLabel == null ||
-			_tuningValueSlider == null ||
+			_tuningWindow == null ||
+			_tuningWindowHeaderLabel == null ||
+			_tuningWindowInfoLabel == null ||
+			_tuningScrollContainer == null ||
+			_tuningFieldsContainer == null ||
 			_tuningOverlayLabel == null ||
 			_tuningOverlaySlider == null ||
 			_tuningSaveButton == null ||
@@ -3501,14 +3647,7 @@ public partial class Main : Node3D
 		}
 
 		var calibrationVisible = _ruleMode == RuleMode.Calibration;
-		_tuningFieldSelector.Visible = calibrationVisible;
-		_tuningSliderLabel.Visible = calibrationVisible;
-		_tuningValueSlider.Visible = calibrationVisible;
-		_tuningOverlayLabel.Visible = calibrationVisible;
-		_tuningOverlaySlider.Visible = calibrationVisible;
-		_tuningSaveButton.Visible = calibrationVisible;
-		_tuningReloadButton.Visible = calibrationVisible;
-		_tuningResetButton.Visible = calibrationVisible;
+		_tuningWindow.Visible = calibrationVisible && _hudVisible && !_menuVisible;
 		_aimSpeedTrack.Visible = !calibrationVisible;
 		_aimTipPad.Visible = !calibrationVisible;
 
@@ -3517,39 +3656,72 @@ public partial class Main : Node3D
 			return;
 		}
 
-		var selectedField = GetSelectedCalibrationField();
+		if (_tuningFieldRows.Count != _calibrationFields.Count)
+		{
+			RebuildTuningFieldRows();
+		}
+
+		var selectedObjectLabel = GetSelectedCalibrationObjectLabel();
 		_syncingTuningControls = true;
-		_tuningFieldSelector.Select(Mathf.Clamp(_selectedCalibrationFieldIndex, 0, _calibrationFields.Count - 1));
-		_tuningSliderLabel.Text =
-			$"{selectedField.Label}: {selectedField.GetFormattedValue(_tableCalibrationProfile)} " +
-			$"[{selectedField.Minimum:0.0000} .. {selectedField.Maximum:0.0000}]";
-		_tuningValueSlider.MinValue = selectedField.Minimum;
-		_tuningValueSlider.MaxValue = selectedField.Maximum;
-		_tuningValueSlider.Step = selectedField.FineStep;
-		_tuningValueSlider.Value = selectedField.GetValue();
+		var selectedObjectIndex = _calibrationObjects.FindIndex(entry => entry.Key == _selectedCalibrationObjectKey);
+		_tuningFieldSelector.Select(Mathf.Clamp(selectedObjectIndex, 0, _calibrationObjects.Count - 1));
+		_tuningWindowHeaderLabel.Text = $"Table Tuning | {selectedObjectLabel}";
+		_tuningWindowInfoLabel.Text =
+			"All tuning rows stay visible. The dropdown jumps to one object and highlights its rows.\n" +
+			"Every rail, jaw, pocket, and spot is editable with its own slider set.";
+		for (var rowIndex = 0; rowIndex < _tuningFieldRows.Count; rowIndex++)
+		{
+			var row = _tuningFieldRows[rowIndex];
+			var field = _calibrationFields[row.FieldIndex];
+			var isSelectedObject = field.ObjectKey == _selectedCalibrationObjectKey;
+			row.RowLabel.Text =
+				$"{field.ObjectLabel} | {field.Label}: {field.GetFormattedValue(_tableCalibrationProfile)}  [{field.Minimum:0.0000} .. {field.Maximum:0.0000}]";
+			row.RowLabel.Modulate = isSelectedObject
+				? new Color(1.0f, 0.95f, 0.76f)
+				: new Color(0.89f, 0.95f, 1.0f);
+			row.ValueLabel.Text = field.GetFormattedValue(_tableCalibrationProfile);
+			row.ValueLabel.Modulate = row.RowLabel.Modulate;
+			row.Slider.MinValue = field.Minimum;
+			row.Slider.MaxValue = field.Maximum;
+			row.Slider.Step = field.FineStep;
+			row.Slider.Value = field.GetValue();
+			row.Slider.Modulate = isSelectedObject
+				? new Color(1.0f, 0.97f, 0.82f)
+				: Colors.White;
+			row.Panel.Modulate = isSelectedObject
+				? new Color(1.0f, 0.98f, 0.92f)
+				: Colors.White;
+		}
 		_tuningOverlayLabel.Text = $"Overlay thickness: {_overlayLineThicknessMeters:0.0000} m";
 		_tuningOverlaySlider.Value = _overlayLineThicknessMeters;
+		_tuningOverlayLabel.Visible = true;
+		_tuningOverlaySlider.Visible = true;
+		_tuningSaveButton.Visible = true;
+		_tuningReloadButton.Visible = true;
+		_tuningResetButton.Visible = true;
 		_syncingTuningControls = false;
 	}
 
 	private void OnTuningFieldSelected(long selectedIndex)
 	{
-		if (_syncingTuningControls || selectedIndex < 0 || selectedIndex >= _calibrationFields.Count)
+		if (_syncingTuningControls || selectedIndex < 0 || selectedIndex >= _calibrationObjects.Count)
 		{
 			return;
 		}
 
-		_selectedCalibrationFieldIndex = (int)selectedIndex;
+		_selectedCalibrationObjectKey = _calibrationObjects[(int)selectedIndex].Key;
+		_selectedCalibrationFieldIndex = _calibrationFields.FindIndex(field => field.ObjectKey == _selectedCalibrationObjectKey);
 		_recentRuleNotes.Clear();
-		_recentRuleNotes.Add($"Tuning field: {GetSelectedCalibrationField().Label}");
+		_recentRuleNotes.Add($"Tuning object: {GetSelectedCalibrationObjectLabel()}");
 		BuildHardcodeOverlay();
 		SyncCalibrationControls();
+		EnsureSelectedCalibrationObjectVisible();
 		UpdateStatusLabel(Array.Empty<ShotEvent>());
 	}
 
-	private void OnTuningValueChanged(double value)
+	private void OnTuningRowValueChanged(int fieldIndex, double value)
 	{
-		if (_syncingTuningControls || _ruleMode != RuleMode.Calibration || _calibrationFields.Count == 0)
+		if (_syncingTuningControls || _ruleMode != RuleMode.Calibration)
 		{
 			return;
 		}
@@ -3560,13 +3732,20 @@ public partial class Main : Node3D
 			return;
 		}
 
-		var field = GetSelectedCalibrationField();
+		if (fieldIndex < 0 || fieldIndex >= _calibrationFields.Count)
+		{
+			return;
+		}
+
+		var field = _calibrationFields[fieldIndex];
 		var updatedValue = Mathf.Clamp((float)value, field.Minimum, field.Maximum);
 		if (Mathf.IsEqualApprox(updatedValue, field.GetValue()))
 		{
 			return;
 		}
 
+		_selectedCalibrationObjectKey = field.ObjectKey;
+		_selectedCalibrationFieldIndex = fieldIndex;
 		field.SetValue(updatedValue);
 		ApplyCalibrationProfile($"Tuned {field.Label} -> {field.GetFormattedValue(_tableCalibrationProfile)}");
 	}
@@ -3589,6 +3768,41 @@ public partial class Main : Node3D
 		_recentRuleNotes.Clear();
 		_recentRuleNotes.Add($"Overlay thickness: {_overlayLineThicknessMeters:0.0000} m");
 		UpdateStatusLabel(Array.Empty<ShotEvent>());
+	}
+
+	private void EnsureSelectedCalibrationObjectVisible()
+	{
+		if (_tuningScrollContainer == null || _tuningFieldRows.Count == 0)
+		{
+			return;
+		}
+
+		var targetRow = _tuningFieldRows
+			.FirstOrDefault(row => _calibrationFields[row.FieldIndex].ObjectKey == _selectedCalibrationObjectKey);
+		if (targetRow == null)
+		{
+			return;
+		}
+
+		_tuningScrollContainer.EnsureControlVisible(targetRow.Panel);
+	}
+
+	private IReadOnlyList<CalibrationField> GetSelectedCalibrationObjectFields()
+	{
+		if (string.IsNullOrWhiteSpace(_selectedCalibrationObjectKey))
+		{
+			return Array.Empty<CalibrationField>();
+		}
+
+		return _calibrationFields
+			.Where(field => field.ObjectKey == _selectedCalibrationObjectKey)
+			.ToArray();
+	}
+
+	private string GetSelectedCalibrationObjectLabel()
+	{
+		var selectedIndex = _calibrationObjects.FindIndex(entry => entry.Key == _selectedCalibrationObjectKey);
+		return selectedIndex >= 0 ? _calibrationObjects[selectedIndex].Label : "None";
 	}
 
 	private CalibrationField GetSelectedCalibrationField()
@@ -4379,8 +4593,16 @@ public partial class Main : Node3D
 			return defaultColor;
 		}
 
-		var selectedField = GetSelectedCalibrationField();
-		if (selectedField.OverlayTarget != overlayName)
+		var selectedObjectKey = _selectedCalibrationObjectKey;
+		if (string.IsNullOrWhiteSpace(selectedObjectKey))
+		{
+			return defaultColor;
+		}
+
+		var matchesSelectedObject = _calibrationFields.Any(field =>
+			field.ObjectKey == selectedObjectKey &&
+			field.OverlayTarget == overlayName);
+		if (!matchesSelectedObject)
 		{
 			return defaultColor;
 		}
@@ -4573,10 +4795,39 @@ public partial class Main : Node3D
 		public NumericsVector2? TargetEnd { get; }
 	}
 
+	private sealed class TuningFieldRow
+	{
+		public TuningFieldRow(
+			int fieldIndex,
+			PanelContainer panel,
+			Label rowLabel,
+			HSlider slider,
+			Label valueLabel)
+		{
+			FieldIndex = fieldIndex;
+			Panel = panel;
+			RowLabel = rowLabel;
+			Slider = slider;
+			ValueLabel = valueLabel;
+		}
+
+		public int FieldIndex { get; }
+
+		public PanelContainer Panel { get; }
+
+		public Label RowLabel { get; }
+
+		public HSlider Slider { get; }
+
+		public Label ValueLabel { get; }
+	}
+
 	private sealed class CalibrationField
 	{
 		public CalibrationField(
 			string section,
+			string objectKey,
+			string objectLabel,
 			string label,
 			string overlayTarget,
 			float minimum,
@@ -4587,6 +4838,8 @@ public partial class Main : Node3D
 			Action<float> setter)
 		{
 			Section = section;
+			ObjectKey = objectKey;
+			ObjectLabel = objectLabel;
 			Label = label;
 			OverlayTarget = overlayTarget;
 			Minimum = minimum;
@@ -4598,6 +4851,10 @@ public partial class Main : Node3D
 		}
 
 		public string Section { get; }
+
+		public string ObjectKey { get; }
+
+		public string ObjectLabel { get; }
 
 		public string Label { get; }
 
@@ -4630,6 +4887,8 @@ public partial class Main : Node3D
 			return $"{GetValue():0.0000}";
 		}
 	}
+
+	private readonly record struct CalibrationObjectEntry(string Key, string Label);
 
 	private readonly record struct ComputerShotCandidate(
 		int TargetBallNumber,
