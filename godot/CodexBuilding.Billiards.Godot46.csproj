@@ -1,0 +1,12 @@
+<Project Sdk="Godot.NET.Sdk/4.6.0">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>CodexBuilding.Billiards.Godot46</RootNamespace>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\src\CodexBuilding.Billiards.Core\CodexBuilding.Billiards.Core.csproj" />
+  </ItemGroup>
+</Project>
