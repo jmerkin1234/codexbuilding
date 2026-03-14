@@ -31,6 +31,11 @@ public partial class Main : Node3D
     private const float CueGuideHeightMeters = 0.012f;
     private const float AimGuideThicknessMeters = 0.008f;
     private const float AimGuideHeightMeters = 0.01f;
+    private const float TrainingSelectionRingRadiusMeters = 0.044f;
+    private const float TrainingSelectionRingHeightMeters = 0.02f;
+    private const float TrainingSelectionRingBaseScale = 1.0f;
+    private const float TrainingSelectionRingPulseAmplitude = 0.09f;
+    private const float TrainingSelectionRingPulseSpeed = 4.6f;
     private const float OverlayLineThicknessMeters = 0.01f;
     private const float OverlayLineHeightMeters = 0.008f;
     private const int OverlayPocketSegments = 20;
@@ -77,6 +82,7 @@ public partial class Main : Node3D
     private Node3D _cueRoot = null!;
     private Node3D _guideRoot = null!;
     private Node3D _hardcodeOverlayRoot = null!;
+    private Node3D _trainingSelectionRoot = null!;
     private Node3D _overlayClothRoot = null!;
     private Node3D _overlayCushionRoot = null!;
     private Node3D _overlayJawRoot = null!;
@@ -118,6 +124,7 @@ public partial class Main : Node3D
     private int _cameraPresetIndex = 1;
     private float _cameraZoomScale = 1.0f;
     private float _shotBannerSecondsRemaining;
+    private float _trainingSelectionPulseSeconds;
     private float _aimAngleRadians;
     private float _strikeSpeedMetersPerSecond = 2.0f;
     private Vector2 _tipOffsetNormalized = Vector2.Zero;
@@ -140,6 +147,7 @@ public partial class Main : Node3D
     {
         var deltaSeconds = (float)delta;
         UpdateShotBanner(deltaSeconds);
+        _trainingSelectionPulseSeconds += deltaSeconds;
 
         UpdatePlacementControls(deltaSeconds);
         UpdateShotControls(deltaSeconds);
@@ -252,6 +260,17 @@ public partial class Main : Node3D
         _aimTargetGuide.Mesh = new BoxMesh();
         _aimTargetGuide.MaterialOverride = CreateGuideMaterial(new Color(0.98f, 0.72f, 0.24f));
         _aimTargetGuide.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+
+        _trainingSelectionRoot = EnsureNode<Node3D>(_guideRoot, "TrainingSelectionRoot");
+        ClearChildren(_trainingSelectionRoot);
+        _trainingSelectionRoot.Visible = false;
+        AddOverlayCircle(
+            _trainingSelectionRoot,
+            "TrainingSelectionRing",
+            NumericsVector2.Zero,
+            TrainingSelectionRingRadiusMeters,
+            new Color(0.46f, 0.9f, 0.98f),
+            TrainingSelectionRingHeightMeters);
 
         var hud = EnsureNode<CanvasLayer>(this, "Hud");
         _shotBannerPanel = EnsureNode<Panel>(hud, "ShotBannerPanel");
@@ -1282,6 +1301,7 @@ public partial class Main : Node3D
     private void SyncBallVisuals(IReadOnlyList<BallState> balls)
     {
         var ballRadiusMeters = _tableSpec.BallDiameterMeters * 0.5f;
+        BallState? selectedTrainingBall = null;
 
         foreach (var ball in balls)
         {
@@ -1297,9 +1317,15 @@ public partial class Main : Node3D
             }
 
             ballNode.Position = ToGodotPoint(ball.Position, ballRadiusMeters);
-            var highlightScale = _ruleMode == RuleMode.Training && ball.BallNumber == _trainingSelectedBallNumber ? 1.08f : 1.0f;
-            ballNode.Scale = new Vector3(highlightScale, highlightScale, highlightScale);
+            ballNode.Scale = Vector3.One;
+
+            if (_ruleMode == RuleMode.Training && ball.BallNumber == _trainingSelectedBallNumber)
+            {
+                selectedTrainingBall = ball;
+            }
         }
+
+        UpdateTrainingSelectionHighlight(selectedTrainingBall, ballRadiusMeters);
     }
 
     private void UpdateCueGuide()
@@ -1576,6 +1602,28 @@ public partial class Main : Node3D
     private static string GetPlayerLabel(PlayerSlot player)
     {
         return player == PlayerSlot.PlayerOne ? "Player 1" : "Player 2";
+    }
+
+    private void UpdateTrainingSelectionHighlight(BallState? selectedBall, float ballRadiusMeters)
+    {
+        if (_trainingSelectionRoot == null)
+        {
+            return;
+        }
+
+        var canShowHighlight = _ruleMode == RuleMode.Training &&
+                               CanAdjustPlacement() &&
+                               selectedBall is { IsPocketed: false };
+        _trainingSelectionRoot.Visible = canShowHighlight;
+        if (!canShowHighlight || selectedBall == null)
+        {
+            return;
+        }
+
+        var pulse = TrainingSelectionRingBaseScale +
+                    (Mathf.Sin(_trainingSelectionPulseSeconds * TrainingSelectionRingPulseSpeed) * TrainingSelectionRingPulseAmplitude);
+        _trainingSelectionRoot.Position = ToGodotPoint(selectedBall.Value.Position, ballRadiusMeters + 0.004f);
+        _trainingSelectionRoot.Scale = new Vector3(pulse, 1.0f, pulse);
     }
 
     private string FormatOptionalBallLabel(int? ballNumber)
