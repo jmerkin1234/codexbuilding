@@ -40,4 +40,4 @@ Build a portable custom billiards physics engine in pure C# that can run standal
 
 ## Current Scope
 
-This commit provides the repository scaffold, the first hardcoded table spec seed, and the initial Godot 4.6 project shell. It does not implement live physics yet.
+The repository now has a working portable core scaffold, a passing standalone test scaffold, and a Godot 4.6 adapter that restores and builds with `Godot.NET.Sdk 4.6.0`. It does not implement live physics yet.

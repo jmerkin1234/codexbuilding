@@ -1,2 +1,11 @@
 <Solution>
+  <Folder Name="/godot/">
+    <Project Path="godot/CodexBuilding.Billiards.Godot46.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/CodexBuilding.Billiards.Core/CodexBuilding.Billiards.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CodexBuilding.Billiards.Tests/CodexBuilding.Billiards.Tests.csproj" />
+  </Folder>
 </Solution>

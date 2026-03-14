@@ -17,6 +17,7 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - `CodexBuilding.Billiards.Tests` created for standalone deterministic tests.
 - `godot/` created as the Godot 4.6 adapter/viewer project root.
 - Initial hardcoded table spec seeded from the live Blender scene at `/home/justin/Desktop/customtable_9ft.blend`.
+- `Godot.NET.Sdk 4.6.0` is now resolving and the Godot adapter builds on this machine.
 
 ## Repository Layout
 
