@@ -80,7 +80,13 @@ Scope:
 - pocketed-ball events
 
 9. Deterministic replay and regression coverage
-Status: pending
+Status: complete
+Scope:
+- portable replay trace capture
+- frame-by-frame ball and event snapshots
+- deterministic fingerprint builder
+- locked straight-shot regression signature
+- standalone replay repeatability tests
 
 10. Godot 4.6 visual/gameplay adapter
 Status: pending
@@ -90,4 +96,4 @@ Status: pending
 
 ## Current Focus
 
-Right now the repo is moving from step 8 to step 9. Pocket capture and shot events are in; the next increment is deterministic replay and regression coverage.
+Right now the repo is moving from step 9 to step 10. Deterministic replay and regression locking are in; the next increment is the Godot 4.6 visual/gameplay adapter on top of the portable core.

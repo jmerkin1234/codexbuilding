@@ -349,6 +349,39 @@ public sealed class SimulationWorldTests
         Assert.Contains(result.Events, evt => evt.EventType == ShotEventType.Scratch && evt.BallNumber == 0 && evt.Detail == pocket.SourceName);
     }
 
+    [Fact]
+    public void ReplayRunner_RepeatsSameShotWithSameFingerprint()
+    {
+        var table = CustomTable9FtSpec.Create();
+        var config = CreateReplayConfig();
+        var balls = CreateReplayRack();
+        var shot = new ShotInput(new Vector2(1.0f, 0.02f), 2.4f, new Vector2(0.1f, -0.2f));
+
+        var firstTrace = SimulationReplayRunner.RunShot(table, config, balls, shot, maxSteps: 4096);
+        var secondTrace = SimulationReplayRunner.RunShot(table, config, balls, shot, maxSteps: 4096);
+        var firstFingerprint = SimulationFingerprintBuilder.BuildSha256(firstTrace);
+        var secondFingerprint = SimulationFingerprintBuilder.BuildSha256(secondTrace);
+
+        Assert.True(firstTrace.Completed);
+        Assert.True(secondTrace.Completed);
+        Assert.Equal(firstFingerprint, secondFingerprint);
+    }
+
+    [Fact]
+    public void ReplayRunner_StraightShotFingerprintMatchesRegressionSignature()
+    {
+        var table = CustomTable9FtSpec.Create();
+        var config = CreateReplayConfig();
+        var balls = CreateReplayRack();
+        var shot = new ShotInput(Vector2.UnitX, 2.0f, Vector2.Zero);
+
+        var trace = SimulationReplayRunner.RunShot(table, config, balls, shot, maxSteps: 4096);
+        var fingerprintHash = SimulationFingerprintBuilder.BuildSha256(trace);
+
+        Assert.True(trace.Completed);
+        Assert.Equal("5c7036c30799ce5a34ab8180889c2dfc663fa429cadd5a10d675eb1412ec663f", fingerprintHash);
+    }
+
     private static SimulationWorld CreateShellWorld(Vector2 cueBallVelocity)
     {
         var table = CustomTable9FtSpec.Create();
@@ -453,6 +486,61 @@ public sealed class SimulationWorldTests
 
         var table = CustomTable9FtSpec.Create();
         return new SimulationWorld(table, config, new[] { ball });
+    }
+
+    private static SimulationConfig CreateReplayConfig()
+    {
+        return new SimulationConfig(
+            fixedStepSeconds: 0.01f,
+            settleSpeedThresholdMetersPerSecond: 0.0005f,
+            maxFixedStepsPerAdvance: 64,
+            maxSideSpinRps: 12.0f,
+            maxFollowSpinRps: 10.0f,
+            maxDrawSpinRps: 11.0f,
+            slidingFrictionAccelerationMetersPerSecondSquared: 1.8f,
+            rollingFrictionAccelerationMetersPerSecondSquared: 0.22f,
+            spinDecayRpsPerSecond: 1.2f,
+            rollingMatchToleranceMetersPerSecond: 0.01f,
+            spinSettleThresholdRps: 0.05f,
+            ballCollisionRestitution: 0.96f,
+            maxCollisionIterationsPerStep: 4,
+            boundaryRestitution: 0.9f,
+            maxBoundaryIterationsPerStep: 4);
+    }
+
+    private static BallState[] CreateReplayRack()
+    {
+        return
+        [
+            new BallState(
+                BallNumber: 0,
+                Kind: BallKind.Cue,
+                Position: new Vector2(-0.733902f, 0.002383f),
+                Velocity: Vector2.Zero,
+                Spin: new SpinState(0.0f, 0.0f, 0.0f),
+                IsPocketed: false),
+            new BallState(
+                BallNumber: 1,
+                Kind: BallKind.Solid,
+                Position: new Vector2(0.616941f, 0.0f),
+                Velocity: Vector2.Zero,
+                Spin: new SpinState(0.0f, 0.0f, 0.0f),
+                IsPocketed: false),
+            new BallState(
+                BallNumber: 2,
+                Kind: BallKind.Solid,
+                Position: new Vector2(0.665027f, 0.026363f),
+                Velocity: Vector2.Zero,
+                Spin: new SpinState(0.0f, 0.0f, 0.0f),
+                IsPocketed: false),
+            new BallState(
+                BallNumber: 3,
+                Kind: BallKind.Solid,
+                Position: new Vector2(0.665027f, -0.026363f),
+                Velocity: Vector2.Zero,
+                Spin: new SpinState(0.0f, 0.0f, 0.0f),
+                IsPocketed: false)
+        ];
     }
 
     private static SimulationWorld CreateWorld(Vector2 cueBallVelocity, SpinState spin, SimulationConfig config)

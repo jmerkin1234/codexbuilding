@@ -25,7 +25,9 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - Cushion and pocket-jaw interactions now resolve against explicit hardcoded boundary segments derived from the Blender table reference.
 - Pocket capture now marks balls as pocketed, zeros their motion, and emits `Pocketed` or `Scratch` events.
 - Shot event expansion now covers first cue-ball contact, cushion/jaw contact, pocketed balls, scratch, and settled-shot events.
-- Standalone verification currently covers `25` passing tests across the table spec, fixed-step shell, cue-strike seeding, cloth-motion behavior, ball-ball collision resolution, table-boundary interaction, and pocket/event behavior.
+- Deterministic replay now records per-step frames, cue-strike seeds, and shot events into a portable trace object.
+- Regression coverage now locks a canonical straight-shot SHA-256 fingerprint for deterministic replay validation.
+- Standalone verification on `2026-03-14` covers `27` passing tests across the table spec, fixed-step shell, cue-strike seeding, cloth-motion behavior, ball-ball collision resolution, table-boundary interaction, pocket/event behavior, and replay regression coverage.
 
 ## Repository Layout
 
@@ -67,4 +69,4 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 
 ## Next Step
 
-The next implementation step is deterministic replay and regression coverage.
+The next implementation step is the Godot 4.6 visual adapter and gameplay controls on top of the already-portable core.
