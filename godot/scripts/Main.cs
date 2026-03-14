@@ -67,6 +67,11 @@ public partial class Main : Node3D
     private Node3D _cueRoot = null!;
     private Node3D _guideRoot = null!;
     private Node3D _hardcodeOverlayRoot = null!;
+    private Node3D _overlayClothRoot = null!;
+    private Node3D _overlayCushionRoot = null!;
+    private Node3D _overlayJawRoot = null!;
+    private Node3D _overlayPocketRoot = null!;
+    private Node3D _overlaySpotRoot = null!;
     private Camera3D _camera = null!;
     private Label _statusLabel = null!;
     private Label _debugLabel = null!;
@@ -84,6 +89,11 @@ public partial class Main : Node3D
     private AimPreviewResult? _cachedAimPreview;
     private bool _debugModeEnabled;
     private bool _hardcodeOverlayVisible = true;
+    private bool _overlayClothVisible = true;
+    private bool _overlayCushionVisible = true;
+    private bool _overlayJawVisible = true;
+    private bool _overlayPocketVisible = true;
+    private bool _overlaySpotVisible = true;
     private int _trainingSelectedBallNumber;
     private float _aimAngleRadians;
     private float _strikeSpeedMetersPerSecond = 2.0f;
@@ -132,6 +142,21 @@ public partial class Main : Node3D
                 return;
             case Key.H:
                 ToggleHardcodeOverlay();
+                return;
+            case Key.Key1:
+                ToggleOverlayLayer("Cloth", ref _overlayClothVisible);
+                return;
+            case Key.Key2:
+                ToggleOverlayLayer("Cushions", ref _overlayCushionVisible);
+                return;
+            case Key.Key3:
+                ToggleOverlayLayer("Jaws", ref _overlayJawVisible);
+                return;
+            case Key.Key4:
+                ToggleOverlayLayer("Pockets", ref _overlayPocketVisible);
+                return;
+            case Key.Key5:
+                ToggleOverlayLayer("Spots", ref _overlaySpotVisible);
                 return;
         }
 
@@ -341,6 +366,36 @@ public partial class Main : Node3D
     {
         ClearChildren(_hardcodeOverlayRoot);
 
+        _overlayClothRoot = new Node3D
+        {
+            Name = "OverlayClothRoot"
+        };
+        _hardcodeOverlayRoot.AddChild(_overlayClothRoot);
+
+        _overlayCushionRoot = new Node3D
+        {
+            Name = "OverlayCushionRoot"
+        };
+        _hardcodeOverlayRoot.AddChild(_overlayCushionRoot);
+
+        _overlayJawRoot = new Node3D
+        {
+            Name = "OverlayJawRoot"
+        };
+        _hardcodeOverlayRoot.AddChild(_overlayJawRoot);
+
+        _overlayPocketRoot = new Node3D
+        {
+            Name = "OverlayPocketRoot"
+        };
+        _hardcodeOverlayRoot.AddChild(_overlayPocketRoot);
+
+        _overlaySpotRoot = new Node3D
+        {
+            Name = "OverlaySpotRoot"
+        };
+        _hardcodeOverlayRoot.AddChild(_overlaySpotRoot);
+
         var clothMin = _tableSpec.ClothMin;
         var clothMax = _tableSpec.ClothMax;
         var topLeft = new NumericsVector2(clothMin.X, clothMin.Y);
@@ -348,14 +403,15 @@ public partial class Main : Node3D
         var bottomLeft = new NumericsVector2(clothMin.X, clothMax.Y);
         var bottomRight = new NumericsVector2(clothMax.X, clothMax.Y);
 
-        AddOverlaySegment("OverlayClothTop", topLeft, topRight, new Color(0.76f, 0.92f, 0.98f), 0.020f);
-        AddOverlaySegment("OverlayClothBottom", bottomLeft, bottomRight, new Color(0.76f, 0.92f, 0.98f), 0.020f);
-        AddOverlaySegment("OverlayClothLeft", topLeft, bottomLeft, new Color(0.76f, 0.92f, 0.98f), 0.020f);
-        AddOverlaySegment("OverlayClothRight", topRight, bottomRight, new Color(0.76f, 0.92f, 0.98f), 0.020f);
+        AddOverlaySegment(_overlayClothRoot, "OverlayClothTop", topLeft, topRight, new Color(0.76f, 0.92f, 0.98f), 0.020f);
+        AddOverlaySegment(_overlayClothRoot, "OverlayClothBottom", bottomLeft, bottomRight, new Color(0.76f, 0.92f, 0.98f), 0.020f);
+        AddOverlaySegment(_overlayClothRoot, "OverlayClothLeft", topLeft, bottomLeft, new Color(0.76f, 0.92f, 0.98f), 0.020f);
+        AddOverlaySegment(_overlayClothRoot, "OverlayClothRight", topRight, bottomRight, new Color(0.76f, 0.92f, 0.98f), 0.020f);
 
         foreach (var cushion in _tableSpec.Cushions)
         {
             AddOverlaySegment(
+                _overlayCushionRoot,
                 $"Overlay_{cushion.SourceName}",
                 cushion.Start,
                 cushion.End,
@@ -366,6 +422,7 @@ public partial class Main : Node3D
         foreach (var jaw in _tableSpec.JawSegments)
         {
             AddOverlaySegment(
+                _overlayJawRoot,
                 $"Overlay_{jaw.SourceName}",
                 jaw.Start,
                 jaw.End,
@@ -376,6 +433,7 @@ public partial class Main : Node3D
         foreach (var pocket in _tableSpec.Pockets)
         {
             AddOverlayCircle(
+                _overlayPocketRoot,
                 $"Overlay_{pocket.SourceName}",
                 pocket.Center,
                 pocket.CaptureRadiusMeters,
@@ -383,8 +441,8 @@ public partial class Main : Node3D
                 0.032f);
         }
 
-        AddOverlayCross("OverlayCueBallSpawn", _tableSpec.CueBallSpawn, 0.032f, new Color(0.95f, 0.95f, 0.95f), 0.036f);
-        AddOverlayCross("OverlayRackApexSpot", _tableSpec.RackApexSpot, 0.032f, new Color(0.95f, 0.82f, 0.22f), 0.036f);
+        AddOverlayCross(_overlaySpotRoot, "OverlayCueBallSpawn", _tableSpec.CueBallSpawn, 0.032f, new Color(0.95f, 0.95f, 0.95f), 0.036f);
+        AddOverlayCross(_overlaySpotRoot, "OverlayRackApexSpot", _tableSpec.RackApexSpot, 0.032f, new Color(0.95f, 0.82f, 0.22f), 0.036f);
 
         UpdateOverlayVisibility();
     }
@@ -431,6 +489,16 @@ public partial class Main : Node3D
         _recentRuleNotes.Add(_hardcodeOverlayVisible
             ? "Hardcoded-table overlay visible."
             : "Hardcoded-table overlay hidden.");
+        UpdateStatusLabel(Array.Empty<ShotEvent>());
+    }
+
+    private void ToggleOverlayLayer(string label, ref bool enabled)
+    {
+        enabled = !enabled;
+        _hardcodeOverlayVisible = true;
+        UpdateOverlayVisibility();
+        _recentRuleNotes.Clear();
+        _recentRuleNotes.Add($"Overlay {label}: {(enabled ? "visible" : "hidden")}");
         UpdateStatusLabel(Array.Empty<ShotEvent>());
     }
 
@@ -1024,8 +1092,8 @@ public partial class Main : Node3D
             $"Portable core: {_tableSpec.Name}  Mode: {GetRuleModeLabel()}\n" +
             $"{BuildModeStatusLine()}\n" +
             $"Phase: {_world.Phase}  SimTime: {_world.SimulationTimeSeconds:0.000}s  FixedSteps: {_world.TotalFixedStepsExecuted}\n" +
-            $"CueBall: {cueBallStatus}  Aim: {Mathf.RadToDeg(_aimAngleRadians):0.0} deg  Speed: {_strikeSpeedMetersPerSecond:0.00} m/s  Tip: ({_tipOffsetNormalized.X:0.00}, {_tipOffsetNormalized.Y:0.00})  Overlay: {_hardcodeOverlayVisible}\n" +
-            "Controls: F1 debug  Tab mode  H hardcode overlay  A/D aim  W/S speed  J/L side spin  I/K follow-draw  Arrow keys move selected placement ball  Z/X cycle practice ball  Space shoot  Backspace center tip  R reset\n" +
+            $"CueBall: {cueBallStatus}  Aim: {Mathf.RadToDeg(_aimAngleRadians):0.0} deg  Speed: {_strikeSpeedMetersPerSecond:0.00} m/s  Tip: ({_tipOffsetNormalized.X:0.00}, {_tipOffsetNormalized.Y:0.00})  Overlay: {BuildOverlaySummary()}\n" +
+            "Controls: F1 debug  Tab mode  H hardcode overlay  1 cloth  2 cushions  3 jaws  4 pockets  5 spots  A/D aim  W/S speed  J/L side spin  I/K follow-draw  Arrow keys move selected placement ball  Z/X cycle practice ball  Space shoot  Backspace center tip  R reset\n" +
             $"Recent shot events:\n{recentEventText}\n" +
             $"Rules/training:\n{recentRuleText}";
 
@@ -1062,6 +1130,11 @@ public partial class Main : Node3D
     private void UpdateOverlayVisibility()
     {
         _hardcodeOverlayRoot.Visible = _hardcodeOverlayVisible || _debugModeEnabled;
+        _overlayClothRoot.Visible = _overlayClothVisible;
+        _overlayCushionRoot.Visible = _overlayCushionVisible;
+        _overlayJawRoot.Visible = _overlayJawVisible;
+        _overlayPocketRoot.Visible = _overlayPocketVisible;
+        _overlaySpotRoot.Visible = _overlaySpotVisible;
     }
 
     private void UpdateDebugPanel()
@@ -1100,7 +1173,7 @@ public partial class Main : Node3D
             "Debug Mode\n" +
             $"Table: {_tableSpec.Name}  Source: {_tableSpec.SourceBlendPath}\n" +
             $"Cloth: min={FormatVector(_tableSpec.ClothMin)} max={FormatVector(_tableSpec.ClothMax)}  BallD={_tableSpec.BallDiameterMeters:0.00000}\n" +
-            $"Geometry: cushions={_tableSpec.Cushions.Count} jaws={_tableSpec.JawSegments.Count} pockets={_tableSpec.Pockets.Count} overlay_visible={_hardcodeOverlayRoot.Visible}\n" +
+            $"Geometry: cushions={_tableSpec.Cushions.Count} jaws={_tableSpec.JawSegments.Count} pockets={_tableSpec.Pockets.Count} overlay={BuildOverlaySummary()}\n" +
             $"Config: dt={_config.FixedStepSeconds:0.000000} settle={_config.SettleSpeedThresholdMetersPerSecond:0.0000} slide={_config.SlidingFrictionAccelerationMetersPerSecondSquared:0.000} roll={_config.RollingFrictionAccelerationMetersPerSecondSquared:0.000}\n" +
             $"Config: spin_decay={_config.SpinDecayRpsPerSecond:0.000} ball_rest={_config.BallCollisionRestitution:0.00} rail_rest={_config.BoundaryRestitution:0.00} pair_iter={_config.MaxCollisionIterationsPerStep} rail_iter={_config.MaxBoundaryIterationsPerStep}\n" +
             $"World: phase={_world.Phase} sim_t={_world.SimulationTimeSeconds:0.000} acc={_world.AccumulatorSeconds:0.000000} steps={_world.TotalFixedStepsExecuted} capture={_shotCaptureActive} frames={_capturedShotFrames.Count}\n" +
@@ -1134,7 +1207,15 @@ public partial class Main : Node3D
         return $"({spin.SideSpinRps:0.000},{spin.ForwardSpinRps:0.000},{spin.VerticalSpinRps:0.000})";
     }
 
+    private string BuildOverlaySummary()
+    {
+        return
+            $"{(_hardcodeOverlayRoot.Visible ? "on" : "off")} " +
+            $"[cloth={_overlayClothVisible} cushions={_overlayCushionVisible} jaws={_overlayJawVisible} pockets={_overlayPocketVisible} spots={_overlaySpotVisible}]";
+    }
+
     private void AddOverlaySegment(
+        Node3D parent,
         string name,
         NumericsVector2 start,
         NumericsVector2 end,
@@ -1149,11 +1230,12 @@ public partial class Main : Node3D
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off
         };
 
-        _hardcodeOverlayRoot.AddChild(segmentNode);
+        parent.AddChild(segmentNode);
         SetOverlaySegment(segmentNode, start, end, height);
     }
 
     private void AddOverlayCircle(
+        Node3D parent,
         string namePrefix,
         NumericsVector2 center,
         float radius,
@@ -1167,11 +1249,12 @@ public partial class Main : Node3D
             var start = center + new NumericsVector2(Mathf.Cos(startAngle), Mathf.Sin(startAngle)) * radius;
             var end = center + new NumericsVector2(Mathf.Cos(endAngle), Mathf.Sin(endAngle)) * radius;
 
-            AddOverlaySegment($"{namePrefix}_{segmentIndex:00}", start, end, color, height);
+            AddOverlaySegment(parent, $"{namePrefix}_{segmentIndex:00}", start, end, color, height);
         }
     }
 
     private void AddOverlayCross(
+        Node3D parent,
         string namePrefix,
         NumericsVector2 center,
         float armLength,
@@ -1179,12 +1262,14 @@ public partial class Main : Node3D
         float height)
     {
         AddOverlaySegment(
+            parent,
             $"{namePrefix}_Horizontal",
             center + new NumericsVector2(-armLength, 0.0f),
             center + new NumericsVector2(armLength, 0.0f),
             color,
             height);
         AddOverlaySegment(
+            parent,
             $"{namePrefix}_Vertical",
             center + new NumericsVector2(0.0f, -armLength),
             center + new NumericsVector2(0.0f, armLength),
