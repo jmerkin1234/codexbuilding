@@ -11,6 +11,7 @@ namespace CodexBuilding.Billiards.Godot46;
 public partial class Main : Node3D
 {
     private readonly record struct CameraPreset(string Name, Vector3 Offset);
+    private readonly record struct ShotBannerStyle(Color BackgroundColor, Color BorderColor, Color TextColor);
 
     private enum RuleMode
     {
@@ -82,6 +83,8 @@ public partial class Main : Node3D
     private Node3D _overlayPocketRoot = null!;
     private Node3D _overlaySpotRoot = null!;
     private Camera3D _camera = null!;
+    private Panel _shotBannerPanel = null!;
+    private Label _shotBannerLabel = null!;
     private Panel _statusPanel = null!;
     private Panel _debugPanel = null!;
     private Label _statusLabel = null!;
@@ -108,6 +111,7 @@ public partial class Main : Node3D
     private int _trainingSelectedBallNumber;
     private int _cameraPresetIndex;
     private float _cameraZoomScale = 1.0f;
+    private float _shotBannerSecondsRemaining;
     private float _aimAngleRadians;
     private float _strikeSpeedMetersPerSecond = 2.0f;
     private Vector2 _tipOffsetNormalized = Vector2.Zero;
@@ -129,11 +133,13 @@ public partial class Main : Node3D
     public override void _Process(double delta)
     {
         var deltaSeconds = (float)delta;
+        UpdateShotBanner(deltaSeconds);
 
         UpdatePlacementControls(deltaSeconds);
         UpdateShotControls(deltaSeconds);
 
         var result = _world.Advance(deltaSeconds);
+        ProcessShotFeedbackEvents(result.Events);
         CacheRecentEvents(result.Events);
         CaptureShotFrame(result);
         SyncBallVisuals(_world.Balls);
@@ -242,6 +248,32 @@ public partial class Main : Node3D
         _aimTargetGuide.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
 
         var hud = EnsureNode<CanvasLayer>(this, "Hud");
+        _shotBannerPanel = EnsureNode<Panel>(hud, "ShotBannerPanel");
+        _shotBannerPanel.AnchorLeft = 0.5f;
+        _shotBannerPanel.AnchorRight = 0.5f;
+        _shotBannerPanel.AnchorTop = 1.0f;
+        _shotBannerPanel.AnchorBottom = 1.0f;
+        _shotBannerPanel.OffsetLeft = -310.0f;
+        _shotBannerPanel.OffsetTop = -114.0f;
+        _shotBannerPanel.OffsetRight = 310.0f;
+        _shotBannerPanel.OffsetBottom = -24.0f;
+        _shotBannerPanel.MouseFilter = Control.MouseFilterEnum.Ignore;
+        _shotBannerPanel.Visible = false;
+        _shotBannerPanel.AddThemeStyleboxOverride(
+            "panel",
+            CreateHudPanelStyle(
+                new Color(0.08f, 0.18f, 0.22f, 0.9f),
+                new Color(0.48f, 0.83f, 0.92f, 0.95f)));
+
+        _shotBannerLabel = EnsureNode<Label>(_shotBannerPanel, "ShotBannerLabel");
+        _shotBannerLabel.Position = new Vector2(18.0f, 12.0f);
+        _shotBannerLabel.Size = new Vector2(584.0f, 70.0f);
+        _shotBannerLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        _shotBannerLabel.VerticalAlignment = VerticalAlignment.Center;
+        _shotBannerLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _shotBannerLabel.AddThemeFontSizeOverride("font_size", 22);
+        _shotBannerLabel.Visible = false;
+
         _statusPanel = EnsureNode<Panel>(hud, "StatusPanel");
         _statusPanel.Position = new Vector2(18.0f, 18.0f);
         _statusPanel.Size = new Vector2(780.0f, 354.0f);
@@ -518,6 +550,13 @@ public partial class Main : Node3D
             ResetWorldForNextTurn(cueBallInHand: true, requiresEightBallRespot: false);
         }
 
+        ShowShotBanner(
+            _ruleMode == RuleMode.Training ? "Training freeplay ready." : "Eight-ball mode ready.",
+            new ShotBannerStyle(
+                new Color(0.08f, 0.18f, 0.22f, 0.9f),
+                new Color(0.48f, 0.83f, 0.92f, 0.95f),
+                new Color(0.95f, 0.99f, 1.0f)),
+            1.8f);
         SyncBallVisuals(_world.Balls);
         UpdateCueGuide();
         UpdateStatusLabel(Array.Empty<ShotEvent>());
@@ -755,6 +794,13 @@ public partial class Main : Node3D
             _recentFrameEvents.Clear();
             _recentRuleNotes.Clear();
             _recentRuleNotes.Add(_ruleMode == RuleMode.Training ? "Practice shot started." : "Eight-ball shot started.");
+            ShowShotBanner(
+                _ruleMode == RuleMode.Training ? "Practice shot started" : "Eight-ball shot started",
+                new ShotBannerStyle(
+                    new Color(0.09f, 0.17f, 0.26f, 0.9f),
+                    new Color(0.52f, 0.74f, 0.96f, 0.95f),
+                    new Color(0.94f, 0.98f, 1.0f)),
+                1.4f);
         }
         catch (Exception exception)
         {
@@ -901,6 +947,11 @@ public partial class Main : Node3D
             _recentRuleNotes.Add($"{GetPlayerLabel(turnResult.ShootingPlayer)} continues.");
         }
 
+        ShowShotBanner(
+            BuildEightBallTurnBanner(turnResult),
+            ResolveEightBallBannerStyle(turnResult),
+            ResolveEightBallBannerDuration(turnResult));
+
         if (!turnResult.NextState.IsGameOver)
         {
             ResetWorldForNextTurn(
@@ -928,6 +979,10 @@ public partial class Main : Node3D
         }
 
         _recentRuleNotes.Add("Cue ball can be moved freely.");
+        ShowShotBanner(
+            BuildTrainingTurnBanner(turnResult),
+            ResolveTrainingBannerStyle(turnResult),
+            ResolveTrainingBannerDuration(turnResult));
 
         ResetWorldForNextTurn(
             cueBallInHand: turnResult.CanRepositionCueBallAnywhere,
@@ -1106,6 +1161,57 @@ public partial class Main : Node3D
         {
             var ballText = shotEvent.BallNumber.HasValue ? $" ball={shotEvent.BallNumber.Value}" : string.Empty;
             _recentFrameEvents.Add($"{shotEvent.EventType}{ballText} {shotEvent.Detail}".Trim());
+        }
+    }
+
+    private void ProcessShotFeedbackEvents(IReadOnlyList<ShotEvent> events)
+    {
+        if (events.Count == 0)
+        {
+            return;
+        }
+
+        if (events.Any(shotEvent => shotEvent.EventType == ShotEventType.Scratch))
+        {
+            ShowShotBanner(
+                "Scratch",
+                new ShotBannerStyle(
+                    new Color(0.25f, 0.08f, 0.08f, 0.92f),
+                    new Color(0.96f, 0.41f, 0.34f, 0.98f),
+                    new Color(1.0f, 0.93f, 0.92f)),
+                2.4f);
+            return;
+        }
+
+        var pocketedBalls = events
+            .Where(shotEvent => shotEvent.EventType == ShotEventType.Pocketed && shotEvent.BallNumber is int ballNumber && ballNumber != 0)
+            .Select(shotEvent => shotEvent.BallNumber!.Value)
+            .Distinct()
+            .OrderBy(ballNumber => ballNumber)
+            .ToArray();
+
+        if (pocketedBalls.Length > 0)
+        {
+            ShowShotBanner(
+                $"Pocketed {FormatBallNumberList(pocketedBalls)}",
+                new ShotBannerStyle(
+                    new Color(0.07f, 0.19f, 0.1f, 0.92f),
+                    new Color(0.45f, 0.88f, 0.53f, 0.98f),
+                    new Color(0.93f, 1.0f, 0.94f)),
+                2.1f);
+            return;
+        }
+
+        var firstContact = events.LastOrDefault(shotEvent => shotEvent.EventType == ShotEventType.FirstContact && shotEvent.BallNumber.HasValue);
+        if (firstContact?.BallNumber.HasValue == true)
+        {
+            ShowShotBanner(
+                $"First contact: {FormatBallLabel(firstContact.BallNumber.Value)}",
+                new ShotBannerStyle(
+                    new Color(0.08f, 0.14f, 0.23f, 0.9f),
+                    new Color(0.41f, 0.72f, 0.96f, 0.95f),
+                    new Color(0.94f, 0.98f, 1.0f)),
+                1.3f);
         }
     }
 
@@ -1296,6 +1402,36 @@ public partial class Main : Node3D
         return $"({spin.SideSpinRps:0.000},{spin.ForwardSpinRps:0.000},{spin.VerticalSpinRps:0.000})";
     }
 
+    private void UpdateShotBanner(float deltaSeconds)
+    {
+        if (_shotBannerSecondsRemaining <= 0.0f)
+        {
+            return;
+        }
+
+        _shotBannerSecondsRemaining = Mathf.Max(0.0f, _shotBannerSecondsRemaining - deltaSeconds);
+        if (_shotBannerSecondsRemaining > 0.0f)
+        {
+            return;
+        }
+
+        _shotBannerPanel.Visible = false;
+        _shotBannerLabel.Visible = false;
+        _shotBannerLabel.Text = string.Empty;
+    }
+
+    private void ShowShotBanner(string text, ShotBannerStyle style, float durationSeconds)
+    {
+        _shotBannerSecondsRemaining = Mathf.Max(durationSeconds, 0.2f);
+        _shotBannerPanel.Visible = true;
+        _shotBannerLabel.Visible = true;
+        _shotBannerLabel.Text = text;
+        _shotBannerLabel.Modulate = style.TextColor;
+        _shotBannerPanel.AddThemeStyleboxOverride(
+            "panel",
+            CreateHudPanelStyle(style.BackgroundColor, style.BorderColor));
+    }
+
     private Vector3 GetTableCenter3D()
     {
         var center = (_tableSpec.ClothMin + _tableSpec.ClothMax) * 0.5f;
@@ -1307,6 +1443,142 @@ public partial class Main : Node3D
         return
             $"{(_hardcodeOverlayRoot.Visible ? "on" : "off")} " +
             $"[cloth={_overlayClothVisible} cushions={_overlayCushionVisible} jaws={_overlayJawVisible} pockets={_overlayPocketVisible} spots={_overlaySpotVisible}]";
+    }
+
+    private string BuildEightBallTurnBanner(EightBallTurnResult turnResult)
+    {
+        if (turnResult.NextState.Winner.HasValue)
+        {
+            return $"Winner: {GetPlayerLabel(turnResult.NextState.Winner.Value)}";
+        }
+
+        if (turnResult.IsFoul)
+        {
+            return $"Foul: {string.Join(", ", turnResult.Fouls)}";
+        }
+
+        if (turnResult.RequiresEightBallRespot)
+        {
+            return "8-ball respot required";
+        }
+
+        if (turnResult.AssignedGroup.HasValue)
+        {
+            return $"{GetPlayerLabel(turnResult.ShootingPlayer)} claims {turnResult.AssignedGroup.Value}";
+        }
+
+        if (turnResult.PlayerContinues)
+        {
+            return $"{GetPlayerLabel(turnResult.ShootingPlayer)} continues";
+        }
+
+        if (turnResult.NextState.BallInHandPlayer.HasValue)
+        {
+            return $"Ball in hand: {GetPlayerLabel(turnResult.NextState.BallInHandPlayer.Value)}";
+        }
+
+        return $"Turn to {GetPlayerLabel(turnResult.NextState.CurrentPlayer)}";
+    }
+
+    private static ShotBannerStyle ResolveEightBallBannerStyle(EightBallTurnResult turnResult)
+    {
+        if (turnResult.NextState.Winner.HasValue)
+        {
+            return new ShotBannerStyle(
+                new Color(0.22f, 0.17f, 0.03f, 0.94f),
+                new Color(0.98f, 0.84f, 0.29f, 0.98f),
+                new Color(1.0f, 0.98f, 0.9f));
+        }
+
+        if (turnResult.IsFoul || turnResult.RequiresEightBallRespot)
+        {
+            return new ShotBannerStyle(
+                new Color(0.24f, 0.1f, 0.06f, 0.94f),
+                new Color(0.98f, 0.54f, 0.28f, 0.98f),
+                new Color(1.0f, 0.95f, 0.92f));
+        }
+
+        return new ShotBannerStyle(
+            new Color(0.08f, 0.18f, 0.1f, 0.92f),
+            new Color(0.48f, 0.86f, 0.54f, 0.96f),
+            new Color(0.94f, 1.0f, 0.95f));
+    }
+
+    private static float ResolveEightBallBannerDuration(EightBallTurnResult turnResult)
+    {
+        if (turnResult.NextState.Winner.HasValue)
+        {
+            return 3.6f;
+        }
+
+        if (turnResult.IsFoul || turnResult.RequiresEightBallRespot)
+        {
+            return 2.8f;
+        }
+
+        return 2.2f;
+    }
+
+    private string BuildTrainingTurnBanner(TrainingTurnResult turnResult)
+    {
+        var pocketedObjectBalls = turnResult.Summary.PocketedBallNumbers
+            .Where(ballNumber => ballNumber != 0)
+            .ToArray();
+
+        if (turnResult.RequiresEightBallRespot)
+        {
+            return "Practice: 8-ball respot required";
+        }
+
+        if (pocketedObjectBalls.Length > 0)
+        {
+            return $"Practice pocketed {FormatBallNumberList(pocketedObjectBalls)}";
+        }
+
+        return $"Practice shot {_trainingState.ShotCount} settled";
+    }
+
+    private static ShotBannerStyle ResolveTrainingBannerStyle(TrainingTurnResult turnResult)
+    {
+        var pocketedObjectBalls = turnResult.Summary.PocketedBallNumbers
+            .Where(ballNumber => ballNumber != 0)
+            .ToArray();
+
+        if (turnResult.RequiresEightBallRespot)
+        {
+            return new ShotBannerStyle(
+                new Color(0.24f, 0.1f, 0.06f, 0.94f),
+                new Color(0.98f, 0.54f, 0.28f, 0.98f),
+                new Color(1.0f, 0.95f, 0.92f));
+        }
+
+        if (pocketedObjectBalls.Length > 0)
+        {
+            return new ShotBannerStyle(
+                new Color(0.07f, 0.19f, 0.1f, 0.92f),
+                new Color(0.45f, 0.88f, 0.53f, 0.98f),
+                new Color(0.93f, 1.0f, 0.94f));
+        }
+
+        return new ShotBannerStyle(
+            new Color(0.08f, 0.18f, 0.22f, 0.9f),
+            new Color(0.48f, 0.83f, 0.92f, 0.95f),
+            new Color(0.95f, 0.99f, 1.0f));
+    }
+
+    private static float ResolveTrainingBannerDuration(TrainingTurnResult turnResult)
+    {
+        return turnResult.RequiresEightBallRespot ? 2.6f : 2.0f;
+    }
+
+    private string FormatBallNumberList(IEnumerable<int> ballNumbers)
+    {
+        return string.Join(", ", ballNumbers.Select(FormatBallLabel));
+    }
+
+    private string FormatBallLabel(int ballNumber)
+    {
+        return ballNumber == 0 ? "CueBall" : $"Ball_{ballNumber:00}";
     }
 
     private void AddOverlaySegment(
