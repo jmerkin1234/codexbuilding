@@ -47,6 +47,7 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - `F1` now enables a Godot debug panel that shows live portable-engine data, including table/config values, simulation counters, cue-ball state, selected-ball state, moving-ball counts, preview status, and live tuning state. Debug mode also forces the hardcoded-table overlay visible.
 - The Godot adapter now supports runtime debug tuning of core-physics constants such as cloth friction, spin decay, side-spin drift, ball/rail restitution, tangential transfer, and solver iteration counts, while preserving the current ball layout between changes.
 - The Godot HUD now has a dedicated shot-setup card with speed, tip-offset, and tuning readouts, plus a separate controls/help card toggled with `F6`, so the main status panel no longer has to carry the full control map as raw text.
+- The Godot adapter now opens on a proper start/menu overlay with button-based `EightBall` and `FreePlay` selection, and `Esc` reopens that menu later for resume/reset/return-to-start actions.
 - Validation on `2026-03-14` covers `41` passing standalone tests via `dotnet test`, a successful Godot adapter compile via `dotnet build`, a successful Godot 4.6 Mono `--build-solutions` pass, a clean headless startup pass via `--quit-after 10`, and a verified direct import of `godot/art/customtable_9ft.blend` through Godot’s Blender pipeline.
 
 ## Repository Layout
@@ -92,4 +93,4 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 
 ## Next Step
 
-The next implementation step is broader manual feel-tuning and stronger AI/presentation polish on top of the now live-tunable and cleaner HUD-driven adapter.
+The next implementation step is broader manual feel-tuning and stronger AI/presentation polish on top of the now live-tunable, menu-driven, and cleaner HUD-driven adapter.

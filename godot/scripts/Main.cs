@@ -112,6 +112,16 @@ public partial class Main : Node3D
     private Camera3D _camera = null!;
     private Panel _shotBannerPanel = null!;
     private Label _shotBannerLabel = null!;
+    private ColorRect _menuOverlay = null!;
+    private Panel _menuPanel = null!;
+    private Label _menuTitleLabel = null!;
+    private Label _menuSubtitleLabel = null!;
+    private Label _menuModeLabel = null!;
+    private Button _menuPlayEightBallButton = null!;
+    private Button _menuPlayFreePlayButton = null!;
+    private Button _menuResumeButton = null!;
+    private Button _menuResetButton = null!;
+    private Button _menuReturnToMenuButton = null!;
     private Panel _statusPanel = null!;
     private ColorRect _statusAccentBar = null!;
     private Label _statusHeaderLabel = null!;
@@ -154,6 +164,8 @@ public partial class Main : Node3D
     private bool _overlayPocketVisible = true;
     private bool _overlaySpotVisible = true;
     private bool _helpPanelVisible = true;
+    private bool _menuVisible = true;
+    private bool _sessionStarted;
     private DebugTuningField _selectedTuningField = DebugTuningField.SlidingFriction;
     private int _trainingSelectedBallNumber;
     private int _cameraPresetIndex = 1;
@@ -177,6 +189,7 @@ public partial class Main : Node3D
         BuildHardcodeOverlay();
         BuildBallVisuals();
         ResetSessionForCurrentMode();
+        ReturnToStartMenu();
     }
 
     public override void _Process(double delta)
@@ -184,6 +197,12 @@ public partial class Main : Node3D
         var deltaSeconds = (float)delta;
         UpdateShotBanner(deltaSeconds);
         _trainingSelectionPulseSeconds += deltaSeconds;
+
+        if (_menuVisible)
+        {
+            UpdateStatusLabel(Array.Empty<ShotEvent>());
+            return;
+        }
 
         UpdatePlacementControls(deltaSeconds);
         UpdateShotControls(deltaSeconds);
@@ -202,6 +221,12 @@ public partial class Main : Node3D
     {
         if (@event is not InputEventKey keyEvent || !keyEvent.Pressed || keyEvent.Echo)
         {
+            return;
+        }
+
+        if (keyEvent.Keycode == Key.Escape)
+        {
+            ToggleMenuVisibility();
             return;
         }
 
@@ -264,6 +289,21 @@ public partial class Main : Node3D
             case Key.Key5:
                 ToggleOverlayLayer("Spots", ref _overlaySpotVisible);
                 return;
+        }
+
+        if (_menuVisible)
+        {
+            switch (keyEvent.Keycode)
+            {
+                case Key.Key1:
+                    StartMenuSelection(RuleMode.EightBall);
+                    break;
+                case Key.Key2:
+                    StartMenuSelection(RuleMode.Training);
+                    break;
+            }
+
+            return;
         }
 
         if (_world.Phase == SimulationPhase.Running)
@@ -343,6 +383,70 @@ public partial class Main : Node3D
             TrainingSelectionRingHeightMeters);
 
         var hud = EnsureNode<CanvasLayer>(this, "Hud");
+        _menuOverlay = EnsureNode<ColorRect>(hud, "MenuOverlay");
+        _menuOverlay.AnchorLeft = 0.0f;
+        _menuOverlay.AnchorTop = 0.0f;
+        _menuOverlay.AnchorRight = 1.0f;
+        _menuOverlay.AnchorBottom = 1.0f;
+        _menuOverlay.OffsetLeft = 0.0f;
+        _menuOverlay.OffsetTop = 0.0f;
+        _menuOverlay.OffsetRight = 0.0f;
+        _menuOverlay.OffsetBottom = 0.0f;
+        _menuOverlay.Color = new Color(0.01f, 0.02f, 0.04f, 0.72f);
+
+        _menuPanel = EnsureNode<Panel>(_menuOverlay, "MenuPanel");
+        _menuPanel.AnchorLeft = 0.5f;
+        _menuPanel.AnchorRight = 0.5f;
+        _menuPanel.AnchorTop = 0.5f;
+        _menuPanel.AnchorBottom = 0.5f;
+        _menuPanel.OffsetLeft = -250.0f;
+        _menuPanel.OffsetTop = -225.0f;
+        _menuPanel.OffsetRight = 250.0f;
+        _menuPanel.OffsetBottom = 225.0f;
+        _menuPanel.AddThemeStyleboxOverride(
+            "panel",
+            CreateHudPanelStyle(
+                new Color(0.03f, 0.06f, 0.09f, 0.95f),
+                new Color(0.46f, 0.78f, 0.94f, 0.98f)));
+
+        _menuTitleLabel = EnsureNode<Label>(_menuPanel, "MenuTitleLabel");
+        _menuTitleLabel.Position = new Vector2(24.0f, 20.0f);
+        _menuTitleLabel.Size = new Vector2(452.0f, 38.0f);
+        _menuTitleLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        _menuTitleLabel.AddThemeFontSizeOverride("font_size", 28);
+        _menuTitleLabel.Modulate = new Color(0.95f, 0.99f, 1.0f);
+        _menuTitleLabel.Text = "CodexBuilding Billiards";
+
+        _menuSubtitleLabel = EnsureNode<Label>(_menuPanel, "MenuSubtitleLabel");
+        _menuSubtitleLabel.Position = new Vector2(28.0f, 62.0f);
+        _menuSubtitleLabel.Size = new Vector2(444.0f, 82.0f);
+        _menuSubtitleLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        _menuSubtitleLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _menuSubtitleLabel.AddThemeFontSizeOverride("font_size", 15);
+        _menuSubtitleLabel.Modulate = new Color(0.84f, 0.93f, 0.98f);
+
+        _menuModeLabel = EnsureNode<Label>(_menuPanel, "MenuModeLabel");
+        _menuModeLabel.Position = new Vector2(28.0f, 144.0f);
+        _menuModeLabel.Size = new Vector2(444.0f, 28.0f);
+        _menuModeLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        _menuModeLabel.AddThemeFontSizeOverride("font_size", 16);
+        _menuModeLabel.Modulate = new Color(0.98f, 0.79f, 0.31f);
+
+        _menuPlayEightBallButton = CreateMenuButton(_menuPanel, "MenuPlayEightBallButton", "Play 8-Ball vs Computer", 188.0f);
+        _menuPlayEightBallButton.Pressed += () => StartMenuSelection(RuleMode.EightBall);
+
+        _menuPlayFreePlayButton = CreateMenuButton(_menuPanel, "MenuPlayFreePlayButton", "Open FreePlay", 242.0f);
+        _menuPlayFreePlayButton.Pressed += () => StartMenuSelection(RuleMode.Training);
+
+        _menuResumeButton = CreateMenuButton(_menuPanel, "MenuResumeButton", "Resume Current Table", 296.0f);
+        _menuResumeButton.Pressed += CloseMenu;
+
+        _menuResetButton = CreateMenuButton(_menuPanel, "MenuResetButton", "Reset Current Mode", 350.0f);
+        _menuResetButton.Pressed += ResetCurrentModeFromMenu;
+
+        _menuReturnToMenuButton = CreateMenuButton(_menuPanel, "MenuReturnToMenuButton", "Return To Start Screen", 404.0f);
+        _menuReturnToMenuButton.Pressed += ReturnToStartMenu;
+
         _shotBannerPanel = EnsureNode<Panel>(hud, "ShotBannerPanel");
         _shotBannerPanel.AnchorLeft = 0.5f;
         _shotBannerPanel.AnchorRight = 0.5f;
@@ -761,6 +865,7 @@ public partial class Main : Node3D
         _world.Reset(StandardEightBallRack.Create(_tableSpec));
         _eightBallState = EightBallMatchState.CreateNew();
         _trainingState = TrainingModeState.CreateNew();
+        _sessionStarted = true;
         _computerTurnThinkSeconds = 0.0f;
         _trainingSelectedBallNumber = 0;
         _capturedCueStrike = null;
@@ -797,6 +902,84 @@ public partial class Main : Node3D
     {
         _ruleMode = _ruleMode == RuleMode.EightBall ? RuleMode.Training : RuleMode.EightBall;
         ResetSessionForCurrentMode();
+    }
+
+    private void StartMenuSelection(RuleMode mode)
+    {
+        _ruleMode = mode;
+        ResetSessionForCurrentMode();
+        CloseMenu();
+    }
+
+    private void ResetCurrentModeFromMenu()
+    {
+        ResetSessionForCurrentMode();
+        CloseMenu();
+    }
+
+    private void ReturnToStartMenu()
+    {
+        _menuVisible = true;
+        _sessionStarted = false;
+        _shotBannerSecondsRemaining = 0.0f;
+        _shotBannerPanel.Visible = false;
+        _shotBannerLabel.Visible = false;
+        _recentRuleNotes.Clear();
+        _recentRuleNotes.Add("Start menu opened.");
+        UpdateMenuState();
+        UpdateStatusLabel(Array.Empty<ShotEvent>());
+    }
+
+    private void ToggleMenuVisibility()
+    {
+        if (_menuVisible)
+        {
+            if (_sessionStarted)
+            {
+                CloseMenu();
+            }
+
+            return;
+        }
+
+        _menuVisible = true;
+        _recentRuleNotes.Clear();
+        _recentRuleNotes.Add("Menu opened.");
+        UpdateMenuState();
+        UpdateStatusLabel(Array.Empty<ShotEvent>());
+    }
+
+    private void CloseMenu()
+    {
+        _menuVisible = false;
+        UpdateMenuState();
+        UpdateStatusLabel(Array.Empty<ShotEvent>());
+    }
+
+    private void UpdateMenuState()
+    {
+        _menuOverlay.Visible = _menuVisible;
+        _menuPanel.Visible = _menuVisible;
+
+        if (!_menuVisible)
+        {
+            return;
+        }
+
+        var activeMode = GetRuleModeLabel();
+        _menuSubtitleLabel.Text = _sessionStarted
+            ? "Pause the table, swap modes, or reset without digging through hotkeys. The portable core stays live underneath this menu."
+            : "Choose how you want to play. Eight-ball uses the simple computer opponent; FreePlay leaves the whole table open for practice and layout work.";
+        _menuModeLabel.Text = _sessionStarted
+            ? $"Current mode: {activeMode}  |  Esc closes menu"
+            : $"Start mode: {activeMode}  |  Keyboard: 1 = EightBall, 2 = FreePlay";
+
+        _menuResumeButton.Visible = _sessionStarted;
+        _menuResumeButton.Disabled = !_sessionStarted;
+        _menuResetButton.Visible = _sessionStarted;
+        _menuResetButton.Disabled = !_sessionStarted;
+        _menuReturnToMenuButton.Visible = _sessionStarted;
+        _menuReturnToMenuButton.Disabled = !_sessionStarted;
     }
 
     private void ToggleHardcodeOverlay()
@@ -2092,7 +2275,7 @@ public partial class Main : Node3D
         _helpLabel.Text =
             "Shot: Space shoot  A/D aim  W/S speed  J/L side spin  I/K follow-draw  Backspace center tip\n" +
             "View: C camera preset  Q/E zoom  H hardcode overlay  1-5 overlay layers\n" +
-            "Modes: Tab switch mode  R reset rack/layout  F1 debug  F6 help\n" +
+            "Modes: Esc menu  Tab quick-switch mode  R reset rack/layout  F1 debug  F6 help\n" +
             "Placement: Arrow keys move selected ball when placement is active  Z/X cycle freeplay ball\n" +
             "Debug tune: F2/F3 choose value  F4/F5 adjust  Shift+F4/F5 coarse";
     }
@@ -2253,6 +2436,13 @@ public partial class Main : Node3D
 
     private string BuildStatusHeaderText()
     {
+        if (_menuVisible)
+        {
+            return _sessionStarted
+                ? $"Menu Open | {GetRuleModeLabel()} paused"
+                : "Start Menu | Choose a mode";
+        }
+
         if (_ruleMode == RuleMode.Training)
         {
             return $"FreePlay | Selected {GetTrainingSelectionLabel()} | Cue Ball In Hand";
@@ -3114,6 +3304,21 @@ public partial class Main : Node3D
             EmissionEnergyMultiplier = 1.25f,
             Roughness = 0.15f
         };
+    }
+
+    private static Button CreateMenuButton(Control parent, string name, string text, float top)
+    {
+        var button = new Button
+        {
+            Name = name,
+            Text = text,
+            Position = new Vector2(40.0f, top),
+            Size = new Vector2(420.0f, 42.0f),
+            FocusMode = Control.FocusModeEnum.All
+        };
+        button.AddThemeFontSizeOverride("font_size", 17);
+        parent.AddChild(button);
+        return button;
     }
 
     private static StyleBoxFlat CreateHudPanelStyle(Color backgroundColor, Color borderColor)
