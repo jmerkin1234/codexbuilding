@@ -152,6 +152,14 @@ public partial class Main : Node3D
 	private ColorRect _aimTipHorizontal = null!;
 	private ColorRect _aimTipVertical = null!;
 	private ColorRect _aimTipIndicator = null!;
+	private OptionButton _tuningFieldSelector = null!;
+	private Label _tuningSliderLabel = null!;
+	private HSlider _tuningValueSlider = null!;
+	private Label _tuningOverlayLabel = null!;
+	private HSlider _tuningOverlaySlider = null!;
+	private Button _tuningSaveButton = null!;
+	private Button _tuningReloadButton = null!;
+	private Button _tuningResetButton = null!;
 	private Panel _helpPanel = null!;
 	private Label _helpHeaderLabel = null!;
 	private Label _helpLabel = null!;
@@ -190,6 +198,7 @@ public partial class Main : Node3D
 	private DebugTuningField _selectedTuningField = DebugTuningField.SlidingFriction;
 	private int _selectedCalibrationFieldIndex;
 	private int _trainingSelectedBallNumber;
+	private bool _syncingTuningControls;
 	private int _cameraPresetIndex = 1;
 	private float _cameraZoomScale = 1.0f;
 	private float _overlayLineThicknessMeters = OverlayLineThicknessMeters;
@@ -365,18 +374,6 @@ public partial class Main : Node3D
 		{
 			switch (keyEvent.Keycode)
 			{
-				case Key.Comma:
-					CycleCalibrationField(-1, keyEvent.ShiftPressed);
-					return;
-				case Key.Period:
-					CycleCalibrationField(1, keyEvent.ShiftPressed);
-					return;
-				case Key.Minus:
-					AdjustSelectedCalibrationField(-1, keyEvent.ShiftPressed);
-					return;
-				case Key.Equal:
-					AdjustSelectedCalibrationField(1, keyEvent.ShiftPressed);
-					return;
 				case Key.P:
 					SaveCalibrationProfile();
 					return;
@@ -663,7 +660,7 @@ public partial class Main : Node3D
 		_aimPanel = EnsureNode<Panel>(hud, "AimPanel");
 		_aimPanel.Position = new Vector2(896.0f, 18.0f);
 		_aimPanel.Size = new Vector2(440.0f, 220.0f);
-		_aimPanel.MouseFilter = Control.MouseFilterEnum.Ignore;
+		_aimPanel.MouseFilter = Control.MouseFilterEnum.Pass;
 		_aimPanel.AddThemeStyleboxOverride(
 			"panel",
 			CreateHudPanelStyle(
@@ -717,6 +714,68 @@ public partial class Main : Node3D
 		_aimTipIndicator.Position = new Vector2(64.0f, 64.0f);
 		_aimTipIndicator.Size = new Vector2(12.0f, 12.0f);
 		_aimTipIndicator.Color = new Color(0.99f, 0.79f, 0.28f, 0.98f);
+
+		_tuningFieldSelector = EnsureNode<OptionButton>(_aimPanel, "TuningFieldSelector");
+		_tuningFieldSelector.Position = new Vector2(16.0f, 46.0f);
+		_tuningFieldSelector.Size = new Vector2(392.0f, 28.0f);
+		_tuningFieldSelector.Visible = false;
+		_tuningFieldSelector.ItemSelected += OnTuningFieldSelected;
+
+		_tuningSliderLabel = EnsureNode<Label>(_aimPanel, "TuningSliderLabel");
+		_tuningSliderLabel.Position = new Vector2(16.0f, 82.0f);
+		_tuningSliderLabel.Size = new Vector2(392.0f, 22.0f);
+		_tuningSliderLabel.AddThemeFontSizeOverride("font_size", 14);
+		_tuningSliderLabel.Modulate = new Color(0.89f, 0.95f, 1.0f);
+		_tuningSliderLabel.Visible = false;
+
+		_tuningValueSlider = EnsureNode<HSlider>(_aimPanel, "TuningValueSlider");
+		_tuningValueSlider.Position = new Vector2(16.0f, 108.0f);
+		_tuningValueSlider.Size = new Vector2(392.0f, 24.0f);
+		_tuningValueSlider.MinValue = -0.4;
+		_tuningValueSlider.MaxValue = 0.4;
+		_tuningValueSlider.Step = 0.0005;
+		_tuningValueSlider.Visible = false;
+		_tuningValueSlider.ValueChanged += OnTuningValueChanged;
+
+		_tuningOverlayLabel = EnsureNode<Label>(_aimPanel, "TuningOverlayLabel");
+		_tuningOverlayLabel.Position = new Vector2(16.0f, 140.0f);
+		_tuningOverlayLabel.Size = new Vector2(392.0f, 22.0f);
+		_tuningOverlayLabel.AddThemeFontSizeOverride("font_size", 14);
+		_tuningOverlayLabel.Modulate = new Color(0.89f, 0.95f, 1.0f);
+		_tuningOverlayLabel.Visible = false;
+
+		_tuningOverlaySlider = EnsureNode<HSlider>(_aimPanel, "TuningOverlaySlider");
+		_tuningOverlaySlider.Position = new Vector2(16.0f, 166.0f);
+		_tuningOverlaySlider.Size = new Vector2(392.0f, 24.0f);
+		_tuningOverlaySlider.MinValue = 0.002;
+		_tuningOverlaySlider.MaxValue = 0.04;
+		_tuningOverlaySlider.Step = 0.0005;
+		_tuningOverlaySlider.Visible = false;
+		_tuningOverlaySlider.ValueChanged += OnTuningOverlayThicknessChanged;
+
+		_tuningSaveButton = EnsureNode<Button>(_aimPanel, "TuningSaveButton");
+		_tuningSaveButton.Text = "Save";
+		_tuningSaveButton.Position = new Vector2(16.0f, 194.0f);
+		_tuningSaveButton.Size = new Vector2(122.0f, 22.0f);
+		_tuningSaveButton.AddThemeFontSizeOverride("font_size", 14);
+		_tuningSaveButton.Visible = false;
+		_tuningSaveButton.Pressed += SaveCalibrationProfile;
+
+		_tuningReloadButton = EnsureNode<Button>(_aimPanel, "TuningReloadButton");
+		_tuningReloadButton.Text = "Reload";
+		_tuningReloadButton.Position = new Vector2(151.0f, 194.0f);
+		_tuningReloadButton.Size = new Vector2(122.0f, 22.0f);
+		_tuningReloadButton.AddThemeFontSizeOverride("font_size", 14);
+		_tuningReloadButton.Visible = false;
+		_tuningReloadButton.Pressed += ReloadCalibrationProfile;
+
+		_tuningResetButton = EnsureNode<Button>(_aimPanel, "TuningResetButton");
+		_tuningResetButton.Text = "Reset";
+		_tuningResetButton.Position = new Vector2(286.0f, 194.0f);
+		_tuningResetButton.Size = new Vector2(122.0f, 22.0f);
+		_tuningResetButton.AddThemeFontSizeOverride("font_size", 14);
+		_tuningResetButton.Visible = false;
+		_tuningResetButton.Pressed += ResetCalibrationProfile;
 
 		_helpPanel = EnsureNode<Panel>(hud, "HelpPanel");
 		_helpPanel.Position = new Vector2(896.0f, 256.0f);
@@ -788,6 +847,8 @@ public partial class Main : Node3D
 		_debugLabel.AddThemeColorOverride("font_color", new Color(0.84f, 0.98f, 0.89f));
 		_debugLabel.Visible = false;
 
+		PopulateCalibrationFieldSelector();
+		SyncCalibrationControls();
 		UpdateHudVisibility();
 	}
 
@@ -1235,7 +1296,7 @@ public partial class Main : Node3D
 			return;
 		}
 
-		if ((_debugModeEnabled || _ruleMode == RuleMode.Calibration) && mouseButtonEvent.CtrlPressed)
+		if (_debugModeEnabled && mouseButtonEvent.CtrlPressed)
 		{
 			AdjustOverlayThickness(direction, mouseButtonEvent.ShiftPressed);
 			return;
@@ -2669,17 +2730,37 @@ public partial class Main : Node3D
 		_statusHeaderLabel.Modulate = ResolveStatusAccentColor();
 		_statusAccentBar.Color = ResolveStatusAccentColor();
 
-		_statusLabel.Text =
-			$"Core: {_tableSpec.Name}\n" +
-			$"{BuildModeStatusLine()}\n" +
-			$"Phase: {_world.Phase}  SimTime: {_world.SimulationTimeSeconds:0.000}s  FixedSteps: {_world.TotalFixedStepsExecuted}  Camera: {GetActiveCameraPreset().Name} @ {_cameraZoomScale:0.00}x\n" +
-			$"CueBall: {cueBallStatus}  Overlay: {BuildOverlaySummary()}\n" +
-			$"Recent shot events:\n{recentEventText}\n" +
-			$"Rules/training:\n{recentRuleText}";
+		_statusLabel.Text = BuildStatusBody(cueBallStatus, recentEventText, recentRuleText);
 
 		UpdateAimPanel(cueBall);
 		UpdateHelpPanel();
 		UpdateDebugPanel();
+	}
+
+	private string BuildStatusBody(string cueBallStatus, string recentEventText, string recentRuleText)
+	{
+		var builder = new StringBuilder(1024);
+		builder.AppendLine("MATCH");
+		builder.AppendLine($"  Mode: {GetRuleModeLabel()}");
+		builder.AppendLine($"  State: {BuildModeStatusLine()}");
+		builder.AppendLine();
+		builder.AppendLine("WORLD");
+		builder.AppendLine($"  Phase: {_world.Phase}");
+		builder.AppendLine($"  Sim time: {_world.SimulationTimeSeconds:0.000}s");
+		builder.AppendLine($"  Fixed steps: {_world.TotalFixedStepsExecuted}");
+		builder.AppendLine($"  Camera: {GetActiveCameraPreset().Name} @ {_cameraZoomScale:0.00}x");
+		builder.AppendLine();
+		builder.AppendLine("TABLE");
+		builder.AppendLine($"  Spec: {_tableSpec.Name}");
+		builder.AppendLine($"  Cue ball: {cueBallStatus}");
+		builder.AppendLine($"  Overlay: {BuildOverlaySummary()}");
+		builder.AppendLine();
+		builder.AppendLine("RECENT SHOT EVENTS");
+		builder.AppendLine(IndentBlock(recentEventText, "  "));
+		builder.AppendLine();
+		builder.AppendLine("RULE NOTES");
+		builder.Append(IndentBlock(recentRuleText, "  "));
+		return builder.ToString();
 	}
 
 	private void UpdateAimPanel(BallState cueBall)
@@ -2687,20 +2768,27 @@ public partial class Main : Node3D
 		if (_ruleMode == RuleMode.Calibration)
 		{
 			var selectedField = GetSelectedCalibrationField();
+			SyncCalibrationControls();
 			_aimHeaderLabel.Text = "Tuning Mode";
 			_aimMetricsLabel.Text =
-				$"Selected: {selectedField.Label}\n" +
-				$"Current: {selectedField.GetFormattedValue(_tableCalibrationProfile)}\n" +
-				$"Range: {selectedField.Minimum:0.0000} to {selectedField.Maximum:0.0000}\n" +
-				$"Overlay thickness: {_overlayLineThicknessMeters:0.0000} m\n" +
-				$"Profile: {CalibrationProfilePath}\n" +
-				$"Save: P  Reload: O  Reset: U";
+				"FIELD\n" +
+				$"  Selected: {selectedField.Label}\n" +
+				$"  Value: {selectedField.GetFormattedValue(_tableCalibrationProfile)}\n" +
+				$"  Range: {selectedField.Minimum:0.0000} to {selectedField.Maximum:0.0000}\n" +
+				"  Use the dropdown and slider on the right to change it.\n\n" +
+				"PROFILE\n" +
+				$"  Path: {CalibrationProfilePath}\n" +
+				$"  Overlay thickness: {_overlayLineThicknessMeters:0.0000} m\n" +
+				"  Use the lower slider for overlay thickness.\n\n" +
+				"QUICK ACTIONS\n" +
+				"  Buttons: Save / Reload / Reset";
 			_aimSpeedFill.Size = new Vector2(220.0f, _aimSpeedFill.Size.Y);
 			_aimSpeedFill.Color = new Color(0.96f, 0.74f, 0.32f, 0.98f);
 			_aimTipIndicator.Position = new Vector2(64.0f, 64.0f);
 			return;
 		}
 
+		SyncCalibrationControls();
 		var activeMaximumStrikeSpeed = GetCurrentMaximumStrikeSpeedMetersPerSecond();
 		var speedNormalized = Mathf.InverseLerp(
 			MinimumStrikeSpeedMetersPerSecond,
@@ -2709,13 +2797,16 @@ public partial class Main : Node3D
 		var powerPercent = speedNormalized * 100.0f;
 		_aimHeaderLabel.Text = IsComputerTurnPending() ? "Computer Shot Planning" : "Shot Setup";
 		_aimMetricsLabel.Text =
-			$"Aim angle: {Mathf.RadToDeg(_aimAngleRadians):0.0} deg\n" +
-			$"Strike speed: {_strikeSpeedMetersPerSecond:0.00} / {activeMaximumStrikeSpeed:0.00} m/s\n" +
-			$"Power: {powerPercent:0}%\n" +
-			$"Tip offset: ({_tipOffsetNormalized.X:0.00}, {_tipOffsetNormalized.Y:0.00})\n" +
-			$"Cue ball speed: {cueBall.Velocity.Length():0.000} m/s\n" +
-			$"Selected tune: {GetTuningFieldLabel(_selectedTuningField)}\n" +
-			$"Tune value: {GetSelectedTuningValueText()}";
+			"SHOT\n" +
+			$"  Aim: {Mathf.RadToDeg(_aimAngleRadians):0.0} deg\n" +
+			$"  Strike speed: {_strikeSpeedMetersPerSecond:0.00} / {activeMaximumStrikeSpeed:0.00} m/s\n" +
+			$"  Power: {powerPercent:0}%\n\n" +
+			"TIP / CUE\n" +
+			$"  Tip offset: ({_tipOffsetNormalized.X:0.00}, {_tipOffsetNormalized.Y:0.00})\n" +
+			$"  Cue ball speed: {cueBall.Velocity.Length():0.000} m/s\n\n" +
+			"DEBUG TUNE\n" +
+			$"  Field: {GetTuningFieldLabel(_selectedTuningField)}\n" +
+			$"  Value: {GetSelectedTuningValueText()}";
 
 		_aimSpeedFill.Size = new Vector2(Mathf.Max(8.0f, 220.0f * speedNormalized), _aimSpeedFill.Size.Y);
 		_aimSpeedFill.Color = ResolveAimSpeedColor(speedNormalized);
@@ -2732,21 +2823,61 @@ public partial class Main : Node3D
 		{
 			_helpHeaderLabel.Text = "Controls | Tuning";
 			_helpLabel.Text =
-				"Tuning: ,/. field  Shift+,/. section jump  -/= adjust  Shift+-/= coarse\n" +
-				"Profile: P save  O reload  U reset profile  Ctrl+wheel overlay thickness\n" +
-				"View: C camera preset  Q/E zoom  H hardcode overlay  1-5 overlay layers\n" +
-				"Shot: A/D aim  Mouse wheel fine aim  W/S speed  J/L side spin  I/K follow-draw  Space shoot\n" +
-				"Modes: Esc menu  Tab quick-switch mode  R reset mode  F1 debug window  F6 help  F7 HUD";
+				"TUNING UI\n" +
+				"  Use the dropdown to pick a field.\n" +
+				"  Use the top slider to adjust that field.\n" +
+				"  Use the lower slider to adjust overlay thickness.\n" +
+				"  Use Save / Reload / Reset for the profile.\n\n" +
+				"VIEW\n" +
+				"  C camera preset   Q/E zoom\n" +
+				"  H hardcode overlay   1-5 overlay layers\n\n" +
+				"SHOT / MODE\n" +
+				"  A/D aim   Mouse wheel fine aim\n" +
+				"  W/S speed   J/L side spin   I/K follow-draw   Space shoot\n" +
+				"  Esc menu   Tab quick-switch   R reset mode   F1 debug window   F6 help   F7 HUD\n\n" +
+				"OPTIONAL SHORTCUTS\n" +
+				"  P save   O reload   U reset profile";
 			return;
 		}
 
 		_helpHeaderLabel.Text = _ruleMode == RuleMode.Training ? "Controls | FreePlay" : "Controls | EightBall";
 		_helpLabel.Text =
-			"Shot: Space shoot  A/D aim  Mouse wheel fine aim  W/S speed  J/L side spin  I/K follow-draw  Backspace center tip\n" +
-			"View: C camera preset  Q/E zoom  H hardcode overlay  1-5 overlay layers\n" +
-			"Modes: Esc menu  Tab quick-switch mode  R reset rack/layout  F1 debug window  F6 help  F7 HUD\n" +
-			"Placement: Arrow keys move selected ball when placement is active  Z/X cycle freeplay ball\n" +
-			"Debug tune: F2/F3 choose value  F4/F5 adjust  Shift+F4/F5 coarse  Ctrl+wheel overlay thickness";
+			"SHOT\n" +
+			"  Space shoot   A/D aim   Mouse wheel fine aim\n" +
+			"  W/S speed   J/L side spin   I/K follow-draw   Backspace center tip\n\n" +
+			"VIEW\n" +
+			"  C camera preset   Q/E zoom\n" +
+			"  H hardcode overlay   1-5 overlay layers\n\n" +
+			"MODE / HUD\n" +
+			"  Esc menu   Tab quick-switch   R reset rack/layout\n" +
+			"  F1 debug window   F6 help   F7 HUD\n\n" +
+			"PLACEMENT / DEBUG\n" +
+			"  Arrow keys move selected ball when placement is active\n" +
+			"  Z/X cycle freeplay ball\n" +
+			"  F2/F3 choose tune   F4/F5 adjust   Shift+F4/F5 coarse   Ctrl+wheel overlay thickness";
+	}
+
+	private static string IndentBlock(string text, string prefix)
+	{
+		if (string.IsNullOrWhiteSpace(text))
+		{
+			return prefix + "none";
+		}
+
+		var lines = text.Split('\n');
+		var builder = new StringBuilder(text.Length + (lines.Length * prefix.Length));
+		for (var index = 0; index < lines.Length; index++)
+		{
+			if (index > 0)
+			{
+				builder.Append('\n');
+			}
+
+			builder.Append(prefix);
+			builder.Append(lines[index]);
+		}
+
+		return builder.ToString();
 	}
 
 	private void ResetShotSummary()
@@ -3266,6 +3397,9 @@ public partial class Main : Node3D
 			AddCalibrationField("Cushions", $"{sourceName} End Y", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
 				() => _tableCalibrationProfile.Cushions[sourceName].EndOffset.Y,
 				value => _tableCalibrationProfile.Cushions[sourceName].EndOffset.Y = value);
+			AddCalibrationField("Cushions", $"{sourceName} Angle", $"Overlay_{sourceName}", -180.0f, 180.0f, 0.1f, 1.0f,
+				() => GetAdjustedSegmentAngleDegrees(_baseTableSpec.Cushions, _tableCalibrationProfile.Cushions, sourceName),
+				value => SetAdjustedSegmentAngleDegrees(_baseTableSpec.Cushions, _tableCalibrationProfile.Cushions, sourceName, value));
 		}
 
 		foreach (var jaw in _baseTableSpec.JawSegments)
@@ -3283,6 +3417,9 @@ public partial class Main : Node3D
 			AddCalibrationField("Jaws", $"{sourceName} End Y", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
 				() => _tableCalibrationProfile.Jaws[sourceName].EndOffset.Y,
 				value => _tableCalibrationProfile.Jaws[sourceName].EndOffset.Y = value);
+			AddCalibrationField("Jaws", $"{sourceName} Angle", $"Overlay_{sourceName}", -180.0f, 180.0f, 0.1f, 1.0f,
+				() => GetAdjustedSegmentAngleDegrees(_baseTableSpec.JawSegments, _tableCalibrationProfile.Jaws, sourceName),
+				value => SetAdjustedSegmentAngleDegrees(_baseTableSpec.JawSegments, _tableCalibrationProfile.Jaws, sourceName, value));
 		}
 
 		foreach (var pocket in _baseTableSpec.Pockets)
@@ -3322,6 +3459,136 @@ public partial class Main : Node3D
 		Action<float> setter)
 	{
 		_calibrationFields.Add(new CalibrationField(section, label, overlayTarget, minimum, maximum, fineStep, coarseStep, getter, setter));
+	}
+
+	private void PopulateCalibrationFieldSelector()
+	{
+		if (_tuningFieldSelector == null)
+		{
+			return;
+		}
+
+		_syncingTuningControls = true;
+		_tuningFieldSelector.Clear();
+		for (var index = 0; index < _calibrationFields.Count; index++)
+		{
+			var field = _calibrationFields[index];
+			_tuningFieldSelector.AddItem($"{field.Section} | {field.Label}", index);
+		}
+
+		if (_calibrationFields.Count > 0)
+		{
+			_tuningFieldSelector.Select(Mathf.Clamp(_selectedCalibrationFieldIndex, 0, _calibrationFields.Count - 1));
+		}
+
+		_syncingTuningControls = false;
+	}
+
+	private void SyncCalibrationControls()
+	{
+		if (_tuningFieldSelector == null ||
+			_tuningSliderLabel == null ||
+			_tuningValueSlider == null ||
+			_tuningOverlayLabel == null ||
+			_tuningOverlaySlider == null ||
+			_tuningSaveButton == null ||
+			_tuningReloadButton == null ||
+			_tuningResetButton == null ||
+			_aimSpeedTrack == null ||
+			_aimTipPad == null)
+		{
+			return;
+		}
+
+		var calibrationVisible = _ruleMode == RuleMode.Calibration;
+		_tuningFieldSelector.Visible = calibrationVisible;
+		_tuningSliderLabel.Visible = calibrationVisible;
+		_tuningValueSlider.Visible = calibrationVisible;
+		_tuningOverlayLabel.Visible = calibrationVisible;
+		_tuningOverlaySlider.Visible = calibrationVisible;
+		_tuningSaveButton.Visible = calibrationVisible;
+		_tuningReloadButton.Visible = calibrationVisible;
+		_tuningResetButton.Visible = calibrationVisible;
+		_aimSpeedTrack.Visible = !calibrationVisible;
+		_aimTipPad.Visible = !calibrationVisible;
+
+		if (!calibrationVisible || _calibrationFields.Count == 0)
+		{
+			return;
+		}
+
+		var selectedField = GetSelectedCalibrationField();
+		_syncingTuningControls = true;
+		_tuningFieldSelector.Select(Mathf.Clamp(_selectedCalibrationFieldIndex, 0, _calibrationFields.Count - 1));
+		_tuningSliderLabel.Text =
+			$"{selectedField.Label}: {selectedField.GetFormattedValue(_tableCalibrationProfile)} " +
+			$"[{selectedField.Minimum:0.0000} .. {selectedField.Maximum:0.0000}]";
+		_tuningValueSlider.MinValue = selectedField.Minimum;
+		_tuningValueSlider.MaxValue = selectedField.Maximum;
+		_tuningValueSlider.Step = selectedField.FineStep;
+		_tuningValueSlider.Value = selectedField.GetValue();
+		_tuningOverlayLabel.Text = $"Overlay thickness: {_overlayLineThicknessMeters:0.0000} m";
+		_tuningOverlaySlider.Value = _overlayLineThicknessMeters;
+		_syncingTuningControls = false;
+	}
+
+	private void OnTuningFieldSelected(long selectedIndex)
+	{
+		if (_syncingTuningControls || selectedIndex < 0 || selectedIndex >= _calibrationFields.Count)
+		{
+			return;
+		}
+
+		_selectedCalibrationFieldIndex = (int)selectedIndex;
+		_recentRuleNotes.Clear();
+		_recentRuleNotes.Add($"Tuning field: {GetSelectedCalibrationField().Label}");
+		BuildHardcodeOverlay();
+		SyncCalibrationControls();
+		UpdateStatusLabel(Array.Empty<ShotEvent>());
+	}
+
+	private void OnTuningValueChanged(double value)
+	{
+		if (_syncingTuningControls || _ruleMode != RuleMode.Calibration || _calibrationFields.Count == 0)
+		{
+			return;
+		}
+
+		if (_world.Phase == SimulationPhase.Running || _shotCaptureActive)
+		{
+			SyncCalibrationControls();
+			return;
+		}
+
+		var field = GetSelectedCalibrationField();
+		var updatedValue = Mathf.Clamp((float)value, field.Minimum, field.Maximum);
+		if (Mathf.IsEqualApprox(updatedValue, field.GetValue()))
+		{
+			return;
+		}
+
+		field.SetValue(updatedValue);
+		ApplyCalibrationProfile($"Tuned {field.Label} -> {field.GetFormattedValue(_tableCalibrationProfile)}");
+	}
+
+	private void OnTuningOverlayThicknessChanged(double value)
+	{
+		if (_syncingTuningControls || _ruleMode != RuleMode.Calibration)
+		{
+			return;
+		}
+
+		var updatedThickness = Mathf.Clamp((float)value, 0.002f, 0.04f);
+		if (Mathf.IsEqualApprox(updatedThickness, _overlayLineThicknessMeters))
+		{
+			return;
+		}
+
+		_overlayLineThicknessMeters = updatedThickness;
+		BuildHardcodeOverlay();
+		_recentRuleNotes.Clear();
+		_recentRuleNotes.Add($"Overlay thickness: {_overlayLineThicknessMeters:0.0000} m");
+		UpdateStatusLabel(Array.Empty<ShotEvent>());
 	}
 
 	private CalibrationField GetSelectedCalibrationField()
@@ -3405,6 +3672,7 @@ public partial class Main : Node3D
 	{
 		_tableCalibrationProfile = TableCalibrationProfile.LoadOrDefault(GetCalibrationProfileAbsolutePath(), _baseTableSpec);
 		BuildCalibrationFields();
+		PopulateCalibrationFieldSelector();
 		ApplyCalibrationProfile("Reloaded tuning profile.");
 	}
 
@@ -3412,6 +3680,7 @@ public partial class Main : Node3D
 	{
 		_tableCalibrationProfile = TableCalibrationProfile.CreateDefault(_baseTableSpec);
 		BuildCalibrationFields();
+		PopulateCalibrationFieldSelector();
 		ApplyCalibrationProfile("Reset tuning profile to source values.");
 	}
 
@@ -3422,6 +3691,52 @@ public partial class Main : Node3D
 		MarkAimPreviewDirty();
 		SyncBallVisuals(_world.Balls);
 		UpdateCueGuide();
+		SyncCalibrationControls();
+	}
+
+	private static float GetAdjustedSegmentAngleDegrees(
+		IReadOnlyList<CushionSegment> baseSegments,
+		IReadOnlyDictionary<string, SegmentCalibration> calibrations,
+		string sourceName)
+	{
+		var baseSegment = baseSegments.First(segment => segment.SourceName == sourceName);
+		calibrations.TryGetValue(sourceName, out var calibration);
+		var start = baseSegment.Start + (calibration?.StartOffset.ToNumerics() ?? NumericsVector2.Zero);
+		var end = baseSegment.End + (calibration?.EndOffset.ToNumerics() ?? NumericsVector2.Zero);
+		var direction = end - start;
+		if (direction.LengthSquared() <= 0.000001f)
+		{
+			return 0.0f;
+		}
+
+		return Mathf.RadToDeg(MathF.Atan2(direction.Y, direction.X));
+	}
+
+	private static void SetAdjustedSegmentAngleDegrees(
+		IReadOnlyList<CushionSegment> baseSegments,
+		IDictionary<string, SegmentCalibration> calibrations,
+		string sourceName,
+		float angleDegrees)
+	{
+		var baseSegment = baseSegments.First(segment => segment.SourceName == sourceName);
+		if (!calibrations.TryGetValue(sourceName, out var calibration))
+		{
+			calibration = new SegmentCalibration();
+			calibrations[sourceName] = calibration;
+		}
+
+		var currentStart = baseSegment.Start + calibration.StartOffset.ToNumerics();
+		var currentEnd = baseSegment.End + calibration.EndOffset.ToNumerics();
+		var midpoint = (currentStart + currentEnd) * 0.5f;
+		var halfLength = NumericsVector2.Distance(currentStart, currentEnd) * 0.5f;
+		var angleRadians = Mathf.DegToRad(angleDegrees);
+		var direction = new NumericsVector2(Mathf.Cos(angleRadians), Mathf.Sin(angleRadians));
+		var newStart = midpoint - (direction * halfLength);
+		var newEnd = midpoint + (direction * halfLength);
+		calibration.StartOffset.X = newStart.X - baseSegment.Start.X;
+		calibration.StartOffset.Y = newStart.Y - baseSegment.Start.Y;
+		calibration.EndOffset.X = newEnd.X - baseSegment.End.X;
+		calibration.EndOffset.Y = newEnd.Y - baseSegment.End.Y;
 	}
 
 	private SimulationConfig CreateAdjustedConfig(

@@ -22,7 +22,7 @@ Current behavior:
 - The Godot project copy of `customtable_9ft.blend` now has `Tableslate` custom normals cleared and `Tableslate`, `Tableframe`, `CueStick`, and `rail_upper_right` triangulated so Godot can generate tangents and preserve the imported shading more faithfully.
 - Godot now imports the ball textures lossless with mipmaps disabled, and the project render settings now keep 3D at native scale with TAA and screen-space AA disabled plus `MSAA 3D` enabled for a sharper standalone desktop result.
 - The render setup now preserves the imported Blender light and layers in a procedural sky plus fill/rim lighting, so chrome and glossy ball materials have stronger reflections than the earlier flat fallback lighting.
-- The adapter now has a separate `Tuning` mode for table calibration. It is not tied to the debug window and instead persists calibration offsets in `user://table_calibration.json`, rebuilds the hardcoded `TableSpec`, keeps the overlay visible, and highlights the active calibration target in the main play HUD.
+- The adapter now has a separate `Tuning` mode for table calibration. It is not tied to the debug window and instead persists calibration offsets in `user://table_calibration.json`, rebuilds the hardcoded `TableSpec`, keeps the overlay visible, highlights the active calibration target in the main play HUD, and uses direct HUD controls instead of keyboard-only value nudging.
 - The portable core now includes modest cloth side-spin drift/scrub, tangential spin transfer in ball-ball contact, controlled follow/draw carry-through after object contact, angle-aware rail rebound tuning, and a separate rail-english transfer term for stronger cushion spin response; Godot only mirrors the resulting state.
 - The portable core now also uses a mouth/drop-based pocket model derived from hardcoded jaw geometry, with an added slow-speed lip-hang rule so edge-hangers can stay up while center-line rollers still fall.
 - The adapter captures live shot traces and resolves them through the portable `Rules` layer.
@@ -34,7 +34,7 @@ Current behavior:
 - `H` toggles a hardcoded-table overlay sourced from `TableSpec` that shows cloth bounds, cushion segments, jaw segments, pocket capture circles, and cue/rack reference spots.
 - `1` through `5` now toggle the cloth, cushion, jaw, pocket, and spot overlay sublayers independently.
 - The adapter now starts in an orthographic top-down main camera preset, and `C` still cycles between broadcast, top-down, foot-rail, and side-rail camera presets while `Q/E` zoom the active preset in and out.
-- The HUD now uses dedicated framed status and debug panels instead of raw overlay labels.
+- The HUD now uses dedicated framed status and debug panels instead of raw overlay labels, and the main status/shot cards are now grouped into the same sectioned style as the detached debug readout.
 - The shot-setup panel now shows shot power as a percentage of the active speed cap in addition to the raw strike speed.
 - Mouse wheel now provides fine aim nudging, and `Ctrl + mouse wheel` in debug mode adjusts the hardcoded overlay thickness live.
 - The HUD now also keeps a dedicated last-shot summary panel for completed eight-ball and training/freeplay shots.
@@ -51,6 +51,8 @@ Current behavior:
 - `F1` toggles a detached debug window with live portable-engine data such as `SimulationConfig` values, world counters, cue-ball state, selected-ball state, moving-ball counts, preview lengths, and active debug-tuning state. That separate play-mode window can be moved to another monitor, and debug mode still forces the hardcoded-table overlay visible.
 - The project now disables embedded subwindows so the debug view can become a native OS window; if you still use Godot editor embedded play, the editor itself can still keep the whole game trapped inside the editor pane.
 - Debug mode now supports live tuning of key portable-physics constants, including ball follow/draw carry, glancing rail restitution, tangential rail retention, and rail-english transfer, and immediately rebuilds `SimulationWorld` with the current ball layout after each change. Table-geometry calibration is handled separately in `Tuning` mode.
+- `Tuning` mode now uses a dropdown for calibration-field selection, a main slider for the selected field value, a second slider for overlay thickness, and Save/Reload/Reset buttons directly in the shot-setup card.
+- Cushion and jaw calibration fields now include both endpoint coordinates and direct segment-angle controls, so rails and jaws can be aligned either by moving endpoints or by rotating the segment around its current midpoint.
 
 Verification on `2026-03-14`:
 
@@ -87,10 +89,13 @@ Keyboard controls:
 - `Space`: shoot
 - `Backspace`: center the tip offset
 - `R`: reset the standard rack
-- `,/.`: previous or next tuning field in `Tuning` mode
-- `Shift + ,/.`: jump to previous or next tuning section in `Tuning` mode
-- `- / =`: decrease or increase the selected tuning field in `Tuning` mode
-- `Shift + - / =`: coarse decrease or increase in `Tuning` mode
 - `P`: save `user://table_calibration.json` in `Tuning` mode
 - `O`: reload the saved tuning profile in `Tuning` mode
 - `U`: reset the tuning profile back to hardcoded source values in `Tuning` mode
+
+Tuning UI:
+
+- Field dropdown: choose the active cloth, spot, cushion, jaw, or pocket field
+- Main slider: adjust the selected field value
+- Overlay slider: adjust hardcoded overlay thickness
+- Save / Reload / Reset buttons: persist or restore `user://table_calibration.json`
