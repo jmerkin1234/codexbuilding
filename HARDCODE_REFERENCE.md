@@ -21,6 +21,20 @@ This file tracks the compile-time geometry and seed constants that the portable 
 - Cue ball spawn seed: `(-0.733902, 0.002383)`
 - Rack apex seed: `(0.616941, 0.0)`
 
+## Hardcoded Godot Adapter Values
+
+These are not physics-authority geometry values, but they are still hardcoded compile-time constants in the Godot 4.6 adapter and should stay documented here when they change.
+
+- Cue stick tip gap target: `0.03 m`
+- Default strike speed: `2.2 m/s`
+- Regular shot speed cap: `5.0 m/s`
+- Break shot speed cap: `8.0 m/s`
+- Overlay line thickness default: `1.5 px`
+- Overlay line thickness min/max: `0.5 px` to `2.0 px`
+- Aim-preview guide thickness: `2.0 px`
+- Aim-preview post-contact frames: `48`
+- Aim-preview max simulation steps: `360`
+
 ## Hardcoded Cushion Seeds
 
 - `rail_head`
