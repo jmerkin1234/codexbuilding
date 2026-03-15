@@ -47,8 +47,8 @@ public partial class Main : Node3D
 	private const float BallVisualTeleportResetMeters = 0.4f;
 	private const float CueStickTipGapMeters = 0.03f;
 	private const float CueStickPowerPullbackMeters = 0.18f;
-	private const int AimPreviewPostInteractionFrames = 48;
-	private const int AimPreviewMaxSteps = 360;
+	private const int AimPreviewPostInteractionFrames = 96;
+	private const int AimPreviewMaxSteps = 720;
 
 	private readonly Color[] _ballPalette =
 	[

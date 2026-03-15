@@ -43,8 +43,8 @@ These are not physics-authority geometry values, but they are still hardcoded co
 - Overlay line thickness default: `1.5 px`
 - Overlay line thickness min/max: `0.5 px` to `2.0 px`
 - Aim-preview guide thickness: `2.0 px`
-- Aim-preview post-contact frames: `48`
-- Aim-preview max simulation steps: `360`
+- Aim-preview post-contact frames: `96`
+- Aim-preview max simulation steps: `720`
 
 ## Hardcoded Cushion Segments
 

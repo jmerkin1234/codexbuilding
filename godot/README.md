@@ -32,7 +32,7 @@ Current behavior:
 - The HUD now shows mode, current player, group assignment, ball-in-hand, winner, and recent rules outcomes.
 - Cue-ball-in-hand and freeplay placement are handled in the adapter with arrow-key repositioning, while the portable core remains the physics authority.
 - Predictive guide meshes are generated from cloned portable simulations, including the primary cue path, post-bounce/post-collision cue continuation, and first-contact object-ball path.
-- Those predictive guide lines now render at a fixed `2 px` screen thickness and keep a longer post-contact preview span so the white, cyan, and target-path lines extend farther in shot setup.
+- Those predictive guide lines now render at a fixed `2 px` screen thickness and now keep a doubled post-contact preview span so the white, cyan, and target-path lines extend much farther in shot setup.
 - FreePlay supports layout editing by cycling the selected ball and moving it around the cloth.
 - `H` toggles a hardcoded-table overlay sourced from `TableSpec` that shows cloth bounds, cushion segments, jaw segments, pocket capture circles, and cue/rack reference spots.
 - `1` through `5` now toggle the cloth, cushion, jaw, pocket, and spot overlay sublayers independently.

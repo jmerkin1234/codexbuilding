@@ -58,7 +58,7 @@ Portable custom billiards physics in pure C#, with Godot 4.6 used only as a view
 - Training mode now exists as a separate portable rules path with free cue-ball repositioning and optional 8-ball respot flow for freeplay layouts.
 - The Godot adapter now records live shot traces, resolves them through the portable rules layer, supports `Tab` switching between 8-ball versus computer and freeplay, exposes cue-ball-in-hand placement with arrow keys, and shows mode/rules state directly in the HUD.
 - The Godot adapter now renders predictive aim guides from cloned portable simulations: a primary cue line, a post-bounce or post-collision cue continuation line, and an object-ball line after first contact.
-- The predictive aim-guide lines now render at a true `2 px` screen thickness and keep a longer post-contact/post-rail preview window, so the white, cyan, and target-path lines are easier to read during shot planning.
+- The predictive aim-guide lines now render at a true `2 px` screen thickness and keep a doubled post-contact/post-rail preview window, so the white, cyan, and target-path lines extend much farther during shot planning.
 - Freeplay now supports free layout adjustment with `Z/X` ball selection and arrow-key movement for the selected ball.
 - The Godot adapter now includes a toggleable hardcoded-table overlay that draws the cloth bounds, cushion segments, jaw segments, pocket capture circles, and cue/rack reference spots directly from `TableSpec`.
 - The hardcoded-table overlay now has per-layer toggles for cloth, cushions, jaws, pockets, and reference spots so geometry inspection is no longer all-or-nothing.
