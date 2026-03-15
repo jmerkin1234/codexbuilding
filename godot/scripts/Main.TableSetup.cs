@@ -154,7 +154,7 @@ public partial class Main
 
 		foreach (var ball in _world.Balls.OrderBy(ball => ball.BallNumber))
 		{
-			if (_ballsRoot.GetNodeOrNull<MeshInstance3D>(GetBallNodeName(ball)) is { } existingBallNode)
+			if (FindNodeRecursive<MeshInstance3D>(_ballsRoot, GetBallNodeName(ball)) is { } existingBallNode)
 			{
 				_ballVisuals.Add(ball.BallNumber, existingBallNode);
 				_ballVisualBaseRotations[ball.BallNumber] = existingBallNode.Quaternion;
@@ -392,6 +392,29 @@ public partial class Main
 		};
 		parent.AddChild(created);
 		return created;
+	}
+
+	private static T? FindNodeRecursive<T>(Node parent, string name) where T : Node
+	{
+		if (parent is T typedParent && parent.Name == name)
+		{
+			return typedParent;
+		}
+
+		foreach (Node child in parent.GetChildren())
+		{
+			if (child is T typedChild && child.Name == name)
+			{
+				return typedChild;
+			}
+
+			if (FindNodeRecursive<T>(child, name) is { } nested)
+			{
+				return nested;
+			}
+		}
+
+		return null;
 	}
 
 	private static void ClearChildren(Node parent)

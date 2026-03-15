@@ -14,50 +14,50 @@ public static class CustomTable9FtSpec
         {
             CreateSegment(
                 "rail_head",
-                new Vector2(-1.2249266f, -0.56977034f),
-                new Vector2(-1.2249266f, 0.57038474f),
+                new Vector2(-1.2249266f, -0.51401377f),
+                new Vector2(-1.2249266f, 0.51462537f),
                 tableCenter),
             CreateSegment(
                 "rail_foot",
-                new Vector2(1.2258036f, -0.5681504f),
-                new Vector2(1.2258036f, 0.5702276f),
+                new Vector2(1.2258036f, -0.5123930f),
+                new Vector2(1.2258036f, 0.51447380f),
                 tableCenter),
             CreateSegment(
                 "rail_upper_left",
-                new Vector2(-1.2068906f, -0.59292513f),
-                new Vector2(-0.050392687f, -0.59292513f),
+                new Vector2(-1.1487218f, -0.5934566f),
+                new Vector2(-0.062250376f, -0.5934566f),
                 tableCenter),
             CreateSegment(
                 "rail_upper_right",
-                new Vector2(0.050399005f, -0.59292495f),
-                new Vector2(1.2069001f, -0.59292495f),
+                new Vector2(0.062256694f, -0.5929293f),
+                new Vector2(1.1487315f, -0.5929293f),
                 tableCenter),
             CreateSegment(
                 "rail_bottom_left",
-                new Vector2(-1.2068906f, 0.5953581f),
-                new Vector2(-0.050392687f, 0.5953581f),
+                new Vector2(-1.1487218f, 0.5953581f),
+                new Vector2(-0.062250376f, 0.5953581f),
                 tableCenter),
             CreateSegment(
                 "rail_bottom_right",
-                new Vector2(0.050398767f, 0.5953247f),
-                new Vector2(1.2068999f, 0.5953247f),
+                new Vector2(0.062256455f, 0.5953247f),
+                new Vector2(1.1487312f, 0.5953247f),
                 tableCenter)
         };
 
         var jaws = new[]
         {
-            CreateCornerJaw("pocket_BR4_jaw_vertical", new Vector2(-1.2249266f, -0.56977034f), new Vector2(-1.2508456f, -0.6167401f), tableCenter),
-            CreateCornerJaw("pocket_BR4_jaw_horizontal", new Vector2(-1.2068906f, -0.59292513f), new Vector2(-1.2508456f, -0.6167401f), tableCenter),
-            CreateCornerJaw("pocket_BL2_jaw_vertical", new Vector2(1.2258036f, -0.5681504f), new Vector2(1.2508553f, -0.6167401f), tableCenter),
-            CreateCornerJaw("pocket_BL2_jaw_horizontal", new Vector2(1.2069001f, -0.59292495f), new Vector2(1.2508553f, -0.6167401f), tableCenter),
-            CreateCornerJaw("Pocket_TR5_jaw_vertical", new Vector2(-1.2249266f, 0.57038474f), new Vector2(-1.2508456f, 0.61673915f), tableCenter),
-            CreateCornerJaw("Pocket_TR5_jaw_horizontal", new Vector2(-1.2068906f, 0.5953581f), new Vector2(-1.2508456f, 0.61673915f), tableCenter),
-            CreateCornerJaw("pocket_TL1_jaw_vertical", new Vector2(1.2258036f, 0.5702276f), new Vector2(1.249117f, 0.61784637f), tableCenter),
-            CreateCornerJaw("pocket_TL1_jaw_horizontal", new Vector2(1.2068999f, 0.5953247f), new Vector2(1.249117f, 0.61784637f), tableCenter),
-            CreateSideJaw("pocket_BM3_jaw_left", new Vector2(-0.050392687f, -0.59292513f), new Vector2(0.0000029f, -0.66143388f), tableCenter),
-            CreateSideJaw("pocket_BM3_jaw_right", new Vector2(0.050399005f, -0.59292495f), new Vector2(0.0000029f, -0.66143388f), tableCenter),
-            CreateSideJaw("Pocket_TM6_jaw_left", new Vector2(-0.050392687f, 0.5953581f), new Vector2(0.0000029f, 0.66556805f), tableCenter),
-            CreateSideJaw("Pocket_TM6_jaw_right", new Vector2(0.050398767f, 0.5953247f), new Vector2(0.0000029f, 0.66556805f), tableCenter)
+            CreateCornerJaw("pocket_BR4_jaw_vertical", new Vector2(-1.2249266f, -0.51401377f), new Vector2(-1.2508408f, -0.6166018f), tableCenter),
+            CreateCornerJaw("pocket_BR4_jaw_horizontal", new Vector2(-1.1487218f, -0.5934566f), new Vector2(-1.2508408f, -0.6166018f), tableCenter),
+            CreateCornerJaw("pocket_BL2_jaw_vertical", new Vector2(1.2258036f, -0.5123930f), new Vector2(1.2508457f, -0.6166018f), tableCenter),
+            CreateCornerJaw("pocket_BL2_jaw_horizontal", new Vector2(1.1487315f, -0.5929293f), new Vector2(1.2508457f, -0.6166018f), tableCenter),
+            CreateCornerJaw("Pocket_TR5_jaw_vertical", new Vector2(-1.2249266f, 0.51462537f), new Vector2(-1.2508408f, 0.6166031f), tableCenter),
+            CreateCornerJaw("Pocket_TR5_jaw_horizontal", new Vector2(-1.1487218f, 0.5953581f), new Vector2(-1.2508408f, 0.6166031f), tableCenter),
+            CreateCornerJaw("pocket_TL1_jaw_vertical", new Vector2(1.2258036f, 0.5144738f), new Vector2(1.2491074f, 0.6177103f), tableCenter),
+            CreateCornerJaw("pocket_TL1_jaw_horizontal", new Vector2(1.1487312f, 0.5953247f), new Vector2(1.2491074f, 0.6177103f), tableCenter),
+            CreateSideJaw("pocket_BM3_jaw_left", new Vector2(-0.062250376f, -0.5934566f), new Vector2(0.0000029057f, -0.6650000f), tableCenter),
+            CreateSideJaw("pocket_BM3_jaw_right", new Vector2(0.062256694f, -0.5929293f), new Vector2(0.0000029057f, -0.6650000f), tableCenter),
+            CreateSideJaw("Pocket_TM6_jaw_left", new Vector2(-0.062250376f, 0.5953581f), new Vector2(0.0000029057f, 0.6650000f), tableCenter),
+            CreateSideJaw("Pocket_TM6_jaw_right", new Vector2(0.062256455f, 0.5953247f), new Vector2(0.0000029057f, 0.6650000f), tableCenter)
         };
 
         var pockets = new[]
@@ -65,7 +65,7 @@ public static class CustomTable9FtSpec
             CreatePocketFromJawStarts(
                 "pocket_TL1",
                 PocketKind.Corner,
-                new Vector2(1.249117f, 0.61784637f),
+                new Vector2(1.2491074f, 0.6177103f),
                 0.0584f,
                 FindSegment("pocket_TL1_jaw_vertical", jaws),
                 FindSegment("pocket_TL1_jaw_horizontal", jaws),
@@ -74,7 +74,7 @@ public static class CustomTable9FtSpec
             CreatePocketFromJawStarts(
                 "pocket_BL2",
                 PocketKind.Corner,
-                new Vector2(1.2508553f, -0.6167401f),
+                new Vector2(1.2508457f, -0.6166018f),
                 0.0584f,
                 FindSegment("pocket_BL2_jaw_vertical", jaws),
                 FindSegment("pocket_BL2_jaw_horizontal", jaws),
@@ -83,7 +83,7 @@ public static class CustomTable9FtSpec
             CreatePocketFromJawStarts(
                 "pocket_BM3",
                 PocketKind.Side,
-                new Vector2(0.0000029f, -0.66143388f),
+                new Vector2(0.0000029057f, -0.6650000f),
                 0.0614f,
                 FindSegment("pocket_BM3_jaw_left", jaws),
                 FindSegment("pocket_BM3_jaw_right", jaws),
@@ -92,7 +92,7 @@ public static class CustomTable9FtSpec
             CreatePocketFromJawStarts(
                 "pocket_BR4",
                 PocketKind.Corner,
-                new Vector2(-1.2508456f, -0.6167401f),
+                new Vector2(-1.2508408f, -0.6166018f),
                 0.0584f,
                 FindSegment("pocket_BR4_jaw_vertical", jaws),
                 FindSegment("pocket_BR4_jaw_horizontal", jaws),
@@ -101,7 +101,7 @@ public static class CustomTable9FtSpec
             CreatePocketFromJawStarts(
                 "Pocket_TR5",
                 PocketKind.Corner,
-                new Vector2(-1.2508456f, 0.61673915f),
+                new Vector2(-1.2508408f, 0.6166031f),
                 0.0584f,
                 FindSegment("Pocket_TR5_jaw_vertical", jaws),
                 FindSegment("Pocket_TR5_jaw_horizontal", jaws),
@@ -110,7 +110,7 @@ public static class CustomTable9FtSpec
             CreatePocketFromJawStarts(
                 "Pocket_TM6",
                 PocketKind.Side,
-                new Vector2(0.0000029f, 0.66556805f),
+                new Vector2(0.0000029057f, 0.6650000f),
                 0.0614f,
                 FindSegment("Pocket_TM6_jaw_left", jaws),
                 FindSegment("Pocket_TM6_jaw_right", jaws),
@@ -119,13 +119,13 @@ public static class CustomTable9FtSpec
         };
 
         return new TableSpec(
-            name: "customtable_9ft",
-            sourceBlendPath: "/home/justin/Desktop/customtable_9ft.blend",
+            name: "MASTERtable_9ft",
+            sourceBlendPath: "/home/justin/Desktop/MASTERtable_9ft.blend",
             clothMin: clothMin,
             clothMax: clothMax,
             ballDiameterMeters: 0.05715f,
             cueBallSpawn: new Vector2(-0.733902f, 0.002383f),
-            rackApexSpot: new Vector2(0.616941f, 0.0f),
+            rackApexSpot: new Vector2(0.63499995f, 0.0f),
             cushions: cushions,
             jawSegments: jaws,
             pockets: pockets);

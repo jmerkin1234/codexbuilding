@@ -688,7 +688,7 @@ public sealed class SimulationWorldTests
         var fingerprintHash = SimulationFingerprintBuilder.BuildSha256(trace);
 
         Assert.True(trace.Completed);
-        Assert.Equal("3472b836de60b73f322915a02f66dad115f7c47c4331ca3811e362ad63538d0f", fingerprintHash);
+        Assert.Equal("8c021da2ff526277d97d1c2050727883b46eda54dfd18552313645f9e3305a75", fingerprintHash);
     }
 
     private static SimulationWorld CreateShellWorld(Vector2 cueBallVelocity)

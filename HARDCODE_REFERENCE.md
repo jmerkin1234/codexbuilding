@@ -10,16 +10,27 @@ This file tracks the compile-time geometry and seed constants that the portable 
 ## Active Table Spec
 
 - Code type: `CustomTable9FtSpec`
-- Source blend: `/home/justin/Desktop/customtable_9ft.blend`
-- Table name in code: `customtable_9ft`
+- Source blend: `/home/justin/Desktop/MASTERtable_9ft.blend`
+- Table name in code: `MASTERtable_9ft`
+
+## Pocket Name Mapping
+
+The runtime engine still keeps its older pocket IDs for rules/test stability. Those IDs now map to the Blender source names like this:
+
+- `pocket_TL1` -> Blender `pocket_FRC`
+- `pocket_BL2` -> Blender `pocket_FLC`
+- `pocket_BM3` -> Blender `pocket_LS`
+- `pocket_BR4` -> Blender `pocket_HLC`
+- `Pocket_TR5` -> Blender `pocket_HRC`
+- `Pocket_TM6` -> Blender `pocket_RS`
 
 ## Hardcoded Play Surface
 
-- Cloth minimum: `(-1.2699999, -0.63499993)`
-- Cloth maximum: `(1.2699999, 0.63499993)`
+- Play-area minimum: `(-1.2699999, -0.63499993)`
+- Play-area maximum: `(1.2699999, 0.63499993)`
 - Ball diameter: `0.05715`
 - Cue ball spawn seed: `(-0.733902, 0.002383)`
-- Rack apex seed: `(0.616941, 0.0)`
+- Rack apex seed: `(0.63499995, 0.0)`
 
 ## Hardcoded Godot Adapter Values
 
@@ -38,160 +49,160 @@ These are not physics-authority geometry values, but they are still hardcoded co
 ## Hardcoded Cushion Segments
 
 - `rail_head`
-  start: `(-1.2249266, -0.56977034)`
-  end: `(-1.2249266, 0.57038474)`
+  start: `(-1.2249266, -0.51401377)`
+  end: `(-1.2249266, 0.51462537)`
   inward normal: `(1.0, 0.0)`
 - `rail_foot`
-  start: `(1.2258036, -0.5681504)`
-  end: `(1.2258036, 0.5702276)`
+  start: `(1.2258036, -0.5123930)`
+  end: `(1.2258036, 0.5144738)`
   inward normal: `(-1.0, 0.0)`
 - `rail_upper_left`
-  start: `(-1.2068906, -0.59292513)`
-  end: `(-0.050392687, -0.59292513)`
+  start: `(-1.1487218, -0.5934566)`
+  end: `(-0.062250376, -0.5934566)`
   inward normal: `(0.0, 1.0)`
 - `rail_upper_right`
-  start: `(0.050399005, -0.59292495)`
-  end: `(1.2069001, -0.59292495)`
+  start: `(0.062256694, -0.5929293)`
+  end: `(1.1487315, -0.5929293)`
   inward normal: `(0.0, 1.0)`
 - `rail_bottom_left`
-  start: `(-1.2068906, 0.5953581)`
-  end: `(-0.050392687, 0.5953581)`
+  start: `(-1.1487218, 0.5953581)`
+  end: `(-0.062250376, 0.5953581)`
   inward normal: `(0.0, -1.0)`
 - `rail_bottom_right`
-  start: `(0.050398767, 0.5953247)`
-  end: `(1.2068999, 0.5953247)`
+  start: `(0.062256455, 0.5953247)`
+  end: `(1.1487312, 0.5953247)`
   inward normal: `(0.0, -1.0)`
 
 ## Hardcoded Jaw Segments
 
 - `pocket_BR4_jaw_vertical`
-  start: `(-1.22492660, -0.56977034)`
-  end: `(-1.22393849, -0.60347332)`
-  inward normal: `(0.99957050, 0.02930557)`
+  start: `(-1.22492660, -0.51401377)`
+  end: `(-1.22393253, -0.60333737)`
+  inward normal: `(0.99993808, 0.01112817)`
 - `pocket_BR4_jaw_horizontal`
-  start: `(-1.20689060, -0.59292513)`
-  end: `(-1.22393849, -0.60347332)`
-  inward normal: `(0.52616470, -0.85038269)`
+  start: `(-1.14872180, -0.59345660)`
+  end: `(-1.22393253, -0.60333737)`
+  inward normal: `(-0.13025526, 0.99148049)`
 - `pocket_BL2_jaw_vertical`
-  start: `(1.22580360, -0.56815040)`
-  end: `(1.22394815, -0.60347340)`
-  inward normal: `(-0.99862325, 0.05245579)`
+  start: `(1.22580360, -0.51239300)`
+  end: `(1.22393741, -0.60333741)`
+  inward normal: `(-0.99978953, 0.02051580)`
 - `pocket_BL2_jaw_horizontal`
-  start: `(1.20690010, -0.59292495)`
-  end: `(1.22394815, -0.60347340)`
-  inward normal: `(-0.52617062, -0.85037902)`
+  start: `(1.14873150, -0.59292930)`
+  end: `(1.22393741, -0.60333741)`
+  inward normal: `(0.13708829, 0.99055883)`
 - `Pocket_TR5_jaw_vertical`
-  start: `(-1.22492660, 0.57038474)`
-  end: `(-1.22393848, 0.60347239)`
-  inward normal: `(0.99955438, -0.02985034)`
+  start: `(-1.22492660, 0.51462537)`
+  end: `(-1.22393254, 0.60333865)`
+  inward normal: `(0.99993723, -0.01120459)`
 - `Pocket_TR5_jaw_horizontal`
-  start: `(-1.20689060, 0.59535810)`
-  end: `(-1.22393848, 0.60347239)`
-  inward normal: `(-0.42977155, -0.90293766)`
+  start: `(-1.14872180, 0.59535810)`
+  end: `(-1.22393254, 0.60333865)`
+  inward normal: `(-0.10551682, -0.99441752)`
 - `pocket_TL1_jaw_vertical`
-  start: `(1.22580360, 0.57022760)`
-  end: `(1.22222664, 0.60454568)`
-  inward normal: `(-0.99461194, -0.10366814)`
+  start: `(1.22580360, 0.51447380)`
+  end: `(1.22221591, 0.60441188)`
+  inward normal: `(-0.99920532, -0.03985895)`
 - `pocket_TL1_jaw_horizontal`
-  start: `(1.20689990, 0.59532470)`
-  end: `(1.22222664, 0.60454568)`
-  inward normal: `(-0.51552071, 0.85687712)`
+  start: `(1.14873120, 0.59532470)`
+  end: `(1.22221591, 0.60441188)`
+  inward normal: `(0.12272608, -0.99244058)`
 - `pocket_BM3_jaw_left`
-  start: `(-0.05039269, -0.59292513)`
-  end: `(0.00000276, -0.63043388)`
-  inward normal: `(0.59706361, 0.80219389)`
+  start: `(-0.062250376, -0.59345660)`
+  end: `(0.00000277, -0.63400000)`
+  inward normal: `(0.54573430, 0.83795827)`
 - `pocket_BM3_jaw_right`
-  start: `(0.05039900, -0.59292495)`
-  end: `(0.00000276, -0.63043388)`
-  inward normal: `(-0.59705944, 0.80219700)`
+  start: `(0.062256694, -0.59292930)`
+  end: `(0.00000277, -0.63400000)`
+  inward normal: `(-0.55068445, 0.83471350)`
 - `Pocket_TM6_jaw_left`
-  start: `(-0.05039269, 0.59535810)`
-  end: `(0.00000276, 0.63456805)`
-  inward normal: `(0.61407222, -0.78924984)`
+  start: `(-0.062250376, 0.59535810)`
+  end: `(0.00000277, 0.63400000)`
+  inward normal: `(0.52738273, -0.84962784)`
 - `Pocket_TM6_jaw_right`
-  start: `(0.05039877, 0.59532470)`
-  end: `(0.00000276, 0.63456805)`
-  inward normal: `(-0.61439372, -0.78899959)`
+  start: `(0.062256455, 0.59532470)`
+  end: `(0.00000277, 0.63400000)`
+  inward normal: `(-0.52770837, -0.84942562)`
 
 ## Hardcoded Pocket Specs
 
 - `pocket_TL1`
   kind: `Corner`
-  center: `(1.249117, 0.61784637)`
+  center: `(1.2491074, 0.6177103)`
   capture radius seed: `0.0584`
-  mouth center: `(1.21635175, 0.58277615)`
-  mouth half-width: `0.01570998`
+  mouth center: `(1.1872674, 0.55489925)`
+  mouth half-width: `0.05585030`
   drop radius: `0.0405`
   max entry speed: `1.15`
-  entry direction: `(0.68268613, 0.73071174)`
-  funnel depth: `0.04799460`
+  entry direction: `(0.70157703, 0.71259362)`
+  funnel depth: `0.08814428`
 - `pocket_BL2`
   kind: `Corner`
-  center: `(1.2508553, -0.6167401)`
+  center: `(1.2508457, -0.6166018)`
   capture radius seed: `0.0584`
-  mouth center: `(1.21635185, -0.58053768)`
-  mouth half-width: `0.01558140`
+  mouth center: `(1.18726755, -0.55266115)`
+  mouth half-width: `0.05573644`
   drop radius: `0.0405`
   max entry speed: `1.15`
-  entry direction: `(0.68991678, -0.72388869)`
-  funnel depth: `0.05001103`
+  entry direction: `(0.70509383, -0.70911402)`
+  funnel depth: `0.09016977`
 - `pocket_BM3`
   kind: `Side`
-  center: `(0.0000029, -0.66143388)`
+  center: `(0.0000029057, -0.6650000)`
   capture radius seed: `0.0614`
-  mouth center: `(0.00000316, -0.59292504)`
-  mouth half-width: `0.05039585`
-  drop radius: `0.044`
+  mouth center: `(0.0000031590, -0.59319295)`
+  mouth half-width: `0.06225409`
+  drop radius: `0.0440`
   max entry speed: `1.0`
-  entry direction: `(-0.00000380, -1.0)`
-  funnel depth: `0.06850884`
+  entry direction: `(-0.00000353, -1.0)`
+  funnel depth: `0.07180705`
 - `pocket_BR4`
   kind: `Corner`
-  center: `(-1.2508456, -0.6167401)`
+  center: `(-1.2508408, -0.6166018)`
   capture radius seed: `0.0584`
-  mouth center: `(-1.2159086, -0.58134774)`
-  mouth half-width: `0.01467516`
+  mouth center: `(-1.1868242, -0.55373519)`
+  mouth half-width: `0.05504165`
   drop radius: `0.0405`
   max entry speed: `1.15`
-  entry direction: `(-0.70251377, -0.71167015)`
-  funnel depth: `0.04973141`
+  entry direction: `(-0.71348622, -0.70066926)`
+  funnel depth: `0.08972367`
 - `Pocket_TR5`
   kind: `Corner`
-  center: `(-1.2508456, 0.61673915)`
+  center: `(-1.2508408, 0.6166031)`
   capture radius seed: `0.0584`
-  mouth center: `(-1.2159086, 0.58287142)`
-  mouth half-width: `0.01540265`
+  mouth center: `(-1.1868242, 0.55499174)`
+  mouth half-width: `0.05550888`
   drop radius: `0.0405`
   max entry speed: `1.15`
-  entry direction: `(-0.71800898, 0.69603384)`
-  funnel depth: `0.04865817`
+  entry direction: `(-0.72051279, 0.69344165)`
+  funnel depth: `0.08884867`
 - `Pocket_TM6`
   kind: `Side`
-  center: `(0.0000029, 0.66556805)`
+  center: `(0.0000029057, 0.6650000)`
   capture radius seed: `0.0614`
-  mouth center: `(0.00000304, 0.5953414)`
-  mouth half-width: `0.05039573`
-  drop radius: `0.044`
+  mouth center: `(0.0000030395, 0.5953414)`
+  mouth half-width: `0.06225342`
+  drop radius: `0.0440`
   max entry speed: `1.0`
-  entry direction: `(-0.00000199, 1.0)`
-  funnel depth: `0.07022665`
+  entry direction: `(-0.00000192, 1.0)`
+  funnel depth: `0.06965860`
 
 ## Hardcoded Jaw Derivation
 
-Jaw segments are now part of the compile-time table spec.
+Jaw segments are part of the compile-time table spec.
 
-- Corner jaw apex offset toward cloth center: `0.03`
-- Side jaw apex offset toward cloth center: `0.031`
+- Corner jaw apex offset toward table center: `0.03`
+- Side jaw apex offset toward table center: `0.031`
 - Total derived jaw segments: `12`
 
-Each jaw segment is derived from one adjacent hardcoded rail endpoint and an inward apex offset from the matching pocket center toward cloth center, and the resulting exact segment values are listed above.
+Each jaw segment is derived from one adjacent hardcoded rail endpoint and an inward apex offset from the matching pocket center toward table center. The resulting exact segment values are listed above.
 
 ## Hardcoded Pocket Mouth Model
 
 Pocket capture is no longer a single circle check.
 
-- Mouth centers are derived from the midpoint between the two relevant jaw start points.
-- Mouth half-widths are derived from half the distance between those two jaw start points.
+- Mouth centers are derived from the midpoint between the two relevant jaw-start rail endpoints.
+- Mouth half-widths are derived from half the distance between those two jaw-start points.
 - Entry directions are derived from `Normalize(center - mouthCenter)`.
 - Funnel depth is `Distance(mouthCenter, center)`.
 - Balls are always accepted inside the `drop radius`.

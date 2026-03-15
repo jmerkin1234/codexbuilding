@@ -14,14 +14,14 @@ Current behavior:
 - `Main.cs` now stays as the shared-state and lifecycle entry point for the adapter, while the Godot-side behavior is split across focused partials for scene graph, visuals, HUD, tuning, shot flow, and input.
 - The adapter still creates a live `SimulationWorld` from the portable core and seeds it with `StandardEightBallRack`.
 - Runtime node names preserve the Blender-facing names where they are used: `GodotRoot`, `TableRoot`, `BallsRoot`, `CueRoot`, `CueStick`, `CueBall`, `Ball_01` through `Ball_15`, rail names, and pocket names.
-- `Main.tscn` now instances `res://art/customtable_9ft.blend` directly as `ImportedTableSource`, and the adapter binds to its imported `GodotRoot`, `TableRoot`, `BallsRoot`, and `CueRoot` nodes.
+- `Main.tscn` now instances three separate GLB assets under `GodotRoot`: `res://art/glb/table.glb` as `TableRoot`, `res://art/glb/balls.glb` as `BallsRoot`, and `res://art/glb/cuestick.glb` as `CueRoot`.
 - If that Blender asset is absent or cannot be loaded, the adapter can still render a procedural fallback table from the hardcoded spec, but gameplay now requires the authored Blender `CueBall` and `Ball_01` through `Ball_15` meshes instead of spawning fallback spheres.
 - The direct Blender import is now verified in this repo, and the imported asset material references were extracted under `godot/art/textures/` by Godot during the import process.
 - Ball motion is always driven by the portable core and mirrored into Godot transforms each frame.
 - Godot now also accumulates visible roll from mirrored ball travel plus side-spin yaw, so the authored Blender balls rotate instead of visually sliding.
 - The authored Blender cue stick is now used during shot setup instead of hiding it behind the old placeholder cue mesh.
 - The authored Blender cue stick now derives its tip offset from the imported mesh bounds and sits about `0.03 m` off the cue ball in shot setup instead of keeping the old wider gap from the authored scene origin.
-- The Godot project copy of `customtable_9ft.blend` now has `Tableslate` custom normals cleared and `Tableslate`, `Tableframe`, `CueStick`, and `rail_upper_right` triangulated so Godot can generate tangents and preserve the imported shading more faithfully.
+- The active imported render source is now the GLB split under `godot/art/glb/`, while gameplay cushions, jaws, pockets, and play-area measurements still come from the portable hardcoded `TableSpec`.
 - Godot now imports the ball textures lossless with mipmaps disabled, and the project render settings now keep 3D at native scale with TAA and screen-space AA disabled plus `MSAA 3D` enabled for a sharper standalone desktop result.
 - The render setup now preserves the imported Blender light and layers in a procedural sky plus fill/rim lighting, so chrome and glossy ball materials have stronger reflections than the earlier flat fallback lighting.
 - The adapter now has a separate `Tuning` mode for table calibration. It is not tied to the debug window and instead persists calibration offsets in `user://table_calibration.json`, rebuilds the hardcoded `TableSpec`, keeps the overlay visible, highlights the active calibration target, hides the main gameplay HUD cards while tuning, and opens a separate movable play-mode tuning window instead of trying to cram calibration into the main HUD.
@@ -65,7 +65,7 @@ Verification on `2026-03-14`:
 - `dotnet test ../tests/CodexBuilding.Billiards.Tests/CodexBuilding.Billiards.Tests.csproj --no-restore` with `56/56` passing
 - Godot 4.6 Mono `--build-solutions --quit`
 - Godot 4.6 Mono headless startup `--quit-after 5`
-- Verified direct import and reimport of `godot/art/customtable_9ft.blend`
+- Verified direct import of `godot/art/glb/table.glb`, `godot/art/glb/balls.glb`, and `godot/art/glb/cuestick.glb`
 
 Keyboard controls:
 

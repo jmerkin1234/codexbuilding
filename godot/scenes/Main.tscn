@@ -1,11 +1,21 @@
 [gd_scene format=3 uid="uid://bawnxcjfdg825"]
 
 [ext_resource type="Script" uid="uid://bevs6ycowtuj7" path="res://scripts/Main.cs" id="1"]
-[ext_resource type="PackedScene" uid="uid://b85xi06dxw1ew" path="res://art/customtable_9ft.blend" id="2"]
+[ext_resource type="PackedScene" path="res://art/glb/table.glb" id="2"]
+[ext_resource type="PackedScene" path="res://art/glb/balls.glb" id="3"]
+[ext_resource type="PackedScene" path="res://art/glb/cuestick.glb" id="4"]
 
 [node name="Main" type="Node3D" unique_id=1592096660]
 script = ExtResource("1")
 
-[node name="ImportedTableSource" parent="." unique_id=1247540174 instance=ExtResource("2")]
+[node name="GodotRoot" type="Node3D" parent="."]
 
-[editable path="ImportedTableSource"]
+[node name="TableRoot" parent="GodotRoot" unique_id=1247540174 instance=ExtResource("2")]
+
+[node name="BallsRoot" parent="GodotRoot" unique_id=1884950287 instance=ExtResource("3")]
+
+[node name="CueRoot" parent="GodotRoot" unique_id=1884950288 instance=ExtResource("4")]
+
+[editable path="GodotRoot/TableRoot"]
+[editable path="GodotRoot/BallsRoot"]
+[editable path="GodotRoot/CueRoot"]

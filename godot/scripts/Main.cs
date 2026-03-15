@@ -14,9 +14,7 @@ public partial class Main : Node3D
 	private static readonly Vector2I DefaultWindowSize = new(1920, 1080);
 	private static readonly Vector2I DefaultDebugWindowSize = new(640, 860);
 	private static readonly Vector2I DefaultTuningWindowSize = new(860, 980);
-	private const string ImportedTableSourceNodeName = "ImportedTableSource";
-
-	private const string ImportedTableScenePath = "res://art/customtable_9ft.blend";
+	private const string ImportedTableScenePath = "res://art/glb/table.glb";
 	private const string CalibrationProfilePath = "user://table_calibration.json";
 	private const float FeltThicknessMeters = 0.04f;
 	private const float FrameThicknessMeters = 0.1f;

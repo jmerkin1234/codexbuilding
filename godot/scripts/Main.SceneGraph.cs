@@ -13,22 +13,7 @@ public partial class Main
 {
 	private void ConfigureSceneGraph()
 	{
-		var importedTableSource = GetNodeOrNull<Node>(ImportedTableSourceNodeName);
-		if (importedTableSource?.GetNodeOrNull<Node3D>("GodotRoot") is { } importedGodotRoot)
-		{
-			_godotRoot = importedGodotRoot;
-
-			if (importedTableSource.GetNodeOrNull<Camera3D>("Camera") is { } importedCamera)
-			{
-				importedCamera.Current = false;
-				importedCamera.Visible = false;
-			}
-
-		}
-		else
-		{
-			_godotRoot = EnsureNode<Node3D>(this, "GodotRoot");
-		}
+		_godotRoot = EnsureNode<Node3D>(this, "GodotRoot");
 
 		_tableRoot = EnsureNode<Node3D>(_godotRoot, "TableRoot");
 		_ballsRoot = EnsureNode<Node3D>(_godotRoot, "BallsRoot");
@@ -41,14 +26,14 @@ public partial class Main
 		_cueGuide.MaterialOverride = CreateMaterial(new Color(0.92f, 0.84f, 0.58f), roughness: 0.65f);
 		_cueGuide.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
 
-		_importedCueStick = _cueRoot.GetNodeOrNull<Node3D>("CueStick");
+		_importedCueStick = FindNodeRecursive<Node3D>(_cueRoot, "CueStick") ?? _cueRoot;
 		if (_importedCueStick != null)
 		{
 			_importedCueStick.Visible = true;
 			_cueStickHeightMeters = _importedCueStick.Position.Y;
 			var originalCueRotation = _importedCueStick.Quaternion;
 
-			if (_ballsRoot.GetNodeOrNull<Node3D>("CueBall") is { } importedCueBall)
+			if (FindNodeRecursive<Node3D>(_ballsRoot, "CueBall") is { } importedCueBall)
 			{
 				var cueToBall = new Vector3(
 					importedCueBall.Position.X - _importedCueStick.Position.X,

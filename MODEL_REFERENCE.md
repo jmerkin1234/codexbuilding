@@ -4,13 +4,20 @@ This file records the Blender scene facts that are allowed to drive hardcoded ge
 
 ## Source Scene
 
-- Blender file: `/home/justin/Desktop/customtable_9ft.blend`
+- Blender file: `/home/justin/Desktop/MASTERtable_9ft.blend`
+- Geometry note: `/home/justin/Downloads/table_geometry_reference (1).md`
 - Scene name: `Scene`
-- Purpose: render reference only
+- Purpose: render-only source plus compile-time measurement reference
+- Convention from the supplied geometry note:
+  `+X = foot end`
+  `-X = head end`
+  `+Y = right rail`
+  `-Y = left rail`
+  `+Z = up`
 
 ## Object Naming Rule
 
-The names below are preserved exactly as they appear in Blender. If cleaner names are introduced in code later, the mapping must be explicit and documented here.
+The names below are preserved exactly as they appear in Blender. When the portable engine keeps older internal pocket IDs for rules/test stability, the mapping is documented explicitly instead of being guessed.
 
 ## Key Scene Roots
 
@@ -24,10 +31,9 @@ The names below are preserved exactly as they appear in Blender. If cleaner name
 - `Tableslate`
 - `Tableframe`
 - `framebottom`
+- `TableOverlay`
 
 ## Rail Objects
-
-The current Blender scene contains six rail segments:
 
 - `rail_head`
 - `rail_foot`
@@ -36,104 +42,121 @@ The current Blender scene contains six rail segments:
 - `rail_bottom_left`
 - `rail_bottom_right`
 
-## Pocket Objects
+## Pocket Objects In Blender
 
-- `pocket_TL1`
-- `pocket_BL2`
-- `pocket_BM3`
-- `pocket_BR4`
-- `Pocket_TR5`
-- `Pocket_TM6`
+- `pocket_FRC`
+- `pocket_FLC`
+- `pocket_LS`
+- `pocket_HLC`
+- `pocket_HRC`
+- `pocket_RS`
 
-## Ball and Cue Objects
+## Legacy Internal Pocket-ID Mapping
+
+The portable engine still uses its older stable pocket IDs in code and tests. Those IDs now map to the new Blender pocket objects like this:
+
+- `pocket_TL1` -> Blender `pocket_FRC`
+- `pocket_BL2` -> Blender `pocket_FLC`
+- `pocket_BM3` -> Blender `pocket_LS`
+- `pocket_BR4` -> Blender `pocket_HLC`
+- `Pocket_TR5` -> Blender `pocket_HRC`
+- `Pocket_TM6` -> Blender `pocket_RS`
+
+## Ball And Cue Objects
 
 - `CueBall`
 - `Ball_01` through `Ball_15`
 - `CueStick`
 
-## Measured Values
+## Ground Truth Measurements
 
 All units are meters in Blender world space.
 
 ### Tableslate
 
 - Source object: `Tableslate`
-- World bounding box min: `(-1.2699998617, -0.6349999309, -0.1382045150)`
-- World bounding box max: `(1.2699998617, 0.6349999309, 0.0)`
-- Hardcoded cloth rectangle seed:
-  `min = (-1.2699999, -0.6349999)`
-  `max = (1.2699999, 0.6349999)`
+- Half-length: `1.2699999`
+- Half-width: `0.6349999`
+- Play-area rect min: `(-1.2699999, -0.6349999)`
+- Play-area rect max: `(1.2699999, 0.6349999)`
+- Z bottom: `-0.1382042`
+- Z top: `0.0008492`
+- Playing-surface Z bottom: `-0.016741`
+- Playing-surface Z top: `0.0`
 
-### Tableframe
+### Spots
 
-- Source object: `Tableframe`
-- World bounding box min: `(-1.3960279226, -0.7530107498, -0.2260493040)`
-- World bounding box max: `(1.3938320875, 0.7582436800, 0.0451114625)`
+- Foot spot / rack apex: `(0.6349999500, 0.0)`
+- Head spot: `(-0.6349999500, 0.0)`
 
 ### CueBall
 
-- Source object: `CueBall`
-- World bounding box min: `(-0.7624769807, -0.0261920001, 0.0)`
-- World bounding box max: `(-0.7053269744, 0.0309579987, 0.0571499988)`
-- Diameter seed: `0.05715`
-- Spawn seed from object origin: `(-0.7339020, 0.0023830)`
+- Diameter: `0.05715`
+- Radius: `0.028575`
+- Spawn seed from object origin: `(-0.7339019775, 0.0023830000)`
 
-### Rack Apex
+### CueStick
 
-- Source object: `Ball_01`
-- Apex seed from object origin: `(0.6169410, 0.0)`
+- Tip origin X: `-0.7943970561`
+- Tip origin Y: `0.0000000000`
+- Tip origin Z: `0.0285750000`
 
 ### Rail Nose Seeds
 
-The inner face of each rail bounding box is used as the initial hardcoded cushion-nose seed. These are seed values only; later refinement can replace them with explicit jaw and nose extraction.
+These are the actual inner-face mesh measurements from the supplied geometry note. They are source facts only. Runtime collision still comes from the hardcoded spec, not from the mesh.
 
 - `rail_head`
   inner x: `-1.2249265909`
-  y span: `-0.5697703362` to `0.5703847408`
+  y span: `-0.5140137672` to `0.5146253705`
 - `rail_foot`
   inner x: `1.2258036137`
-  y span: `-0.5681504011` to `0.5702276230`
+  y span: `-0.5123929977` to `0.5144737959`
 - `rail_upper_left`
-  inner y: `-0.5929251313`
-  x span: `-1.2068905830` to `-0.0503926873`
+  inner y: `-0.5934566259`
+  x span: `-1.1487218142` to `-0.0622503757`
 - `rail_upper_right`
-  inner y: `-0.5929249525`
-  x span: `0.0503990054` to `1.2069001198`
+  inner y: `-0.5929293036`
+  x span: `0.0622566938` to `1.1487314701`
 - `rail_bottom_left`
   inner y: `0.5953580737`
-  x span: `-1.2068905830` to `-0.0503926873`
+  x span: `-1.1487218142` to `-0.0622503757`
 - `rail_bottom_right`
   inner y: `0.5953246951`
-  x span: `0.0503987670` to `1.2068998814`
+  x span: `0.0622564554` to `1.1487312317`
 
 ### Pocket Seeds
 
-Pocket centers are currently seeded from the Blender object origins.
+#### Blender Object Origins
 
-- `pocket_TL1`: `(1.2491170, 0.6178464)`
-- `pocket_BL2`: `(1.2508553, -0.6167401)`
-- `pocket_BM3`: `(0.0000029, -0.6614339)`
-- `pocket_BR4`: `(-1.2508456, -0.6167401)`
-- `Pocket_TR5`: `(-1.2508456, 0.6167392)`
-- `Pocket_TM6`: `(0.0000029, 0.6655681)`
+- `pocket_FRC`: `(1.2491170, 0.6178464, -0.0447360)`
+- `pocket_FLC`: `(1.2508553, -0.6167401, -0.0447360)`
+- `pocket_LS`: `(0.0000029, -0.6614339, -0.0447360)`
+- `pocket_HLC`: `(-1.2508456, -0.6167401, -0.0447360)`
+- `pocket_HRC`: `(-1.2508456, 0.6167392, -0.0447370)`
+- `pocket_RS`: `(0.0000029, 0.6655681, -0.0447370)`
 
-### Derived Jaw Layout
+#### Mesh-Top Centers
 
-Jaw collision does not come from mesh data at runtime. It is derived from the Blender-backed rail and pocket seeds.
+- `pocket_FRC`: center `(1.2491073608, 0.6177103221)`, top radius `0.0264515`
+- `pocket_FLC`: center `(1.2508456707, -0.6166017950)`, top radius `0.0264508`
+- `pocket_LS`: center `(0.0000029057, -0.6650000)`, top radius `0.0700000`
+- `pocket_HLC`: center `(-1.2508408427, -0.6166017950)`, top radius `0.0264484`
+- `pocket_HRC`: center `(-1.2508408427, 0.6166031063)`, top radius `0.0264491`
+- `pocket_RS`: center `(0.0000029057, 0.6650000)`, top radius `0.0700000`
 
-- Corner jaws are built from the adjacent rail endpoint and a point `0.03m` inward from the pocket center toward the cloth center.
-- Side jaws are built from the adjacent rail endpoint and a point `0.031m` inward from the pocket center toward the cloth center.
-- The current compile-time layout produces `12` jaw segments total.
+#### BCA Jaw Midpoints Used As A Hard Reference
 
-### Derived Pocket Mouth Layout
+These are the supplied idealized opening positions from the geometry note. They are reference targets, not the current runtime pocket-mouth implementation.
 
-Pocket acceptance is now also derived from the Blender-backed jaw and pocket seeds.
-
-- Mouth centers are compiled from the midpoint between the two relevant jaw-start rail endpoints for each pocket.
-- Mouth half-widths are compiled from half the distance between those jaw-start points.
-- The portable engine now uses those mouth values together with hardcoded drop radii and speed limits to decide accept vs reject near the jaws.
+- `pocket_FRC`: `(1.2128499, 0.5778499)`
+- `pocket_FLC`: `(1.2128499, -0.5778499)`
+- `pocket_LS`: `(0.0, -0.6984999)`
+- `pocket_HLC`: `(-1.2128499, -0.5778499)`
+- `pocket_HRC`: `(-1.2128499, 0.5778499)`
+- `pocket_RS`: `(0.0, 0.6984999)`
 
 ## Notes
 
-- `pocket_TL1` was corrected in the Blender source on `2026-03-14`; the portable engine should continue to treat the Blender value as a source fact rather than inventing symmetry.
-- The engine must not read collision from the mesh at runtime. These measurements are compile-time reference values only.
+- The portable engine still does not read collision from the mesh at runtime. These values are compile-time reference inputs only.
+- The current code-facing play area still comes from the `Tableslate` rectangle, while actual rebound uses the separate hardcoded cushion segments.
+- The Blender object names changed with `MASTERtable_9ft.blend`; this document reflects the actual Blender names and the explicit mapping back to the older internal pocket IDs.

@@ -82,7 +82,7 @@ public sealed class PocketCaptureResolverTests
                 ballNumber: 2,
                 position: pocket.MouthCenter +
                           (pocket.EntryDirection * 0.045f) +
-                          (lateral * 0.0665f),
+                          (lateral * (pocket.MouthHalfWidthMeters * 1.36f)),
                 velocity: pocket.EntryDirection * 0.18f)
         };
 
