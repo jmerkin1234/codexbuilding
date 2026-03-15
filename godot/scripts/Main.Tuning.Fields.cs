@@ -56,6 +56,12 @@ public partial class Main
 			AddCalibrationField("Cushions", sourceName, sourceName, $"{sourceName} End Y", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
 				() => _tableCalibrationProfile.Cushions[sourceName].EndOffset.Y,
 				value => _tableCalibrationProfile.Cushions[sourceName].EndOffset.Y = value);
+			AddCalibrationField("Cushions", sourceName, sourceName, $"{sourceName} Mid X", $"Overlay_{sourceName}", -1.6f, 1.6f, 0.0005f, 0.005f,
+				() => GetAdjustedSegmentMidpointComponent(_baseTableSpec.Cushions, _tableCalibrationProfile.Cushions, sourceName, axisIndex: 0),
+				value => SetAdjustedSegmentMidpointComponent(_baseTableSpec.Cushions, _tableCalibrationProfile.Cushions, sourceName, axisIndex: 0, value));
+			AddCalibrationField("Cushions", sourceName, sourceName, $"{sourceName} Mid Y", $"Overlay_{sourceName}", -1.0f, 1.0f, 0.0005f, 0.005f,
+				() => GetAdjustedSegmentMidpointComponent(_baseTableSpec.Cushions, _tableCalibrationProfile.Cushions, sourceName, axisIndex: 1),
+				value => SetAdjustedSegmentMidpointComponent(_baseTableSpec.Cushions, _tableCalibrationProfile.Cushions, sourceName, axisIndex: 1, value));
 			AddCalibrationField("Cushions", sourceName, sourceName, $"{sourceName} Start Pocket Angle", $"Overlay_{startJawSourceName}", -180.0f, 180.0f, 0.1f, 1.0f,
 				() => GetAdjustedSegmentAngleDegrees(_baseTableSpec.JawSegments, _tableCalibrationProfile.Jaws, startJawSourceName),
 				value => SetAdjustedSegmentAngleDegrees(_baseTableSpec.JawSegments, _tableCalibrationProfile.Jaws, startJawSourceName, value));
@@ -79,6 +85,12 @@ public partial class Main
 			AddCalibrationField("Jaws", sourceName, sourceName, $"{sourceName} End Y", $"Overlay_{sourceName}", -0.4f, 0.4f, 0.0005f, 0.005f,
 				() => _tableCalibrationProfile.Jaws[sourceName].EndOffset.Y,
 				value => _tableCalibrationProfile.Jaws[sourceName].EndOffset.Y = value);
+			AddCalibrationField("Jaws", sourceName, sourceName, $"{sourceName} Mid X", $"Overlay_{sourceName}", -1.6f, 1.6f, 0.0005f, 0.005f,
+				() => GetAdjustedSegmentMidpointComponent(_baseTableSpec.JawSegments, _tableCalibrationProfile.Jaws, sourceName, axisIndex: 0),
+				value => SetAdjustedSegmentMidpointComponent(_baseTableSpec.JawSegments, _tableCalibrationProfile.Jaws, sourceName, axisIndex: 0, value));
+			AddCalibrationField("Jaws", sourceName, sourceName, $"{sourceName} Mid Y", $"Overlay_{sourceName}", -1.0f, 1.0f, 0.0005f, 0.005f,
+				() => GetAdjustedSegmentMidpointComponent(_baseTableSpec.JawSegments, _tableCalibrationProfile.Jaws, sourceName, axisIndex: 1),
+				value => SetAdjustedSegmentMidpointComponent(_baseTableSpec.JawSegments, _tableCalibrationProfile.Jaws, sourceName, axisIndex: 1, value));
 			AddCalibrationField("Jaws", sourceName, sourceName, $"{sourceName} Angle", $"Overlay_{sourceName}", -180.0f, 180.0f, 0.1f, 1.0f,
 				() => GetAdjustedSegmentAngleDegrees(_baseTableSpec.JawSegments, _tableCalibrationProfile.Jaws, sourceName),
 				value => SetAdjustedSegmentAngleDegrees(_baseTableSpec.JawSegments, _tableCalibrationProfile.Jaws, sourceName, value));
@@ -183,6 +195,48 @@ public partial class Main
 		}
 
 		return Mathf.RadToDeg(MathF.Atan2(direction.Y, direction.X));
+	}
+
+	private static float GetAdjustedSegmentMidpointComponent(
+		IReadOnlyList<CushionSegment> baseSegments,
+		IReadOnlyDictionary<string, SegmentCalibration> calibrations,
+		string sourceName,
+		int axisIndex)
+	{
+		var baseSegment = baseSegments.First(segment => segment.SourceName == sourceName);
+		calibrations.TryGetValue(sourceName, out var calibration);
+		var start = baseSegment.Start + (calibration?.StartOffset.ToNumerics() ?? NumericsVector2.Zero);
+		var end = baseSegment.End + (calibration?.EndOffset.ToNumerics() ?? NumericsVector2.Zero);
+		var midpoint = (start + end) * 0.5f;
+		return axisIndex == 0 ? midpoint.X : midpoint.Y;
+	}
+
+	private static void SetAdjustedSegmentMidpointComponent(
+		IReadOnlyList<CushionSegment> baseSegments,
+		IDictionary<string, SegmentCalibration> calibrations,
+		string sourceName,
+		int axisIndex,
+		float value)
+	{
+		var baseSegment = baseSegments.First(segment => segment.SourceName == sourceName);
+		if (!calibrations.TryGetValue(sourceName, out var calibration))
+		{
+			calibration = new SegmentCalibration();
+			calibrations[sourceName] = calibration;
+		}
+
+		var currentStart = baseSegment.Start + calibration.StartOffset.ToNumerics();
+		var currentEnd = baseSegment.End + calibration.EndOffset.ToNumerics();
+		var midpoint = (currentStart + currentEnd) * 0.5f;
+		var delta = axisIndex == 0
+			? new NumericsVector2(value - midpoint.X, 0.0f)
+			: new NumericsVector2(0.0f, value - midpoint.Y);
+		var newStart = currentStart + delta;
+		var newEnd = currentEnd + delta;
+		calibration.StartOffset.X = newStart.X - baseSegment.Start.X;
+		calibration.StartOffset.Y = newStart.Y - baseSegment.Start.Y;
+		calibration.EndOffset.X = newEnd.X - baseSegment.End.X;
+		calibration.EndOffset.Y = newEnd.Y - baseSegment.End.Y;
 	}
 
 	private static void SetAdjustedSegmentAngleDegrees(

@@ -57,7 +57,7 @@ Current behavior:
 - `Tuning` mode now uses a separate movable tuning window with direct selected-object mini-panels for literal X/Y/Angle-style edits, a flat scrollable row list with one slider row per tunable field, a dropdown that jumps to and highlights one object, a pixel-based overlay-thickness slider, a `Hide Info` toggle for the explanatory text, and Save/Reload/Reset buttons.
 - The tuning window now keeps explicit always-visible vertical scrollbars for both the row list and the right-side legend.
 - That separate `Tuning` window now also keeps a fixed right-side legend with color swatches and short explanations for the play area, cushions, jaws, pocket capture circles, cue/rack spots, aim guides, and the selected-target highlight color.
-- Cushion and jaw calibration rows now include both endpoint coordinates and direct segment-angle controls, so rails and jaws can be aligned either by moving endpoints or by rotating the segment around its current midpoint.
+- Cushion and jaw calibration rows now include endpoint coordinates plus direct `Mid X`, `Mid Y`, and segment-angle controls, so rails and jaws can be moved as whole lines and then rotated around the current midpoint.
 
 Verification on `2026-03-14`:
 
